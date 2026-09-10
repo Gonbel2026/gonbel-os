@@ -1300,74 +1300,7 @@ body{background:linear-gradient(180deg,#16304f 0%,#102542 40%,#0d1a2d 100%) !imp
    Se activa solo en pantallas táctiles reales (celular/tablet), NO cuando achicás la ventana
    en la computadora — ahí solo se reacomoda el contenido, sin cambiar el menú ni los modales.
    Esto permite trabajar con el sistema en media pantalla y Mercado Livre al lado. */
-@media (max-width: 820px) and (pointer: coarse){
-  body{padding:0;}
-  .topbar{flex-wrap:wrap;padding:10px 12px;gap:8px;}
-  .topbar .brand-sub{display:none;}
-  .brand-name{font-size:16px;}
-  .logo{width:34px;height:34px;}
 
-  /* Menú: barra fija abajo, solo las secciones que se miran desde el celular */
-  .ah-nav{
-    position:fixed;bottom:0;left:0;right:0;z-index:900;
-    display:flex;justify-content:space-around;align-items:stretch;
-    background:rgba(11,18,32,.97);backdrop-filter:blur(12px);
-    border-top:1px solid var(--brd);border-bottom:none;
-    padding:0 2px calc(4px + env(safe-area-inset-bottom));
-    overflow-x:auto;margin:0;
-  }
-  .ah-nav .sb-item{
-    flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;font-size:9.5px;padding:8px 6px;text-align:center;line-height:1.15;
-    border-bottom:none !important;min-width:62px;
-  }
-  .ah-nav .sb-item .si{font-size:18px;margin:0;}
-  .ah-nav .sb-item .badge{position:absolute;top:4px;right:8px;font-size:9px;padding:1px 5px;}
-  .ah-nav .sb-item.active{border-bottom:none !important;background:rgba(59,142,255,.14);border-radius:10px;}
-  /* En el celular solo lo que se mira; el resto sigue estando en la computadora */
-  .ah-nav .sb-item[data-page="proveedores"],
-  .ah-nav .sb-item[data-page="config"]{display:none;}
-  .main{padding:12px 12px 92px;}
-
-  /* Tarjetas de estadísticas: de a dos por fila */
-  .stats-row{grid-template-columns:1fr 1fr !important;gap:9px;}
-  .stat{padding:14px 12px;}
-  .stat-val{font-size:20px;}
-  .stat-lbl{font-size:10.5px;}
-  .stat-icon{font-size:15px;}
-
-  /* Paneles del Centro de Control */
-  .cc-panel{padding:12px;}
-  .cc-panel-tt b{font-size:13.5px;}
-  .cc-panel-tt span{font-size:11px;}
-  .cc-panel-act{flex-wrap:wrap;gap:6px;}
-  .cc-item{flex-wrap:wrap;gap:4px;}
-  .cc-item-l b{font-size:12.5px;}
-  .cc-item-l span{font-size:11px;}
-
-  /* Tablero: una columna por vez, deslizando de costado */
-  .kanban{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding-bottom:8px;}
-  .kanban .kcol{min-width:86vw;scroll-snap-align:start;flex-shrink:0;}
-  .card{padding:11px;}
-
-  /* Tablas financieras: se pueden deslizar sin romper la pantalla */
-  .fin-table, .chart-card{width:100%;overflow-x:auto;display:block;}
-  .fin-table table{min-width:520px;}
-
-  /* Modales a pantalla completa */
-  .modal{padding:0;align-items:stretch;}
-  .modal-box{max-width:100%;width:100%;max-height:100%;border-radius:0;margin:0;}
-  .modal-foot{position:sticky;bottom:0;padding-bottom:calc(14px + env(safe-area-inset-bottom));}
-  .field.full, .field{grid-column:1 / -1;}
-  .form-grid{grid-template-columns:1fr;}
-
-  /* Tareas: apiladas para que entren bien */
-  .tarea-nueva{flex-direction:column;}
-  .tarea-nueva input, .tarea-nueva button{width:100%;}
-
-  /* En el celular es solo para mirar: se esconden los botones que crean o editan */
-  .solo-escritorio{display:none !important;}
-}
 /* ══════ GENERADOR DE POSTS ══════ */
 .fo-mini.post{background:rgba(0,68,213,.28);color:#8ab4ff;}
 .fo-mini.post:hover{background:rgba(0,68,213,.5);color:#fff;}
@@ -1439,11 +1372,29 @@ body.role-operador #cr-fab{display:none !important;}
   .ah-name{font-size:17px;}
   .ah-tag{display:none;}
   .ah-right{width:100%;margin-left:0;}
-  .ah-nav{padding:0 8px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  /* Menu como barra fija abajo, con altura FIJA para que nunca se estire */
+  .ah-nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:950;
+    height:calc(62px + env(safe-area-inset-bottom));
+    padding:0 4px env(safe-area-inset-bottom);
+    display:flex;align-items:stretch;gap:0;
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    background:rgba(9,15,28,.97);backdrop-filter:blur(14px);
+    border-top:1px solid var(--brd);box-shadow:0 -6px 18px rgba(2,6,14,.5);
+  }
   .ah-nav::-webkit-scrollbar{display:none;}
-  .sb-item{white-space:nowrap;font-size:13px;padding:8px 11px;}
+  .ah-nav .sb-item{
+    flex:0 0 auto;min-width:74px;height:62px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-size:10px;font-weight:600;padding:0 6px;text-align:center;line-height:1.1;
+    white-space:nowrap;border:none;border-radius:0;
+  }
+  .ah-nav .sb-item .si{font-size:20px;margin:0;line-height:1;}
+  .ah-nav .sb-item.active{background:rgba(59,142,255,.16);color:var(--blue);}
   .topbar{padding:9px 12px;flex-wrap:wrap;gap:8px;}
-  .page{padding:12px 10px 90px;}
+  .page{padding:12px 10px calc(84px + env(safe-area-inset-bottom));}
+  /* El microfono sube para no quedar tapado por la barra */
+  #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom)) !important;}
 
   /* Tablero: una columna a la vez, se pasa de lado */
   .kanban-wrap{gap:10px;scroll-snap-type:x mandatory;padding-right:10px;}
@@ -1484,8 +1435,7 @@ body.role-operador #cr-fab{display:none !important;}
   .cj-mov-m{width:100%;text-align:left;}
   .inv-precio{width:100%;text-align:left;margin-top:6px;}
 
-  /* Micrófono: un poco mas arriba de la barra de iOS */
-  #cr-fab{right:14px;bottom:calc(16px + env(safe-area-inset-bottom));width:52px;height:52px;}
+  #cr-fab{right:14px;width:52px;height:52px;}
 
   /* Datos rapidos y carga rapida ocupan el ancho */
   .dr-panel{left:8px !important;right:8px !important;width:auto !important;max-width:none !important;}
