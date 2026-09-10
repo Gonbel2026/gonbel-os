@@ -1547,8 +1547,6 @@ body.role-operador #cr-fab{display:none !important;}
     <button class="btn btn-ghost" onclick="loadAll()">↻ Actualizar</button>
     <button class="btn btn-primary" onclick="openNewOrder()">+ Nuevo Pedido</button>
   </div>
-  <button type="button" id="cr-fab" onclick="crAbrir()" title="Anotar un gasto o cobro dictando">🎤</button>
-
   <div id="dr-panel" class="dr-panel"></div>
 </nav>
 
@@ -15899,5 +15897,8 @@ loadDivisas();
     </div>
   </div>
 </div>
+<!-- Fuera del nav a proposito: el backdrop-filter de la barra rompe position:fixed -->
+<button type="button" id="cr-fab" onclick="crAbrir()" title="Anotar un gasto o cobro dictando">🎤</button>
+
 </body>
 </html>
