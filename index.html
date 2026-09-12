@@ -1480,6 +1480,32 @@ body.role-operador #cr-fab{display:none !important;}
   .apphead{padding-top:calc(14px + env(safe-area-inset-top));}
   body{padding-top:0;}
 }
+
+/* ── App anclada a la pantalla de inicio ── */
+body.pwa .apphead{padding-top:calc(12px + env(safe-area-inset-top)) !important;}
+body.pwa{background:#0A1220;}
+
+/* El menu, cuando se cuelga del body, va fijo abajo siempre */
+.ah-nav.abajo{
+  position:fixed !important;left:0;right:0;bottom:0;top:auto;z-index:950;
+  height:calc(62px + env(safe-area-inset-bottom));
+  padding:0 4px env(safe-area-inset-bottom);
+  display:flex;align-items:stretch;gap:0;
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  background:rgba(9,15,28,.97);backdrop-filter:blur(14px);
+  border-top:1px solid var(--brd);box-shadow:0 -6px 18px rgba(2,6,14,.5);
+}
+.ah-nav.abajo::-webkit-scrollbar{display:none;}
+.ah-nav.abajo .sb-item{
+  flex:0 0 auto;min-width:74px;height:62px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:10px;font-weight:600;padding:0 6px;text-align:center;line-height:1.1;
+  white-space:nowrap;border:none;border-radius:0;
+}
+.ah-nav.abajo .sb-item .si{font-size:20px;margin:0;line-height:1;}
+.ah-nav.abajo .sb-item.active{background:rgba(59,142,255,.16);color:var(--blue);}
+body:has(.ah-nav.abajo) .page{padding-bottom:calc(90px + env(safe-area-inset-bottom));}
+body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));}
 </style>
 </head>
 <body>
@@ -6667,27 +6693,49 @@ let fotosPorPedido = {};     // conteo por pedido, para las tarjetas del tablero
 
 // Achica la foto antes de subirla: desde el celular con datos móviles una foto original
 // pesa 4-6 MB y tarda una eternidad. A 1600px de lado mayor queda en unos 300-500 KB.
-function foComprimir(file, maxLado = 1600, calidad = 0.85){
+// Dibuja ya sea un HTMLImageElement o un ImageBitmap, con el mismo recorte de tamaño
+function foDibujar(fuente, w0, h0, maxLado, calidad){
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let {width:w, height:h} = img;
-      if(Math.max(w,h) > maxLado){
-        const f = maxLado / Math.max(w,h);
-        w = Math.round(w*f); h = Math.round(h*f);
-      }
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);   // evita fondo negro en PNG con transparencia
-      ctx.drawImage(img, 0, 0, w, h);
-      c.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo procesar la imagen')), 'image/jpeg', calidad);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Archivo de imagen inválido')); };
-    img.src = url;
+    let w = w0, h = h0;
+    if(Math.max(w,h) > maxLado){
+      const f = maxLado / Math.max(w,h);
+      w = Math.round(w*f); h = Math.round(h*f);
+    }
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);   // evita fondo negro en PNG con transparencia
+    ctx.drawImage(fuente, 0, 0, w, h);
+    c.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo procesar la imagen')), 'image/jpeg', calidad);
   });
+}
+
+// Las fotos HEIC de iPhone (llegadas por AirDrop o WhatsApp a la Mac) a veces
+// no las puede leer <img> directamente en el navegador, aunque se vean bien en
+// Vista Previa. Se intenta primero por la via normal, y si falla, con
+// createImageBitmap, que decodifica algunos formatos que <img> no puede.
+async function foComprimir(file, maxLado = 1600, calidad = 0.85){
+  try {
+    const bitmap = await new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+      img.src = url;
+    });
+    return await foDibujar(bitmap, bitmap.width, bitmap.height, maxLado, calidad);
+  } catch(e1){
+    try {
+      const bmp = await createImageBitmap(file);
+      return await foDibujar(bmp, bmp.width, bmp.height, maxLado, calidad);
+    } catch(e2){
+      const esHeic = /\.hei[cf]$/i.test(file.name || '') || /heic|heif/i.test(file.type || '');
+      if(esHeic){
+        throw new Error('"' + file.name + '" es HEIC y el navegador no lo pudo abrir. Export\u00e1la como JPG desde Vista Previa (Archivo \u2192 Exportar) y volv\u00e9 a subirla.');
+      }
+      throw new Error('"' + (file.name || 'la foto') + '" no se pudo abrir \u2014 puede estar da\u00f1ada o en un formato no soportado.');
+    }
+  }
 }
 
 function foLimpiarNombre(n){
@@ -6708,6 +6756,7 @@ async function foElegidas(input, origen){
   const fill = document.getElementById('fo-prog-fill');
   prog.style.display = 'block';
   let ok = 0, fallaron = 0;
+  const errores = [];
 
   for(let i = 0; i < files.length; i++){
     txt.textContent = `Subiendo ${i+1} de ${files.length}…`;
@@ -6717,6 +6766,7 @@ async function foElegidas(input, origen){
       ok++;
     } catch(e){
       fallaron++;
+      errores.push(String(e.message || e));
       console.error('Foto', files[i].name, e);
     }
   }
@@ -6724,8 +6774,12 @@ async function foElegidas(input, origen){
   setTimeout(()=>{ prog.style.display = 'none'; fill.style.width = '0%'; }, 700);
 
   await foCargar(currentOrder.id);
-  if(fallaron) showToast(`${ok} subida${ok===1?'':'s'}, ${fallaron} con error`, fallaron===files.length ? 'error' : 'success');
-  else showToast(`📸 ${ok} foto${ok===1?'':'s'} subida${ok===1?'':'s'}`,'success');
+  if(fallaron){
+    // Se muestra el motivo real (por ej. cual archivo era HEIC), no un aviso generico
+    showToast(`${ok} subida${ok===1?'':'s'}, ${fallaron} con error — ` + errores.slice(0,2).join(' · '), 'error');
+  } else {
+    showToast(`📸 ${ok} foto${ok===1?'':'s'} subida${ok===1?'':'s'}`,'success');
+  }
 }
 
 async function foSubirUna(file, origen){
@@ -16337,6 +16391,12 @@ loadDivisas();
 // vive dentro de un contenedor con backdrop-filter, y eso hace que position:fixed
 // se ancle a ese contenedor en vez de a la pantalla. Se lo cuelga del body.
 (function(){
+  // Modo app (anclada a la pantalla de inicio): no hay barra de Safari, asi que
+  // el contenido arranca debajo del reloj y la bateria si no se reserva ese alto.
+  const comoApp = window.navigator.standalone === true ||
+                  window.matchMedia('(display-mode: standalone)').matches;
+  if(comoApp) document.body.classList.add('pwa');
+
   const nav = document.querySelector('.ah-nav');
   if(!nav) return;
   const padre = nav.parentElement;
@@ -16345,9 +16405,10 @@ loadDivisas();
   let afuera = false;
 
   function ubicar(){
-    const chico = window.matchMedia('(max-width: 640px)').matches;
-    if(chico && !afuera){ document.body.appendChild(nav); afuera = true; }
-    else if(!chico && afuera){ marca.parentNode.insertBefore(nav, marca.nextSibling); afuera = false; }
+    const chico = window.matchMedia('(max-width: 640px)').matches ||
+                  (comoApp && window.innerWidth <= 900);
+    if(chico && !afuera){ document.body.appendChild(nav); nav.classList.add('abajo'); afuera = true; }
+    else if(!chico && afuera){ marca.parentNode.insertBefore(nav, marca.nextSibling); nav.classList.remove('abajo'); afuera = false; }
   }
   ubicar();
   window.addEventListener('resize', ubicar);
