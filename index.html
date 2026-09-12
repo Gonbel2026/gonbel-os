@@ -15231,7 +15231,7 @@ async function pgComponer(cv, d){
   ]);
   // Premium se dibuja aparte: es otro lenguaje visual, no la misma con otro texto
   if((d.plantilla || PG_PLANTILLA) === 'premium'){
-    return await pgComponerPremium(cv, d, foto, wm, mu, wa);
+    return await pgComponerPremium(cv, d, foto, wm, wa);
   }
   const esHist = (d.formato || PG_FORMATO) === 'historia';
   const med = PG_MEDIDAS[esHist ? 'historia' : 'feed'];
@@ -15554,7 +15554,7 @@ async function pgRedibujar(){
 // ══════ PLANTILLA OFICIAL PREMIUM 1 ══════
 // Especificacion cerrada: foto full bleed, dos degrades, franja del logo con
 // "PERSONALIZACION DE VEHICULOS", bloque cobalto y linea de contacto.
-async function pgComponerPremium(cv, d, foto, wm, mu, wa){
+async function pgComponerPremium(cv, d, foto, wm, wa){
   const esHist = (d.formato || PG_FORMATO) === 'historia';
   const med = PG_MEDIDAS[esHist ? 'historia' : 'feed'];
   const W = med.w, H = med.h;
@@ -15611,7 +15611,13 @@ async function pgComponerPremium(cv, d, foto, wm, mu, wa){
   ctx.fillStyle = '#0A0C10';
   ctx.fillRect(mIzq, topY, Math.round(cajaAncho), cajaAlto);
 
-  ctx.drawImage(mu, mIzq + 10, topY + Math.round((cajaAlto - logoLado) / 2), logoLado, logoLado);
+  // El logo completo de Gonbel, en contain dentro de su cuadro
+  const rl = Math.min(logoLado / wm.width, logoLado / wm.height);
+  const lw = Math.round(wm.width * rl), lh2 = Math.round(wm.height * rl);
+  ctx.drawImage(wm,
+    mIzq + 10 + Math.round((logoLado - lw) / 2),
+    topY + Math.round((cajaAlto - lh2) / 2),
+    lw, lh2);
 
   const sepX = mIzq + 10 + logoLado + 20;
   ctx.fillStyle = 'rgba(255,255,255,0.28)';
@@ -16327,6 +16333,27 @@ async function ctPublicarAhora(id){
 // ── INIT ──
 checkAuth();
 loadDivisas();
+// En el celular el menu va como barra fija abajo. No alcanza con CSS: el nav
+// vive dentro de un contenedor con backdrop-filter, y eso hace que position:fixed
+// se ancle a ese contenedor en vez de a la pantalla. Se lo cuelga del body.
+(function(){
+  const nav = document.querySelector('.ah-nav');
+  if(!nav) return;
+  const padre = nav.parentElement;
+  const marca = document.createComment('ah-nav');
+  padre.insertBefore(marca, nav);
+  let afuera = false;
+
+  function ubicar(){
+    const chico = window.matchMedia('(max-width: 640px)').matches;
+    if(chico && !afuera){ document.body.appendChild(nav); afuera = true; }
+    else if(!chico && afuera){ marca.parentNode.insertBefore(nav, marca.nextSibling); afuera = false; }
+  }
+  ubicar();
+  window.addEventListener('resize', ubicar);
+  window.addEventListener('orientationchange', ()=>setTimeout(ubicar, 120));
+})();
+
 </script>
 
 <!-- MODAL EDICIÓN AMPLIADA -->
