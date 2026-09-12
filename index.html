@@ -15190,8 +15190,8 @@ async function pgComponer(cv, d){
   // Instagram tapa arriba el nombre de usuario y abajo la barra de respuesta:
   // en historias todo se corre para adentro de la zona segura.
   const topY   = esHist ? 190 : 0;      // donde arranca la franja
-  const bandaH = esHist ? 420 : 312;    // alto de la banda inferior
-  const pisoY  = esHist ? 280 : 0;      // margen libre al pie
+  const bandaH = esHist ? 560 : 312;    // en historia el degradado es largo y suave
+  const pisoY  = esHist ? 210 : 0;      // franja que tapa la barra de respuesta
 
   // 1. Foto en modo cover, con el encuadre elegido
   const enc = d.encuadre || PG_ENC;
@@ -15219,7 +15219,8 @@ async function pgComponer(cv, d){
 
   // 4. Bloque de título (deja lugar al sello a la derecha)
   const maxT = W - 92 - 300;
-  const tY = topY + 178;   // el titulo baja junto con la franja
+  // En historia el lienzo es mucho mas alto: el titulo se separa mas de la franja
+  const tY = topY + (esHist ? 230 : 178);
   ctx.fillStyle = '#fff'; ctx.fillRect(64, tY, 7, 92);
   const pieza = (d.pieza || '').toUpperCase();
   pgAjustar(ctx, pieza, t => t + 'px Anton, sans-serif', 70, maxT, 40);
@@ -15240,11 +15241,14 @@ async function pgComponer(cv, d){
   // 6. Banda inferior (sólida, como en la referencia)
   const bandaY = H - pisoY - bandaH;
   if(esHist){
-    // Degradado para que la foto no se corte de golpe
-    const g = ctx.createLinearGradient(0, bandaY, 0, bandaY + 150);
-    g.addColorStop(0, 'rgba(10,12,16,0)'); g.addColorStop(1, '#0A0C10');
-    ctx.fillStyle = g; ctx.fillRect(0, bandaY, W, 150);
-    ctx.fillStyle = '#0A0C10'; ctx.fillRect(0, bandaY + 148, W, bandaH + pisoY - 148);
+    // En historia la foto se ve casi entera: solo un degradado largo sobre ella,
+    // y negro pleno unicamente en la franja que Instagram tapa con su barra.
+    const g = ctx.createLinearGradient(0, bandaY, 0, H - pisoY);
+    g.addColorStop(0, 'rgba(10,12,16,0)');
+    g.addColorStop(0.55, 'rgba(10,12,16,.82)');
+    g.addColorStop(1, '#0A0C10');
+    ctx.fillStyle = g; ctx.fillRect(0, bandaY, W, bandaH);
+    ctx.fillStyle = '#0A0C10'; ctx.fillRect(0, H - pisoY - 1, W, pisoY + 1);
   } else {
     ctx.fillStyle = '#0A0C10'; ctx.fillRect(0, bandaY, W, bandaH);
   }
@@ -15356,7 +15360,9 @@ function pgArmarCaption(v, gi, ci){
   const l2 = [v.marcaPieza ? `Marca ${v.marcaPieza}.` : '', v.origen ? `Importado desde ${v.origen}.` : ''].filter(Boolean).join(' ');
   if(l2) cuerpo.push(l2);
   const claves = [v.pieza, v.vehiculo, 'repuestos importados Ciudad del Este Paraguay autopartes', v.origen].filter(Boolean).join(' ').toLowerCase();
-  return [rel(PG_GANCHOS[gi]), cuerpo.join('\n'), PG_CIERRES[ci], claves].join('\n\n');
+  // Sello oficial: siempre cierra igual, debajo de todo
+  const firma = 'GONBEL IMPORTS | SINCE 2020\n0974780008 \uD83D\uDCF1\uD83D\uDD27';
+  return [rel(PG_GANCHOS[gi]), cuerpo.join('\n'), PG_CIERRES[ci], claves, firma].join('\n\n');
 }
 
 // Concuerda la condición con el género y número de la pieza: "amortiguadores nuevos originales", "bomba usada original"
