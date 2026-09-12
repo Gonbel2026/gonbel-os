@@ -1332,6 +1332,29 @@ body{background:linear-gradient(180deg,#16304f 0%,#102542 40%,#0d1a2d 100%) !imp
 .pg-err{background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.35);color:#ff9a9a;border-radius:9px;padding:9px 12px;font-size:12px;white-space:pre-wrap;word-break:break-word;}
 .pg-ok{background:rgba(34,217,122,.1);border:1px solid rgba(34,217,122,.35);color:var(--green);border-radius:9px;padding:9px 12px;font-size:12px;}
 .ct-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:14px;}
+.pg-fb{display:flex;align-items:center;gap:8px;margin-top:11px;padding:9px 12px;border:1px solid var(--brd);border-radius:10px;background:rgba(255,255,255,.03);cursor:pointer;font-size:12.5px;color:var(--t2);user-select:none;}
+.pg-fb:hover{background:rgba(255,255,255,.06);}
+.pg-fb input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;}
+.ct-fb{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:rgba(24,119,242,.18);color:#4a9eff;}
+.ct-fb.no{background:rgba(255,255,255,.07);color:var(--t3);}
+.ct-foto-wrap{position:relative;}
+.ct-check{position:absolute;top:7px;right:7px;width:23px;height:23px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.ct-cant{position:absolute;top:7px;left:7px;background:rgba(9,14,26,.85);color:#fff;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:8px;backdrop-filter:blur(6px);}
+.ct-card.usada{opacity:.5;}
+.ct-card.usada:hover{opacity:.85;}
+.ct-sem{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:16px;}
+.ct-dia{border:1px solid var(--brd);border-radius:11px;min-height:118px;padding:8px;background:rgba(255,255,255,.03);transition:.15s;}
+.ct-dia.hoy{border-color:var(--blue);background:rgba(59,142,255,.07);}
+.ct-dia.sobre{border-color:var(--cyan);background:rgba(0,212,255,.1);}
+.ct-dia-h{font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;text-align:center;}
+.ct-dia-n{font-size:15px;font-weight:800;color:var(--t1);}
+.ct-mini{display:flex;gap:6px;align-items:center;padding:5px;border-radius:8px;background:rgba(255,255,255,.06);margin-bottom:5px;cursor:grab;font-size:10.5px;}
+.ct-mini img{width:26px;height:26px;border-radius:5px;object-fit:cover;flex-shrink:0;}
+.ct-mini:active{cursor:grabbing;}
+.ct-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;color:var(--t3);}
+.ct-obj{height:5px;border-radius:3px;background:rgba(255,255,255,.1);width:120px;overflow:hidden;}
+.ct-obj i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+@media(max-width:640px){.ct-sem{grid-template-columns:1fr;}.ct-dia{min-height:auto;}}
 .ct-card{background:var(--bg2);border:1px solid var(--brd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
 .ct-card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:#0a1220;}
 .ct-card .ct-b{padding:11px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
@@ -1934,13 +1957,20 @@ body.role-operador #cr-fab{display:none !important;}
   <!-- PAGE: CONTENIDO (posts de Instagram) -->
   <div class="page" id="page-contenido">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
-      <button type="button" class="fin-tab" id="cttab-sugeridos" onclick="ctTab('sugeridos')">💡 Sugeridos <span class="badge" id="ct-n-sug" style="margin-left:4px;">0</span></button>
-      <button type="button" class="fin-tab" id="cttab-cola" onclick="ctTab('cola')">🕒 Cola <span class="badge" id="ct-n-cola" style="margin-left:4px;">0</span></button>
-      <button type="button" class="fin-tab" id="cttab-publicado" onclick="ctTab('publicado')">✅ Publicado</button>
+      <button type="button" class="fin-tab" id="cttab-galeria" onclick="ctTab('galeria')">📷 Galería <span class="badge" id="ct-n-gal" style="margin-left:4px;">0</span></button>
+      <button type="button" class="fin-tab" id="cttab-cola" onclick="ctTab('cola')">📅 Programadas <span class="badge" id="ct-n-cola" style="margin-left:4px;">0</span></button>
+      <button type="button" class="fin-tab" id="cttab-publicado" onclick="ctTab('publicado')">✅ Publicadas</button>
+      <button type="button" class="fin-tab" id="cttab-libre" onclick="ctTab('libre')">➕ Carga libre</button>
       <span style="flex:1;"></span>
       <button type="button" class="btn btn-ghost" onclick="ctCargar(true)">↻ Actualizar</button>
     </div>
     <div class="pg-hint" id="ct-desc"></div>
+    <div id="ct-filtros" style="display:none;gap:7px;flex-wrap:wrap;margin-bottom:13px;">
+      <button type="button" class="bs-chip on" id="ctf-todas" onclick="ctFiltro('todas')">Todas</button>
+      <button type="button" class="bs-chip" id="ctf-sinpub" onclick="ctFiltro('sinpub')">Sin publicar</button>
+      <button type="button" class="bs-chip" id="ctf-pub" onclick="ctFiltro('pub')">Publicadas</button>
+      <button type="button" class="bs-chip" id="ctf-fav" onclick="ctFiltro('fav')">Favoritas</button>
+    </div>
     <div id="ct-cuerpo"></div>
   </div>
 
@@ -1972,6 +2002,10 @@ body.role-operador #cr-fab{display:none !important;}
               <div class="pg-sl"><span>Zoom</span><input type="range" min="100" max="200" value="100" id="pg-sl-z" oninput="pgEncuadre('zoom', this.value)"><b id="pg-v-z">100%</b></div>
               <button type="button" class="btn btn-ghost" style="padding:6px 13px;font-size:12px;width:100%;justify-content:center;" onclick="pgCentrar()">⌖ Centrar</button>
             </div>
+            <label class="pg-fb" title="Replica la misma foto y texto en la página de Facebook">
+              <input type="checkbox" id="pg-fb" checked>
+              <span>🌐 También en Facebook</span>
+            </label>
             <div class="pg-prog" id="pg-estado"></div>
           </div>
           <div class="pg-campos">
@@ -15413,6 +15447,8 @@ function pgAbrir(f, o, post){
   document.getElementById('pg-vehiculo').value = t.vehiculoAnio;
   document.getElementById('pg-marca').value = t.marca;
   // Formato y encuadre: los del post si se esta editando, si no los de fabrica
+  const chkFb = document.getElementById('pg-fb');
+  if(chkFb) chkFb.checked = post ? (post.publicar_fb !== false) : true;
   PG_FORMATO = (post && post.formato) ? post.formato : 'feed';
   PG_ENC = (post && post.encuadre) ? Object.assign({x:50,y:62,zoom:100}, post.encuadre) : {x:50, y:62, zoom:100};
   PG_W = PG_MEDIDAS[PG_FORMATO].w; PG_H = PG_MEDIDAS[PG_FORMATO].h;
@@ -15562,7 +15598,8 @@ async function pgGuardarPost(fechaISO, estado){
     gancho_idx: pgGanchoIdx >= 0 ? pgGanchoIdx : null,
     cierre_idx: pgCierreIdx >= 0 ? pgCierreIdx : null,
     formato: PG_FORMATO,
-    encuadre: Object.assign({}, PG_ENC)
+    encuadre: Object.assign({}, PG_ENC),
+    publicar_fb: !!(document.getElementById('pg-fb') || {}).checked
   };
   // Las historias no llevan texto: Instagram lo ignora
   if(PG_FORMATO === 'historia') cuerpo.caption = null;
@@ -15620,7 +15657,7 @@ async function pgLlamarPublicar(postId){
 }
 
 // ══════ PÁGINA CONTENIDO ══════
-let ctPosts = [], ctSug = [], ctTabActual = 'sugeridos';
+let ctPosts = [], ctSug = [], ctTabActual = 'galeria';
 
 async function ctCargar(forzar){
   const cuerpo = document.getElementById('ct-cuerpo');
@@ -15628,91 +15665,420 @@ async function ctCargar(forzar){
   if(forzar || !ctPosts.length) cuerpo.innerHTML = '<div class="ct-vacio">Cargando…</div>';
   try {
     const [posts, fotos] = await Promise.all([
-      sbFetch('/rest/v1/contenido_posts?order=created_at.desc&limit=200'),
-      sbFetch('/rest/v1/pedido_fotos?select=id,order_id,numero,url,pieza,favorita,created_at&order=created_at.desc&limit=400')
+      sbFetch('/rest/v1/contenido_posts?order=created_at.desc&limit=300'),
+      sbFetch('/rest/v1/pedido_fotos?select=*&order=created_at.desc&limit=600')
     ]);
     ctPosts = posts || [];
-    const conPost = new Set(ctPosts.filter(p => p.estado !== 'cancelado').map(p => String(p.order_id)));
-    const porPedido = {};
-    (fotos || []).forEach(f => {
+    ctFotos = fotos || [];
+
+    // Agrupadas por pedido: es lo que se muestra en la galeria
+    const grupos = {};
+    ctFotos.forEach(f => {
       const k = String(f.order_id);
-      if(!porPedido[k] || (f.favorita && !porPedido[k].favorita)) porPedido[k] = f;
+      if(!grupos[k]) grupos[k] = { order_id: f.order_id, numero: f.numero, fotos: [] };
+      grupos[k].fotos.push(f);
     });
-    ctSug = [];
-    orders.filter(o => o.estado === 'entregado' && !conPost.has(String(o.id)) && porPedido[String(o.id)])
-      .forEach(o => ctSug.push({ o, f: porPedido[String(o.id)] }));
+    ctGrupos = Object.values(grupos).map(g => {
+      g.o = (orders || []).find(x => String(x.id) === String(g.order_id)) || null;
+      g.portada = g.fotos.find(f => f.favorita) || g.fotos[0];
+      g.publicadas = g.fotos.filter(f => f.publicada).length;
+      g.todasPublicadas = g.publicadas === g.fotos.length;
+      return g;
+    }).sort((a, b) => new Date(b.portada.created_at) - new Date(a.portada.created_at));
   } catch(e){
     cuerpo.innerHTML = '<div class="pg-err">No se pudo cargar: ' + e.message + '</div>';
     return;
   }
-  document.getElementById('ct-n-sug').textContent = ctSug.length;
+  document.getElementById('ct-n-gal').textContent = ctGrupos.filter(g => !g.todasPublicadas).length;
   document.getElementById('ct-n-cola').textContent = ctPosts.filter(p => p.estado === 'aprobado').length;
   ctTab(ctTabActual);
 }
 
+let ctFotos = [], ctGrupos = [], ctFiltroActual = 'todas';
+
+function ctFiltro(f){
+  ctFiltroActual = f;
+  ['todas','sinpub','pub','fav'].forEach(k=>{
+    const b = document.getElementById('ctf-' + k);
+    if(b) b.classList.toggle('on', k === f);
+  });
+  ctTab('galeria');
+}
+
 function ctTab(t){
   ctTabActual = t;
-  ['sugeridos', 'cola', 'publicado'].forEach(k => document.getElementById('cttab-' + k).classList.toggle('active', k === t));
+  ['galeria','cola','publicado','libre'].forEach(k => {
+    const b = document.getElementById('cttab-' + k);
+    if(b) b.classList.toggle('active', k === t);
+  });
   const desc = document.getElementById('ct-desc');
   const cuerpo = document.getElementById('ct-cuerpo');
+  const filtros = document.getElementById('ct-filtros');
   const esc = s => String(s || '').replace(/</g, '&lt;');
-  if(t === 'sugeridos'){
-    desc.textContent = 'Pedidos entregados que ya tienen foto y todavía no tienen post.';
-    if(!ctSug.length){ cuerpo.innerHTML = '<div class="ct-vacio">Nada pendiente. Cuando entregues un pedido con foto, aparece acá.</div>'; return; }
-    cuerpo.innerHTML = '<div class="ct-grid">' + ctSug.map(s => {
-      const t2 = pgTextosDesde(s.o, s.f);
-      return `<div class="ct-card">
-        <img src="${s.f.url}" loading="lazy" alt="">
-        <div class="ct-b">
-          <div class="ct-t">${esc(t2.pieza) || 'Sin nombre de pieza'}</div>
-          <div class="ct-s">${esc(t2.vehiculo)}<br>${esc(s.o.numero_pedido || s.o.numero || '')} · ${esc(s.o.cliente_nombre || '')}</div>
-          <div class="ct-acc">
-            <button type="button" class="btn btn-ghost" onclick="openOrder('${s.o.id}')">Ver pedido</button>
-            <button type="button" class="btn btn-primary" onclick="pgAbrirDesdeSugerido(${s.f.id},'${s.o.id}')">🎨 Generar</button>
-          </div>
-        </div></div>`;
+  filtros.style.display = (t === 'galeria') ? 'flex' : 'none';
+
+  // ══════ GALERIA ══════
+  if(t === 'galeria'){
+    desc.textContent = 'Todo lo que suben a los pedidos aparece ac\u00e1 solo, agrupado por pedido. El tilde verde marca lo que ya se public\u00f3.';
+    let lista = ctGrupos.slice();
+    if(ctFiltroActual === 'sinpub') lista = lista.filter(g => g.publicadas === 0);
+    else if(ctFiltroActual === 'pub') lista = lista.filter(g => g.publicadas > 0);
+    else if(ctFiltroActual === 'fav') lista = lista.filter(g => g.fotos.some(f => f.favorita));
+
+    if(!lista.length){
+      cuerpo.innerHTML = '<div class="ct-vacio">' + (ctGrupos.length ? 'Nada con ese filtro.' : 'Todav\u00eda no hay fotos cargadas en los pedidos.') + '</div>';
+      return;
+    }
+    cuerpo.innerHTML = '<div class="ct-grid">' + lista.map(g => {
+      const o = g.o || {};
+      const t2 = o.id ? pgTextosDesde(o, g.portada) : {pieza: g.portada.pieza || '', vehiculo: ''};
+      return '<div class="ct-card' + (g.todasPublicadas ? ' usada' : '') + '">'
+        + '<div class="ct-foto-wrap">'
+          + '<img src="' + g.portada.url + '" loading="lazy" alt="">'
+          + (g.fotos.length > 1 ? '<span class="ct-cant">\uD83D\uDCF7 ' + g.fotos.length + '</span>' : '')
+          + (g.publicadas ? '<span class="ct-check" title="' + g.publicadas + ' de ' + g.fotos.length + ' publicadas">\u2713</span>' : '')
+        + '</div>'
+        + '<div class="ct-b">'
+          + '<div class="ct-t">' + esc(t2.pieza || g.portada.pieza || 'Sin nombre') + '</div>'
+          + '<div class="ct-s">' + esc(t2.vehiculo || '') + '<br>' + esc(g.numero || (o.numero_pedido || '')) + ' \u00b7 ' + esc(o.cliente_nombre || '') + '</div>'
+          + '<div class="ct-acc">'
+            + '<button type="button" class="btn btn-ghost" onclick="ctVerPedido(' + g.order_id + ')">\uD83D\uDCF7 Ver fotos</button>'
+            + '<button type="button" class="btn btn-primary" onclick="pgAbrirDesdeSugerido(' + g.portada.id + ',\'' + g.order_id + '\')">\uD83C\uDFA8 Generar</button>'
+          + '</div>'
+        + '</div></div>';
     }).join('') + '</div>';
     return;
   }
+
+  // ══════ PROGRAMADAS ══════
   if(t === 'cola'){
-    desc.textContent = 'Posts aprobados esperando su fecha. El sistema revisa cada 10 minutos y publica el que ya venció, uno por vez. Nada sale sin pasar por acá.';
-    const lista = ctPosts.filter(p => p.estado === 'aprobado').sort((a, b) => new Date(a.fecha_programada || 0) - new Date(b.fecha_programada || 0));
-    if(!lista.length){ cuerpo.innerHTML = '<div class="ct-vacio">La cola está vacía.</div>'; return; }
-    cuerpo.innerHTML = '<div class="ct-grid">' + lista.map(p => `<div class="ct-card">
-        <img src="${p.foto_url}" loading="lazy" alt="">
-        <div class="ct-b">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-            <span class="ct-tag ${p.error_msg ? 'er' : 'ap'}">${p.error_msg ? '⚠️ error' : 'en cola'}</span>
-            <span class="ct-s">${p.fecha_programada ? new Date(p.fecha_programada).toLocaleString('es-PY', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
-          </div>
-          <div class="ct-t">${esc(p.numero || '')}</div>
-          <div class="ct-cap">${esc(p.caption)}</div>
-          ${p.error_msg ? '<div class="pg-err">' + esc(p.error_msg) + '</div>' : ''}
-          <div class="ct-acc">
-            <button type="button" class="btn btn-ghost" onclick="ctCancelar(${p.id})">Cancelar</button>
-            <button type="button" class="btn btn-ghost" onclick="ctEditarCaption(${p.id})">✏️</button>
-            <button type="button" class="btn pg-btn-ig" onclick="ctPublicarAhora(${p.id})">Publicar ahora</button>
-          </div>
-        </div></div>`).join('') + '</div>';
+    desc.textContent = 'Calendario de la semana. Arrastr\u00e1 un post a otro d\u00eda para reprogramarlo.';
+    cuerpo.innerHTML = ctCalendario();
     return;
   }
-  desc.textContent = 'Historial de lo que ya salió en Instagram.';
+
+  // ══════ CARGA LIBRE ══════
+  if(t === 'libre'){
+    desc.textContent = 'Para trabajos viejos o contenido que no viene de un pedido. Se sube la foto y se completan los datos a mano.';
+    cuerpo.innerHTML = '<div class="card" style="max-width:520px;">'
+      + '<div style="display:grid;gap:11px;">'
+      + '<div><label class="lbl">Foto *</label><input type="file" accept="image/*" id="ctl-file" class="inp" onchange="ctLibrePrevia(this.files)"></div>'
+      + '<div id="ctl-prev"></div>'
+      + '<div><label class="lbl">Nombre de la pieza *</label><input class="inp" id="ctl-pieza" placeholder="Ej: Faro delantero derecho"></div>'
+      + '<div><label class="lbl">Veh\u00edculo y a\u00f1o</label><input class="inp" id="ctl-veh" placeholder="Ej: Jeep Compass 2018"></div>'
+      + '<div><label class="lbl">Marca \u00b7 condici\u00f3n</label><input class="inp" id="ctl-marca" placeholder="Ej: Original \u00b7 Nueva"></div>'
+      + '<button type="button" class="btn btn-primary" onclick="ctLibreGenerar()">\uD83C\uDFA8 Generar post</button>'
+      + '</div></div>';
+    return;
+  }
+
+  // ══════ PUBLICADAS ══════
+  desc.textContent = 'Historial de lo que ya sali\u00f3 en Instagram.';
   const lista = ctPosts.filter(p => p.estado === 'publicado').sort((a, b) => new Date(b.fecha_publicada || 0) - new Date(a.fecha_publicada || 0));
-  if(!lista.length){ cuerpo.innerHTML = '<div class="ct-vacio">Todavía no se publicó nada desde el sistema.</div>'; return; }
-  cuerpo.innerHTML = '<div class="ct-grid">' + lista.map(p => `<div class="ct-card">
-      <img src="${p.foto_url}" loading="lazy" alt="">
-      <div class="ct-b">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-          <span class="ct-tag pu">publicado</span>
-          <span class="ct-s">${p.fecha_publicada ? new Date(p.fecha_publicada).toLocaleString('es-PY', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
-        </div>
-        <div class="ct-t">${esc(p.numero || '')}</div>
-        <div class="ct-cap">${esc(p.caption)}</div>
-        <div class="ct-s">media ${esc(p.ig_media_id)}</div>
-        <div class="ct-acc">
-          <a class="btn btn-primary" href="https://www.instagram.com/gonbel_imports_py/" target="_blank" rel="noopener" style="text-decoration:none;">Ver en Instagram</a>
-        </div>
-      </div></div>`).join('') + '</div>';
+  if(!lista.length){ cuerpo.innerHTML = '<div class="ct-vacio">Todav\u00eda no se public\u00f3 nada desde el sistema.</div>'; return; }
+  cuerpo.innerHTML = '<div class="ct-grid">' + lista.map(p => {
+    const fotos = Array.isArray(p.fotos_urls) && p.fotos_urls.length ? p.fotos_urls : [p.foto_url];
+    const fmt = {carrusel:'\uD83C\uDFA0 carrusel', historia:'\uD83D\uDCF1 historia'}[p.formato] || '\uD83D\uDCF0 publicaci\u00f3n';
+    return '<div class="ct-card">'
+      + '<div class="ct-foto-wrap"><img src="' + fotos[0] + '" loading="lazy" alt="">'
+      + (fotos.length > 1 ? '<span class="ct-cant">\uD83C\uDFA0 ' + fotos.length + '</span>' : '') + '</div>'
+      + '<div class="ct-b">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
+          + '<span class="ct-tag pu">' + fmt + '</span>'
+          + (p.fb_post_id
+              ? '<span class="ct-fb" title="Tambi\u00e9n sali\u00f3 en Facebook">\uD83C\uDF10 FB</span>'
+              : (p.publicar_fb === false ? '<span class="ct-fb no" title="Se public\u00f3 solo en Instagram a prop\u00f3sito">solo IG</span>' : '<span class="ct-fb no" title="No lleg\u00f3 a replicarse en Facebook">FB \u2717</span>'))
+          + '<span class="ct-s">' + (p.fecha_publicada ? new Date(p.fecha_publicada).toLocaleString('es-PY', {dateStyle:'short', timeStyle:'short'}) : '') + '</span>'
+        + '</div>'
+        + '<div class="ct-t">' + esc(p.numero || '') + '</div>'
+        + '<div class="ct-cap">' + esc(p.caption) + '</div>'
+        + '<div class="ct-acc">'
+          + (p.ig_media_id
+              ? '<a class="btn btn-primary" href="https://www.instagram.com/p/' + ctShortcode(p.ig_media_id) + '/" target="_blank" rel="noopener" style="text-decoration:none;">Ver en Instagram</a>'
+              : '<a class="btn btn-primary" href="https://www.instagram.com/gonbel_imports_py/" target="_blank" rel="noopener" style="text-decoration:none;">Ver perfil</a>')
+        + '</div>'
+      + '</div></div>';
+  }).join('') + '</div>';
+}
+
+// Instagram no da el enlace directo desde el id: se manda al perfil
+function ctShortcode(){ return ''; }
+
+// ══════ CALENDARIO SEMANAL ══════
+let ctSemanaOffset = 0;
+
+function ctCalendario(){
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7) + ctSemanaOffset * 7);
+
+  const dias = [];
+  for(let i = 0; i < 7; i++){
+    const d = new Date(lunes); d.setDate(lunes.getDate() + i);
+    dias.push(d);
+  }
+  const fin = new Date(dias[6]); fin.setHours(23,59,59,999);
+
+  const programados = ctPosts.filter(p => ['aprobado','borrador','error'].indexOf(p.estado) > -1 && p.fecha_programada);
+  const enSemana = programados.filter(p => {
+    const f = new Date(p.fecha_programada);
+    return f >= lunes && f <= fin;
+  });
+
+  const objetivo = 3;
+  const pct = Math.min(100, Math.round(enSemana.length / objetivo * 100));
+  const nomD = ['Lun','Mar','Mi\u00e9','Jue','Vie','S\u00e1b','Dom'];
+  const esc = s => String(s || '').replace(/</g, '&lt;');
+
+  let html = '<div class="ct-meta">'
+    + '<button type="button" class="bs-chip" onclick="ctSemana(-1)">\u2039 Semana anterior</button>'
+    + '<button type="button" class="bs-chip" onclick="ctSemana(1)">Semana siguiente \u203a</button>'
+    + (ctSemanaOffset ? '<button type="button" class="bs-chip" onclick="ctSemana(0,true)">Hoy</button>' : '')
+    + '<span style="flex:1;"></span>'
+    + '<span><b style="color:' + (enSemana.length >= objetivo ? 'var(--green)' : 'var(--t1)') + '">' + enSemana.length + ' de ' + objetivo + '</b> programadas esta semana</span>'
+    + '<span class="ct-obj"><i style="width:' + pct + '%"></i></span>'
+    + '</div>';
+
+  html += '<div class="ct-sem">' + dias.map((d, i) => {
+    const esHoy = d.getTime() === hoy.getTime();
+    const delDia = enSemana.filter(p => {
+      const f = new Date(p.fecha_programada);
+      return f.getDate() === d.getDate() && f.getMonth() === d.getMonth();
+    }).sort((a,b)=> new Date(a.fecha_programada) - new Date(b.fecha_programada));
+    return '<div class="ct-dia' + (esHoy ? ' hoy' : '') + '" data-fecha="' + d.toISOString().slice(0,10) + '"'
+      + ' ondragover="event.preventDefault();this.classList.add(\'sobre\')"'
+      + ' ondragleave="this.classList.remove(\'sobre\')"'
+      + ' ondrop="ctSoltar(event, this)">'
+      + '<div class="ct-dia-h">' + nomD[i] + '<div class="ct-dia-n">' + d.getDate() + '</div></div>'
+      + delDia.map(p => {
+          const foto = (Array.isArray(p.fotos_urls) && p.fotos_urls[0]) || p.foto_url;
+          const hora = new Date(p.fecha_programada).toLocaleTimeString('es-PY', {hour:'2-digit', minute:'2-digit'});
+          return '<div class="ct-mini" draggable="true" ondragstart="ctArrastrar(event,' + p.id + ')" onclick="ctVerPost(' + p.id + ')" title="' + esc(p.caption).slice(0,90) + '">'
+            + (foto ? '<img src="' + foto + '" alt="">' : '')
+            + '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+              + '<b>' + hora + '</b> ' + esc(p.numero || '')
+              + (p.error_msg ? '<div style="color:var(--red);font-size:9.5px;">error</div>' : '')
+            + '</div></div>';
+        }).join('')
+      + '</div>';
+  }).join('') + '</div>';
+
+  // Sin fecha asignada
+  const sinFecha = ctPosts.filter(p => ['aprobado','borrador'].indexOf(p.estado) > -1 && !p.fecha_programada);
+  if(sinFecha.length){
+    html += '<div class="card"><div class="card-t">\uD83D\uDCCC Sin fecha asignada \u00b7 arrastralos a un d\u00eda</div>'
+      + sinFecha.map(p => {
+        const foto = (Array.isArray(p.fotos_urls) && p.fotos_urls[0]) || p.foto_url;
+        return '<div class="ct-mini" style="max-width:320px;" draggable="true" ondragstart="ctArrastrar(event,' + p.id + ')" onclick="ctVerPost(' + p.id + ')">'
+          + (foto ? '<img src="' + foto + '" alt="">' : '')
+          + '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.numero || '') + ' \u00b7 ' + esc(p.caption).slice(0,50) + '</div></div>';
+      }).join('') + '</div>';
+  }
+
+  // Los que fallaron
+  const conError = ctPosts.filter(p => p.error_msg && p.estado !== 'publicado');
+  if(conError.length){
+    html += '<div class="card" style="border-color:var(--red);"><div class="card-t">\u26A0\uFE0F Fallaron al publicar</div>'
+      + conError.map(p => '<div style="padding:9px 0;border-bottom:1px solid var(--brd);">'
+        + '<div style="font-size:13px;color:var(--t1);">' + esc(p.numero || ('post ' + p.id)) + '</div>'
+        + '<div class="pg-err" style="margin-top:5px;">' + esc(p.error_msg) + '</div>'
+        + '<div class="ct-acc" style="margin-top:7px;"><button type="button" class="btn btn-ghost" onclick="ctPublicarAhora(' + p.id + ')">Reintentar</button></div>'
+        + '</div>').join('') + '</div>';
+  }
+  return html;
+}
+
+function ctSemana(d, hoy){ ctSemanaOffset = hoy ? 0 : ctSemanaOffset + d; ctTab('cola'); }
+function ctArrastrar(e, id){ e.dataTransfer.setData('text/plain', String(id)); }
+
+async function ctSoltar(e, el){
+  e.preventDefault(); el.classList.remove('sobre');
+  const id = parseInt(e.dataTransfer.getData('text/plain'), 10);
+  if(!id) return;
+  const p = ctPosts.find(x => x.id === id); if(!p) return;
+  // Se conserva la hora que tenia; si no tenia, va a las 10
+  const vieja = p.fecha_programada ? new Date(p.fecha_programada) : null;
+  const nueva = new Date(el.dataset.fecha + 'T' + (vieja ? String(vieja.getHours()).padStart(2,'0') + ':' + String(vieja.getMinutes()).padStart(2,'0') : '10:00') + ':00');
+  try {
+    await sbFetch('/rest/v1/contenido_posts?id=eq.' + id, 'PATCH', {
+      fecha_programada: nueva.toISOString(),
+      estado: p.estado === 'borrador' ? 'aprobado' : p.estado
+    });
+    showToast('\u2713 Reprogramado para el ' + nueva.toLocaleDateString('es-PY', {day:'2-digit', month:'2-digit'}), 'success');
+    ctCargar(true);
+  } catch(err){ showToast('No se pudo reprogramar: ' + err.message, 'error'); }
+}
+
+function ctVerPost(id){
+  const p = ctPosts.find(x => x.id === id); if(!p) return;
+  const fotos = Array.isArray(p.fotos_urls) && p.fotos_urls.length ? p.fotos_urls : [p.foto_url];
+  const esc = s => String(s || '').replace(/</g, '&lt;');
+  const html = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:13px;">'
+      + fotos.map(u => '<img src="' + u + '" style="height:190px;border-radius:11px;flex-shrink:0;">').join('') + '</div>'
+    + '<div><label class="lbl">Caption</label><textarea class="inp" id="ctv-cap" style="min-height:150px;">' + esc(p.caption) + '</textarea></div>'
+    + '<div style="margin-top:11px;"><label class="lbl">Fecha y hora</label><input class="inp" type="datetime-local" id="ctv-fecha" value="' + (p.fecha_programada ? new Date(p.fecha_programada).toISOString().slice(0,16) : '') + '"></div>'
+    + '<label class="pg-fb" style="margin-top:11px;"><input type="checkbox" id="ctv-fb" ' + (p.publicar_fb !== false ? 'checked' : '') + '><span>\uD83C\uDF10 Tambi\u00e9n en Facebook</span></label>'
+    + (p.error_msg ? '<div class="pg-err" style="margin-top:11px;">' + esc(p.error_msg) + '</div>' : '')
+    + '<div style="display:flex;gap:8px;margin-top:15px;flex-wrap:wrap;">'
+      + '<button type="button" class="btn btn-ghost" onclick="ctCancelar(' + p.id + ')">Sacar de la cola</button>'
+      + '<span style="flex:1;"></span>'
+      + '<button type="button" class="btn pg-btn-ig" onclick="ctPublicarAhora(' + p.id + ')">Publicar ahora</button>'
+    + '</div>';
+  invModal('Post ' + (p.numero || ('#' + p.id)), html, async ()=>{
+    const cap = document.getElementById('ctv-cap').value;
+    const f = document.getElementById('ctv-fecha').value;
+    try {
+      await sbFetch('/rest/v1/contenido_posts?id=eq.' + p.id, 'PATCH', {
+        caption: cap,
+        fecha_programada: f ? new Date(f).toISOString() : null,
+        publicar_fb: !!(document.getElementById('ctv-fb') || {}).checked
+      });
+      showToast('\u2713 Guardado','success'); ctCargar(true); return true;
+    } catch(e){ showToast('No se pudo guardar','error'); return false; }
+  });
+}
+
+// ══════ FOTOS DE UN PEDIDO + CARRUSEL ══════
+function ctVerPedido(orderId){
+  const g = ctGrupos.find(x => String(x.order_id) === String(orderId)); if(!g) return;
+  const o = g.o || {};
+  const esc = s => String(s || '').replace(/</g, '&lt;');
+  const html = '<div style="font-size:12.5px;color:var(--t3);margin-bottom:12px;">'
+      + esc(g.numero || o.numero_pedido || '') + ' \u00b7 ' + esc(o.cliente_nombre || '') + ' \u00b7 ' + g.fotos.length + ' foto' + (g.fotos.length===1?'':'s')
+      + ' \u00b7 ' + g.publicadas + ' publicada' + (g.publicadas===1?'':'s') + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;">'
+    + g.fotos.map(f =>
+      '<div style="border:1px solid ' + (f.favorita ? 'var(--amber)' : 'var(--brd)') + ';border-radius:11px;overflow:hidden;">'
+      + '<div class="ct-foto-wrap">'
+        + '<img src="' + f.url + '" style="width:100%;height:150px;object-fit:cover;display:block;">'
+        + (f.publicada ? '<span class="ct-check">\u2713</span>' : '')
+      + '</div>'
+      + '<div style="padding:8px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;">'
+        + '<label style="display:flex;gap:5px;align-items:center;font-size:11.5px;cursor:pointer;flex:1;">'
+          + '<input type="checkbox" class="ctp-chk" data-url="' + f.url + '" ' + (f.publicada ? '' : 'checked') + '> incluir'
+        + '</label>'
+        + '<button type="button" class="inv-b" onclick="ctFavorita(' + f.id + ',' + orderId + ')" title="Marcar como portada">' + (f.favorita ? '\u2B50' : '\u2606') + '</button>'
+      + '</div></div>').join('')
+    + '</div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">'
+      + '<button type="button" class="btn btn-ghost" onclick="invCerrarModal();openOrder(\'' + orderId + '\')">Abrir pedido</button>'
+      + '<span style="flex:1;"></span>'
+      + (g.fotos.length > 1
+          ? '<button type="button" class="btn btn-primary" onclick="ctCarrusel(' + orderId + ')">\uD83C\uDFA0 Publicar como carrusel</button>'
+          : '<button type="button" class="btn btn-primary" onclick="invCerrarModal();pgAbrirDesdeSugerido(' + g.portada.id + ',\'' + orderId + '\')">\uD83C\uDFA8 Generar post</button>')
+    + '</div>'
+    + (g.fotos.length > 1 ? '<div style="font-size:11px;color:var(--t3);margin-top:9px;">El carrusel es una sola publicaci\u00f3n con varias fotos, hasta 10. No aplica a historias: esas se publican de a una.</div>' : '');
+  invModal('\uD83D\uDCF7 Fotos del pedido', html, null);
+}
+
+async function ctFavorita(fotoId, orderId){
+  try {
+    const g = ctGrupos.find(x => String(x.order_id) === String(orderId));
+    for(const f of g.fotos){
+      if(f.favorita && f.id !== fotoId) await sbFetch('/rest/v1/pedido_fotos?id=eq.' + f.id, 'PATCH', {favorita:false});
+    }
+    await sbFetch('/rest/v1/pedido_fotos?id=eq.' + fotoId, 'PATCH', {favorita:true});
+    await ctCargar(true);
+    invCerrarModal();
+    showToast('\u2B50 Portada cambiada','success');
+  } catch(e){ showToast('No se pudo cambiar','error'); }
+}
+
+async function ctCarrusel(orderId){
+  const g = ctGrupos.find(x => String(x.order_id) === String(orderId)); if(!g) return;
+  const urls = Array.from(document.querySelectorAll('.ctp-chk')).filter(c=>c.checked).map(c=>c.dataset.url);
+  if(urls.length < 2){ showToast('Marc\u00e1 al menos dos fotos para el carrusel','error'); return; }
+  if(urls.length > 10){ showToast('Instagram admite hasta 10 fotos','error'); return; }
+
+  const o = g.o || {};
+  const t = o.id ? pgTextosDesde(o, g.portada) : {pieza:g.portada.pieza||'', vehiculo:'', anio:'', marcaPieza:'', condicion:'', origen:''};
+  const gi = pgElegirGancho(), ci = Math.floor(Math.random() * PG_CIERRES.length);
+  const caption = pgArmarCaption({
+    pieza: pgCap(t.pieza), vehiculo: pgCap(t.vehiculo), anio: t.anio,
+    marcaPieza: t.marcaPieza, condicion: t.condicion, origen: t.origen
+  }, gi, ci);
+
+  if(!confirm('Publicar ' + urls.length + ' fotos como un carrusel en Instagram, ahora?')) return;
+  showToast('Publicando carrusel\u2026','success');
+  try {
+    const fila = await sbFetch('/rest/v1/contenido_posts', 'POST', {
+      order_id: o.id || null, numero: g.numero || o.numero_pedido || null,
+      foto_url: urls[0], fotos_urls: urls, caption,
+      formato: 'carrusel', estado: 'aprobado', publicar_fb: true,
+      gancho_idx: gi, cierre_idx: ci,
+      fecha_programada: new Date().toISOString()
+    });
+    const postId = fila && fila[0] ? fila[0].id : null;
+    if(!postId) throw new Error('No se pudo crear el post');
+
+    const r = await fetch(SB_URL + '/functions/v1/publicar-ig', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({post_id: postId})
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || 'Instagram rechaz\u00f3 la publicaci\u00f3n');
+    invCerrarModal();
+    await ctCargar(true);
+    showToast('\u2705 Carrusel publicado con ' + urls.length + ' fotos','success');
+  } catch(e){
+    showToast('\u26A0\uFE0F ' + String(e.message || e), 'error');
+  }
+}
+
+// ══════ CARGA LIBRE ══════
+let ctLibreFoto = null;
+
+function ctLibrePrevia(files){
+  if(!files || !files[0]) return;
+  ctLibreFoto = files[0];
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('ctl-prev').innerHTML = '<img src="' + e.target.result + '" style="width:100%;max-height:230px;object-fit:cover;border-radius:11px;">';
+  };
+  r.readAsDataURL(ctLibreFoto);
+}
+
+async function ctLibreGenerar(){
+  const pieza = document.getElementById('ctl-pieza').value.trim();
+  if(!ctLibreFoto){ showToast('Eleg\u00ed una foto','error'); return; }
+  if(!pieza){ showToast('Falta el nombre de la pieza','error'); return; }
+  showToast('Subiendo la foto\u2026','success');
+  try {
+    const blob = await foComprimir(ctLibreFoto);
+    const path = 'libre/' + Date.now() + '_' + foLimpiarNombre(ctLibreFoto.name) + '.jpg';
+    const up = await fetch(SB_URL + '/storage/v1/object/' + FOTOS_BUCKET + '/' + path, {
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer ' + SB_KEY,'Content-Type':'image/jpeg'},
+      body: blob
+    });
+    if(!up.ok) throw new Error('No se pudo subir la foto');
+    const url = SB_URL + '/storage/v1/object/public/' + FOTOS_BUCKET + '/' + path;
+
+    const fila = await sbFetch('/rest/v1/pedido_fotos', 'POST', {
+      order_id: null, numero: 'libre', url, storage_path: path,
+      pieza, tipo: 'libre', favorita: false, publicada: false
+    });
+    const foto = fila && fila[0];
+    if(!foto) throw new Error('No se pudo registrar la foto');
+
+    // Se abre el generador con los datos escritos a mano
+    pgAbrir(foto, {
+      id: null,
+      numero_pedido: 'libre',
+      cliente_nombre: '',
+      marca: (document.getElementById('ctl-veh').value.split(' ')[0] || ''),
+      modelo: document.getElementById('ctl-veh').value,
+      estado: 'entregado'
+    });
+    setTimeout(()=>{
+      const p = document.getElementById('pg-pieza'); if(p) p.value = pieza;
+      const v = document.getElementById('pg-vehiculo'); if(v) v.value = document.getElementById('ctl-veh').value;
+      const m = document.getElementById('pg-marca'); if(m) m.value = document.getElementById('ctl-marca').value;
+      if(typeof pgRegenerar === 'function') pgRegenerar();
+    }, 400);
+  } catch(e){
+    showToast('\u26A0\uFE0F ' + String(e.message || e), 'error');
+  }
 }
 
 async function ctCancelar(id){
