@@ -9495,7 +9495,7 @@ function devDias(fecha){
 function renderDevoluciones(){
   const banner = document.getElementById('dev-banner');
   if(!banner) return;
-  const enDev = (orders||[]).filter(o => o.estado === 'devolucion');
+  const enDev = (orders||[]).filter(o => o.estado === 'devolucion' && !o.devolucion_descartada);
 
   if(!enDev.length){ banner.style.display = 'none'; return; }
   banner.style.display = 'block';
@@ -9539,10 +9539,21 @@ function renderDevoluciones(){
         + '<button class="inv-b" onclick="devFecha(' + o.id + ')">\uD83D\uDCC5 Fecha l\u00edmite</button>'
         + '<button class="inv-b" onclick="invDesdeDevolucion(' + o.id + ')">\uD83D\uDCE6 A inventario</button>'
         + '<button class="inv-b" onclick="openOrder(' + o.id + ')">Abrir</button>'
-        + '<button class="inv-b" onclick="this.closest(\'div[style]\').remove()" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>'
+        + '<button class="inv-b" onclick="devDescartar(' + o.id + ')" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>'
       + '</div>'
     + '</div>';
   }).join('');
+}
+
+
+async function devDescartar(orderId){
+  const o = (orders||[]).find(x=>x.id===orderId); if(!o) return;
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {devolucion_descartada: true});
+    o.devolucion_descartada = true;
+    renderDevoluciones();
+    showToast('Devolucion descartada del aviso','success');
+  } catch(e){ showToast('Error al descartar','error'); }
 }
 
 async function devFecha(orderId){
