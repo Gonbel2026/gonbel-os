@@ -165,7 +165,7 @@ body.role-operador #stat-ingresos{display:none!important;}
 .card.c-devolucion::before{background:linear-gradient(90deg,var(--red),#ff8fa3);}
 .card:hover{transform:translateY(-2px);border-color:var(--brda);box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .card.dragging{opacity:.5;transform:rotate(2deg);}
-.card-dot{position:absolute;top:16px;right:16px;width:8px;height:8px;border-radius:50%;}
+.card{position:relative;}.card-dot{position:absolute;top:16px;right:16px;width:8px;height:8px;border-radius:50%;}
 .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:9px;padding-right:16px;}
 .card-idrow{display:flex;align-items:baseline;gap:7px;}
 .card-num{font-size:18px;font-weight:700;color:#fff;font-family:'Space Grotesk',sans-serif;letter-spacing:.01em;}
@@ -2681,7 +2681,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
         <div id="brl-box" class="brl-box" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
             <div>
-              <div style="font-size:12px;font-weight:700;color:var(--green);">🇧🇷 Costo real de Mercado Livre</div>
+              <div style="font-size:12px;font-weight:700;color:var(--green);">💲 Costo calculado desde piezas</div>
               <div style="font-size:11px;color:var(--t3);margin-top:4px;" id="brl-detalle"></div>
             </div>
             <div style="text-align:right;">
@@ -4642,7 +4642,7 @@ function calcCostoBRL(){
 
   const det = document.getElementById('brl-detalle');
   const base = totalBrl ? ('R$ ' + totalBrl.toFixed(2).replace('.',',') + ' × ' + fmtNum(tasa) + ' (cotización ' + fmtNum(BRL_GS) + ' + 50)') : '';
-  det.innerHTML = (base ? base + ' · ' : '') + conBrl.length + ' pieza(s) con compra registrada' +
+  det.innerHTML = (base ? base + ' · ' : '') + conBrl.length + ' pieza(s) con precio cargado' +
     (auto
       ? '<br><span style="color:var(--green);font-weight:600;">✓ Cargado automáticamente en el campo Costo</span>'
       : (actual && actual !== totalGs
@@ -7909,9 +7909,18 @@ function renderCard(o, colorClass){
   // Puntito de estado: verde si el pedido tiene todo cargado (costo, venta, proveedor/vínculo en cada
   // pieza), amarillo si falta algo. Antes de Aprobado no aplica — es solo cotización todavía.
   let dotColor = null;
-  if(ESTADOS_VENTA.includes(o.estado) && items.length){
-    const completo = items.every(it => it.cb>0 && it.p>0 && (it.nc || it.proveedorManual || it.proveedorNoAsignar));
-    dotColor = completo ? 'var(--green)' : 'var(--amber)';
+  let alertaFinanciera = null;
+  if(ESTADOS_VENTA.includes(o.estado)){
+    const sinVenta = !parseFloat(o.precio_venta);
+    const sinCosto = !parseFloat(o.precio_costo);
+    const pSinC = items.filter(function(it){return !(parseFloat(it.cb)>0||parseFloat(it.p)>0);}).length;
+    if(sinVenta){
+      alertaFinanciera = {txt:'SIN PRECIO DE VENTA', col:'var(--red)', bg:'rgba(255,60,60,.18)'};
+    } else if(sinCosto || pSinC>0){
+      alertaFinanciera = {txt:(pSinC>0?(pSinC+' pieza'+(pSinC===1?'':'s')+' sin costo'):'Sin costo total'), col:'var(--amber)', bg:'rgba(245,166,35,.18)'};
+    } else {
+      dotColor = 'var(--green)';
+    }
   }
 
   const venta = o.precio_venta ? 'Gs '+fmtNum(o.precio_venta) : '';
@@ -7927,6 +7936,7 @@ function renderCard(o, colorClass){
     ondragend="dragEnd(event)"
     onclick="openOrder('${o.id}')">
     ${dotColor ? `<div class="card-dot" style="background:${dotColor};"></div>` : ''}
+    ${alertaFinanciera ? `<div style="position:absolute;top:8px;right:8px;font-size:9.5px;font-weight:800;padding:3px 7px;border-radius:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
     <div class="card-head">
       <div>
         <div class="card-idrow">
@@ -8061,6 +8071,31 @@ async function drop(e, colId){
   order.estado = colId;
 
   const patch = {estado: colId};
+
+  // Puerta COMPRADO: todas las piezas deben tener costo
+  if(colId === 'comprado'){
+    var _it2=[]; try{_it2=order.piezas_items?JSON.parse(order.piezas_items):[];}catch(e){}
+    var _sinC=_it2.filter(function(it){return !(parseFloat(it.cb)>0||parseFloat(it.p)>0);});
+    if(_sinC.length>0||!parseFloat(order.precio_costo)){
+      order.estado=estadoAnterior; renderKanban(); dragId=null;
+      var _msg=_sinC.length>0?(_sinC.length+' pieza'+(_sinC.length===1?'':'s')+' sin costo. Completá los costos antes de pasar a Comprado.'):'Falta el costo total del pedido.';
+      invModal('Datos incompletos','<div class="pg-err" style="padding:14px;font-size:13px;">'+_msg+'<br><br>Abrí el pedido, completá los costos y volvé a moverlo.</div>',null);
+      return;
+    }
+  }
+
+  // Puerta ENTREGADO: costo + venta + pago
+  if(colId === 'entregado'){
+    var _faltan=[];
+    if(!parseFloat(order.precio_venta)) _faltan.push('precio de venta');
+    if(!parseFloat(order.precio_costo)) _faltan.push('costo');
+    if(!parseFloat(order.valor_pagado)) _faltan.push('pago registrado');
+    if(_faltan.length){
+      order.estado=estadoAnterior; renderKanban(); dragId=null;
+      invModal('Datos incompletos','<div class="pg-err" style="padding:14px;font-size:13px;">Para marcar como Entregado falta: <b>'+_faltan.join(', ')+'</b>.<br><br>Completá los datos y volvé a moverlo.</div>',null);
+      return;
+    }
+  }
 
   // PUNTO 1: Flete obligatorio al pasar a listo-envio
   if(colId === 'listo-envio' && order.flete_requerido){
