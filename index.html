@@ -1664,7 +1664,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr) auto;">
       <div class="stat s-blue cc-clic" onclick="ccVerLista('activos')"><span class="stat-icon">📋</span><div class="stat-val" id="cc-activos">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-cyan cc-clic" onclick="ccVerLista('encamino')"><span class="stat-icon">🚚</span><div class="stat-val" id="cc-encamino">—</div><div class="stat-lbl">En camino</div></div>
-      <div class="stat s-amber cc-clic" onclick="ccVerLista('acobrar')"><span class="stat-icon">💵</span><div class="stat-val" id="cc-acobrar" style="color:var(--amber)">—</div><div class="stat-lbl">Total a cobrar</div></div>
+      <div class="stat s-amber cc-clic" onclick="ccVerLista('acobrar')"><span class="stat-icon">💵</span><div class="stat cc-clic" onclick="ccVerLista('acobrar')" style="opacity:.5;" title="Ver detalle en Financiero"><span class="stat-icon">💵</span><div class="stat-val" id="cc-acobrar" style="color:var(--t2);font-size:13px;">—</div><div class="stat-lbl">Saldo a cobrar</div></div><div class="stat-lbl">Total a cobrar</div></div>
       <div class="stat s-red cc-clic" onclick="ccVerLista('esperando')"><span class="stat-icon">⏱</span><div class="stat-val" id="cc-esperando" style="color:var(--red)">—</div><div class="stat-lbl">Esperando respuesta</div></div>
       <div class="stat cc-bell" id="cc-bell-btn" onclick="toggleNotifPanel(event)">
         <span class="stat-icon">🔔</span>
@@ -2012,6 +2012,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <button type="button" class="bs-chip" id="ctf-sinpub" onclick="ctFiltro('sinpub')">Sin publicar</button>
       <button type="button" class="bs-chip" id="ctf-pub" onclick="ctFiltro('pub')">Publicadas</button>
       <button type="button" class="bs-chip" id="ctf-fav" onclick="ctFiltro('fav')">Favoritas</button>
+      <input type="text" id="ctf-buscar" class="inp" placeholder="🔍 Buscar por pieza (faro, parrilla, bumper…)" style="flex:1;min-width:200px;" oninput="ctFiltrarBusqueda()">
     </div>
     <div id="ct-cuerpo"></div>
   </div>
@@ -7936,7 +7937,7 @@ function renderCard(o, colorClass){
     ondragend="dragEnd(event)"
     onclick="openOrder('${o.id}')">
     ${dotColor ? `<div class="card-dot" style="background:${dotColor};"></div>` : ''}
-    ${alertaFinanciera ? `<div style="position:absolute;top:8px;right:8px;font-size:9.5px;font-weight:800;padding:3px 7px;border-radius:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
+    ${alertaFinanciera ? `<div style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-bottom:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
     <div class="card-head">
       <div>
         <div class="card-idrow">
@@ -8029,7 +8030,7 @@ async function confirmarPagoBeatriz(orderId){
 let _pagPend = [];
 async function cargarPagosPendientes(){
   try {
-    const r = await sbFetch('/rest/v1/v_pagos_pendientes_confirmacion?limit=50');
+    const r = await sbFetch('/rest/v1/v_pagos_pendientes_confirmacion?limit=50&pago_marcado_en=not.is.null');
     _pagPend = r || []; renderPagosPendientes();
   } catch(e){}
 }
@@ -8041,8 +8042,11 @@ function renderPagosPendientes(){
   el.style.display = (visible && _pagPend.length) ? 'block' : 'none';
   if(!_pagPend.length || !visible) return;
   const esBeatriz = rol === 'finanzas';
-  el.innerHTML = '<div class="card-t" style="display:flex;align-items:center;gap:8px;margin-bottom:11px;"><span>&#128203;</span><b>Pagos por confirmar</b><span class="badge" style="background:var(--amber);color:#1a1200;">' + _pagPend.length + '</span>' + (esBeatriz ? '<span style="font-size:11.5px;color:var(--t3);margin-left:auto;">Confirma cada uno para cerrarlo</span>' : '') + '</div>'
-    + _pagPend.map(p => {
+  const yaExp = el.dataset.exp==='1';
+  const header = '<div class="card-t" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:11px;" onclick="var e=this.closest(\'#pagos-pendientes-panel\');e.dataset.exp=e.dataset.exp===\'1\'?\'0\':\'1\';renderPagosPendientes();">'+'<span>&#128203;</span><b>Pagos por confirmar</b>'+'<span class="badge" style="background:var(--amber);color:#1a1200;">' + _pagPend.length + '</span>'+(esBeatriz?'<span style="font-size:11.5px;color:var(--t3);margin-left:4px;">Confirma cada uno para cerrarlo</span>':'')+'<span style="font-size:12px;color:var(--t3);margin-left:auto;">'+(yaExp?'\u25b2 ocultar':'\u25bc ver todos')+'</span>'+'</div>';
+  const lista = yaExp ? _pagPend : _pagPend.slice(0,3);
+  el.innerHTML = header
+    + lista.map(p => {
       const monto = (Number(p.monto_marcado)||0).toLocaleString('es-PY');
       return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);"><div style="flex:1;"><div style="font-size:13px;font-weight:700;">' + (p.numero||'') + ' - ' + (p.cliente_nombre||'') + '</div><div style="font-size:11.5px;color:var(--t3);">Gs ' + monto + (p.pago_marcado_por ? ' - marcado por ' + p.pago_marcado_por : '') + '</div></div>'
         + (esBeatriz ? '<button type="button" class="btn btn-primary" style="font-size:12px;padding:5px 12px;" onclick="confirmarPagoBeatrizDirecto(' + p.id + ')">Confirmar</button>' : '')
@@ -10226,7 +10230,7 @@ function cjPintarBilleteras(){
     + '<div class="cj-bill" style="border-style:dashed;border-color:var(--blue);">'
       + '<div class="cj-bill-n">\uD83D\uDCB0 Total general</div>'
       + '<div class="cj-bill-s" style="color:var(--cyan)">Gs ' + fmtNum(totalGs) + '</div>'
-      + '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
+      + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+fmtNum(tB)+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+fmtNum(tU)+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
       + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
     + '</div>';
 }
@@ -16317,6 +16321,10 @@ async function ctCargar(forzar){
 
 let ctFotos = [], ctGrupos = [], ctFiltroActual = 'todas';
 
+function ctFiltrarBusqueda(){
+  ctTab('galeria'); // re-render con el texto
+}
+
 function ctFiltro(f){
   ctFiltroActual = f;
   ['todas','sinpub','pub','fav'].forEach(k=>{
@@ -16345,6 +16353,12 @@ function ctTab(t){
     if(ctFiltroActual === 'sinpub') lista = lista.filter(g => g.publicadas === 0);
     else if(ctFiltroActual === 'pub') lista = lista.filter(g => g.publicadas > 0);
     else if(ctFiltroActual === 'fav') lista = lista.filter(g => g.fotos.some(f => f.favorita));
+    // Filtro por texto: busca en nombre de pieza, numero de pedido y cliente
+    var _q = ((document.getElementById('ctf-buscar')||{}).value||'').toLowerCase().trim();
+    if(_q) lista = lista.filter(function(g){
+      var blob = [g.portada&&g.portada.pieza, g.numero, g.o&&g.o.cliente_nombre, g.o&&g.o.modelo].filter(Boolean).join(' ').toLowerCase();
+      return blob.indexOf(_q)>=0;
+    });
 
     if(!lista.length){
       cuerpo.innerHTML = '<div class="ct-vacio">' + (ctGrupos.length ? 'Nada con ese filtro.' : 'Todav\u00eda no hay fotos cargadas en los pedidos.') + '</div>';
