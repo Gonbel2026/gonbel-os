@@ -9539,6 +9539,7 @@ function renderDevoluciones(){
         + '<button class="inv-b" onclick="devFecha(' + o.id + ')">\uD83D\uDCC5 Fecha l\u00edmite</button>'
         + '<button class="inv-b" onclick="invDesdeDevolucion(' + o.id + ')">\uD83D\uDCE6 A inventario</button>'
         + '<button class="inv-b" onclick="openOrder(' + o.id + ')">Abrir</button>'
+        + '<button class="inv-b" onclick="this.closest(\'div[style]\').remove()" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>'
       + '</div>'
     + '</div>';
   }).join('');
@@ -11360,6 +11361,7 @@ async function buscarMensajesML(manual){
           <div class="ml-msg-m">${m.cliente || (m.pedido_numero ? '' : 'Sin pedido vinculado todavía')}</div>
         </div>
         <span class="ml-msg-badge">${m.no_leidos} sin leer</span>
+        <button type="button" onclick="event.stopPropagation();this.closest('.ml-msg-row').remove();if(!document.querySelector('.ml-msg-row')){document.getElementById('ml-msg-banner').style.display='none';}" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;" title="Descartar">&times;</button>
       </div>`).join('');
     if(manual) showToast(mmDatos.length+' conversación(es) con mensajes nuevos','success');
     actualizarCampanita();
