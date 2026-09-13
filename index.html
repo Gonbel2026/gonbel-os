@@ -1648,6 +1648,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
         <span style="font-size:17px;">↩️</span>
         <span style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff;">Devoluciones por enviar</span>
         <span id="dev-contador" style="font-size:12px;color:var(--t3);"></span>
+        <button type="button" onclick="document.getElementById('dev-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;" title="Cerrar aviso">&times;</button>
       </div>
       <div id="dev-lista"></div>
     </div>
@@ -1656,7 +1657,8 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <div class="ml-msg-h">
         <span class="ml-msg-pulse"></span>
         <span style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff;">🔔 Mensajes nuevos en Mercado Livre</span>
-        <button type="button" class="btn btn-ghost" onclick="buscarMensajesML(true);buscarPreguntasML(true)" style="height:30px;margin-left:auto;">🔄 Revisar ahora</button>
+        <button type="button" class="btn btn-ghost" onclick="buscarMensajesML(true);buscarPreguntasML(true)" style="height:30px;">🔄 Revisar ahora</button>
+        <button type="button" onclick="document.getElementById('ml-msg-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;" title="Cerrar aviso">&times;</button>
       </div>
       <div id="ml-msg-lista"></div>
     </div>
@@ -1664,7 +1666,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr) auto;">
       <div class="stat s-blue cc-clic" onclick="ccVerLista('activos')"><span class="stat-icon">📋</span><div class="stat-val" id="cc-activos">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-cyan cc-clic" onclick="ccVerLista('encamino')"><span class="stat-icon">🚚</span><div class="stat-val" id="cc-encamino">—</div><div class="stat-lbl">En camino</div></div>
-      <div class="stat s-amber cc-clic" onclick="ccVerLista('acobrar')"><span class="stat-icon">💵</span><div class="stat cc-clic" onclick="ccVerLista('acobrar')" style="opacity:.5;" title="Ver detalle en Financiero"><span class="stat-icon">💵</span><div class="stat-val" id="cc-acobrar" style="color:var(--t2);font-size:13px;">—</div><div class="stat-lbl">Saldo a cobrar</div></div><div class="stat-lbl">Total a cobrar</div></div>
+      <div class="stat cc-clic" onclick="ccVerLista('acobrar')" style="opacity:.5;" title="Ver detalle en Financiero"><span class="stat-icon">💵</span><div class="stat-val" id="cc-acobrar" style="color:var(--t2);font-size:13px;">—</div><div class="stat-lbl">Saldo a cobrar</div></div>
       <div class="stat s-red cc-clic" onclick="ccVerLista('esperando')"><span class="stat-icon">⏱</span><div class="stat-val" id="cc-esperando" style="color:var(--red)">—</div><div class="stat-lbl">Esperando respuesta</div></div>
       <div class="stat cc-bell" id="cc-bell-btn" onclick="toggleNotifPanel(event)">
         <span class="stat-icon">🔔</span>
