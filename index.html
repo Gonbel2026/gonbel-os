@@ -2128,7 +2128,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:13px;">
       <input class="pv-buscar" id="cj-buscar" placeholder="🔍 Buscar por concepto, pedido, cliente o proveedor…" oninput="cjPintarMovs()" style="flex:1;min-width:230px;">
-      <select class="inp" id="cj-filtro-cat" onchange="cjPintarMovs()" style="width:auto;"><option value="">Todas las categorías</option></select>
+      <select class="inp" id="cj-filtro-cat" onchange="cjPintarMovs()" style="width:auto;"><option value="">Todas las categorías</option></select><button type="button" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" onclick="cjNuevaCategoria()">+ Categoría</button>
       <select class="inp" id="cj-filtro-bill" onchange="cjPintarMovs()" style="width:auto;"><option value="">Todas las billeteras</option></select>
       <select class="inp" id="cj-filtro-mes" onchange="cjPintarMovs()" style="width:auto;"></select>
     </div>
@@ -2163,6 +2163,11 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   </div>
 
   <div class="page" id="page-financiero">
+      <div id="pagos-pendientes-panel" class="card" style="display:none;margin-bottom:16px;"></div>
+      <div id="alerta-sin-costo" class="card" style="display:none;margin-bottom:16px;border-color:rgba(245,166,35,.35);background:rgba(245,166,35,.05);">
+        <div class="card-t" style="color:var(--amber);">&#9888;&#65039; Pedidos con datos incompletos</div>
+        <div id="alerta-sin-costo-lista" style="display:grid;gap:7px;margin-top:10px;"></div>
+      </div>
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
@@ -2782,12 +2787,31 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
         </div>
         <label style="display:flex;align-items:center;gap:12px;background:rgba(34,217,122,.06);border:1px solid rgba(34,217,122,.2);border-radius:12px;padding:14px 16px;cursor:pointer;transition:all .15s;" 
           onmouseover="this.style.background='rgba(34,217,122,.12)'" onmouseout="this.style.background='rgba(34,217,122,.06)'">
+        <div style="background:rgba(120,170,255,.06);border:1px solid rgba(120,170,255,.22);border-radius:11px;padding:13px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+            <input type="checkbox" id="f-flete-req" style="width:17px;height:17px;accent-color:var(--blue);"><span style="font-size:12.5px;font-weight:700;color:var(--blue);">Requiere costo courier al pasar a Listo para Envio</span>
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+            <div><label style="font-size:11px;color:var(--t3);">Costo courier (Gs)</label><input id="f-flete-gs" type="number" min="0" placeholder="0" class="inp" style="margin-top:4px;"></div>
+            <div><label style="font-size:11px;color:var(--t3);">Detalle</label><input id="f-flete-nota" type="text" placeholder="Ej: DHL 2.3 kg" class="inp" style="margin-top:4px;"></div>
+          </div>
+        </div>
           <input type="checkbox" id="f-pagado-completo" onchange="calcMargen()" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--green);">✓ Pedido totalmente pagado</div>
             <div style="font-size:11px;color:var(--t3);margin-top:2px;">Marcar cuando el cliente completó el pago total</div>
           </div>
         </label>
+        <div id="pago-conf-badge" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:11px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.22);font-size:12.5px;margin-bottom:8px;"></div>
+        <button type="button" id="btn-confirmar-pago" class="btn btn-primary" style="display:none;font-size:13px;margin-bottom:10px;">Confirmar y bloquear pago</button>
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;">
+            <b style="font-size:13px;">Pagos registrados</b>
+            <span id="op-total-badge" style="font-size:11.5px;color:var(--t3);"></span>
+            <button type="button" class="btn btn-ghost" style="margin-left:auto;font-size:12px;padding:5px 11px;" onclick="opNuevo()">+ Registrar pago</button>
+          </div>
+          <div id="op-lista" style="display:grid;gap:7px;"></div>
+        </div>
         <div class="fin-metric">
           <div>
             <div class="fin-metric-lbl">Pendiente de cobro</div>
@@ -2811,6 +2835,17 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <div class="form-grid">
         <div class="field"><label>Fecha del pedido</label><input id="f-fecha-pedido" type="date"></div>
         <div class="field"><label>Fecha estimada de llegada</label><input id="f-fecha-eta" type="date"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:4px;">
+          <div class="field">
+            <label>Peso declarado (kg) <span style="font-size:10px;color:var(--t3);">proveedor</span></label>
+            <input id="f-peso-decl" type="number" min="0" step="0.01" placeholder="0.00" class="inp" oninput="calcFletePeso()">
+          </div>
+          <div class="field">
+            <label>Peso real (kg) <span style="font-size:10px;color:var(--t3);">al recibir</span></label>
+            <input id="f-peso-real" type="number" min="0" step="0.01" placeholder="0.00" class="inp" oninput="calcFletePeso()">
+          </div>
+        </div>
+        <div id="peso-diff-alert" style="display:none;padding:8px 12px;border-radius:9px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);font-size:12px;color:var(--amber);margin-bottom:8px;"></div>
         <div class="field full"><label>Tracking / Número de rastreo</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <input id="f-tracking" placeholder="Ej: BR123456789BR, 1Z999AA10123456784..." style="flex:1;min-width:200px;">
@@ -3288,6 +3323,7 @@ async function loadAll(){
     cargarVehiculos(),
     cargarDatosRapidos(),
     foCargarConteos(),
+    cargarPagosPendientes(),
     cargarComprasExternas(),
     cargarTareas()
   ];
@@ -7947,6 +7983,74 @@ function dragStart(e, id){ dragId = id; e.currentTarget.classList.add('dragging'
 function dragEnd(e){ e.currentTarget.classList.remove('dragging'); }
 function dragOver(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
 function dragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+// --- FLETE OBLIGATORIO ---
+function fleteObligatorioModal(orderId, estadoDestino){
+  const o = orders.find(x=>x.id==orderId); if(!o) return;
+  const html = '<div style="display:grid;gap:13px;">'
+    + '<div class="pg-hint">Este pedido requiere registrar el costo de courier antes de marcarlo como <b>Listo para Env\u00edo</b>.</div>'
+    + '<div class="field"><label class="lbl">Costo courier (Gs) *</label><input class="inp" id="fl-gs" type="number" min="0" placeholder="0" value="' + (o.flete_courier_gs||'') + '"></div>'
+    + '<div class="field"><label class="lbl">Detalle (opcional)</label><input class="inp" id="fl-nota" placeholder="Ej: DHL 2.3 kg" value="' + (o.flete_courier_nota||'') + '"></div>'
+    + '</div>';
+  invModal('Costo de courier', html, async () => {
+    const gs = parseFloat(document.getElementById('fl-gs').value)||0;
+    if(!gs){ showToast('Ingres\u00e1 el costo de courier','error'); return false; }
+    const nota = document.getElementById('fl-nota').value;
+    try {
+      await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {flete_courier_gs:gs, flete_courier_nota:nota||null, estado:estadoDestino});
+      o.flete_courier_gs=gs; o.flete_courier_nota=nota; o.estado=estadoDestino;
+      logHistory(orderId,'Flete courier Gs '+gs.toLocaleString('es-PY')+(nota?' - '+nota:'')+' -> Listo para Envio');
+      loadAll(); showToast('Flete guardado y pedido movido','success'); return true;
+    } catch(e){ showToast('Error al guardar','error'); return false; }
+  });
+}
+
+// --- CONFIRMACION DE PAGO POR BEATRIZ ---
+async function confirmarPagoBeatriz(orderId){
+  const o = orders.find(x=>x.id==orderId); if(!o) return;
+  if(!confirm('Confirmas y bloqueas el pago de '+( o.cliente_nombre||'este pedido')+'?')) return;
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {pago_confirmado_beatriz:true, pago_confirmado_en:new Date().toISOString()});
+    o.pago_confirmado_beatriz=true; o.pago_confirmado_en=new Date().toISOString();
+    logHistory(orderId,'Pago confirmado y bloqueado por Beatriz');
+    fillModal(o); showToast('Pago confirmado y bloqueado','success'); await cargarPagosPendientes();
+  } catch(e){ showToast('Error al confirmar','error'); }
+}
+
+let _pagPend = [];
+async function cargarPagosPendientes(){
+  try {
+    const r = await sbFetch('/rest/v1/v_pagos_pendientes_confirmacion?limit=50');
+    _pagPend = r || []; renderPagosPendientes();
+  } catch(e){}
+}
+
+function renderPagosPendientes(){
+  const el = document.getElementById('pagos-pendientes-panel'); if(!el) return;
+  const rol = currentUser ? currentUser.role : '';
+  const visible = rol === 'admin' || rol === 'finanzas';
+  el.style.display = (visible && _pagPend.length) ? 'block' : 'none';
+  if(!_pagPend.length || !visible) return;
+  const esBeatriz = rol === 'finanzas';
+  el.innerHTML = '<div class="card-t" style="display:flex;align-items:center;gap:8px;margin-bottom:11px;"><span>&#128203;</span><b>Pagos por confirmar</b><span class="badge" style="background:var(--amber);color:#1a1200;">' + _pagPend.length + '</span>' + (esBeatriz ? '<span style="font-size:11.5px;color:var(--t3);margin-left:auto;">Confirma cada uno para cerrarlo</span>' : '') + '</div>'
+    + _pagPend.map(p => {
+      const monto = (Number(p.monto_marcado)||0).toLocaleString('es-PY');
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);"><div style="flex:1;"><div style="font-size:13px;font-weight:700;">' + (p.numero||'') + ' - ' + (p.cliente_nombre||'') + '</div><div style="font-size:11.5px;color:var(--t3);">Gs ' + monto + (p.pago_marcado_por ? ' - marcado por ' + p.pago_marcado_por : '') + '</div></div>'
+        + (esBeatriz ? '<button type="button" class="btn btn-primary" style="font-size:12px;padding:5px 12px;" onclick="confirmarPagoBeatrizDirecto(' + p.id + ')">Confirmar</button>' : '')
+        + '<button type="button" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="openOrder(' + p.id + ')">Ver</button></div>';
+    }).join('');
+}
+
+async function confirmarPagoBeatrizDirecto(orderId){
+  const o = orders.find(x=>x.id==orderId);
+  if(!confirm('Confirmas el pago de '+(o?o.cliente_nombre:'#'+orderId)+'?')) return;
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {pago_confirmado_beatriz:true, pago_confirmado_en:new Date().toISOString()});
+    if(o){ o.pago_confirmado_beatriz=true; o.pago_confirmado_en=new Date().toISOString(); }
+    logHistory(orderId,'Pago confirmado por Beatriz'); showToast('Confirmado','success');
+    await loadAll(); await cargarPagosPendientes();
+  } catch(e){ showToast('Error','error'); }
+}
+
 async function drop(e, colId){
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
@@ -7957,6 +8061,18 @@ async function drop(e, colId){
   order.estado = colId;
 
   const patch = {estado: colId};
+
+  // PUNTO 1: Flete obligatorio al pasar a listo-envio
+  if(colId === 'listo-envio' && order.flete_requerido){
+    const flete = parseFloat(order.flete_courier_gs) || 0;
+    if(!flete){
+      order.estado = estadoAnterior;
+      renderKanban();
+      dragId = null;
+      fleteObligatorioModal(order.id, colId);
+      return;
+    }
+  }
 
   // Al pasar a "Comprado", si el pedido tiene UNA sola pieza, se marca sola como comprada.
   // Si tiene varias, no se asume nada — el marcado sigue siendo manual pieza por pieza.
@@ -8007,6 +8123,7 @@ function openOrder(id){
   document.getElementById('btn-delete-order').style.display = 'inline-flex';
   setMTab('resumen');
   try{ pintarResumenModal(); }catch(e){}
+  if(o.id) opCargar(o.id);
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -8054,9 +8171,15 @@ function fillModal(o){
   document.getElementById('f-piezas').value = o.piezas || '';
   document.getElementById('f-notas').value = o.notas || '';
   setMoney('f-costo-envio', o.costo_envio);
+  const _fr=document.getElementById('f-flete-req'); if(_fr) _fr.checked=!!o.flete_requerido;
+  const _fg=document.getElementById('f-flete-gs'); if(_fg) _fg.value=o.flete_courier_gs||'';
+  const _fn=document.getElementById('f-flete-nota'); if(_fn) _fn.value=o.flete_courier_nota||'';
   document.getElementById('f-pagado-completo').checked = !!o.pagado_completo;
   document.getElementById('f-fecha-cobro').value = o.fecha_cobro || '';
   document.getElementById('f-tracking').value = o.tracking || '';
+  const _pd=document.getElementById('f-peso-decl'); if(_pd) _pd.value=o.peso_declarado||'';
+  const _pr=document.getElementById('f-peso-real'); if(_pr) _pr.value=o.peso_real||'';
+  setTimeout(calcFletePeso,100);
   // Restaurar snapshot de tracking guardado
   const tsBox = document.getElementById('tracking-status');
   if(o.tracking_data){
@@ -8087,6 +8210,23 @@ function fillModal(o){
   renderPiezasItems();
   cargandoPedido = false;
   document.getElementById('f-fecha-pago').value = o.fecha_pago || '';
+  // Badge confirmacion Beatriz
+  const _pb=document.getElementById('pago-conf-badge');
+  if(_pb){
+    if(o.pago_confirmado_beatriz){
+      _pb.innerHTML='<span style="color:var(--green);font-weight:700;">&#10003; Confirmado por Beatriz</span>'+(o.pago_confirmado_en?' <span style="font-size:11px;color:var(--t3);">'+new Date(o.pago_confirmado_en).toLocaleDateString('es-PY')+'</span>':'');
+      _pb.style.display='flex';
+    } else if(parseFloat(o.valor_pagado)>0){
+      _pb.innerHTML='<span style="color:var(--amber);font-size:12px;">Pendiente de confirmacion de Beatriz</span>';
+      _pb.style.display='flex';
+    } else { _pb.style.display='none'; }
+    const _bc=document.getElementById('btn-confirmar-pago');
+    if(_bc){
+      const esBz=currentUser&&currentUser.role==='finanzas';
+      _bc.style.display=(esBz&&parseFloat(o.valor_pagado)>0&&!o.pago_confirmado_beatriz)?'inline-flex':'none';
+      _bc.onclick=()=>confirmarPagoBeatriz(o.id);
+    }
+  }
   document.getElementById('f-fecha-pedido').value = o.fecha_pedido || '';
   document.getElementById('f-fecha-eta').value = o.fecha_eta || '';
   toggleFinanciero();
@@ -8310,9 +8450,16 @@ async function autoSaveOrder(){
     precio_costo: numVal('f-costo'),
     precio_venta: numVal('f-venta'),
     costo_envio: numVal('f-costo-envio'),
+    peso_declarado: numVal('f-peso-decl')||null,
+    peso_real: numVal('f-peso-real')||null,
+    flete_requerido: (document.getElementById('f-flete-req')||{}).checked||false,
+    flete_courier_gs: numVal('f-flete-gs')||null,
+    flete_courier_nota: (document.getElementById('f-flete-nota')||{}).value||null,
     valor_pagado: numVal('f-pagado'),
     piezas_items: piezasItems.length ? JSON.stringify(piezasItems) : null,
     pagado_completo: document.getElementById('f-pagado-completo').checked,
+    pago_marcado_por: (numVal('f-pagado')>0)?(currentUser?currentUser.role:'lucas'):null,
+    pago_marcado_en: (numVal('f-pagado')>0)?new Date().toISOString():null,
     fecha_pago: document.getElementById('f-fecha-pago').value||null,
     fecha_cobro: document.getElementById('f-fecha-cobro').value||null,
     tracking: document.getElementById('f-tracking').value||null,
@@ -10029,39 +10176,27 @@ function cjPintarBilleteras(){
     const s = cjSaldo(b.id);
     totalGs += cjEnGs(s, b.moneda);
     const ico = b.tipo === 'efectivo' ? '\uD83D\uDCB5' : (b.tipo === 'digital' ? '\uD83D\uDCF1' : (b.tipo === 'tarjeta' ? '\uD83D\uDCB3' : '\uD83C\uDFE6'));
-    return '<div class="cj-bill" onclick="cjEditarBilletera(' + b.id + ')">'
+    return '<div class="cj-bill">'
       + '<div class="cj-bill-n">' + ico + ' ' + b.nombre + '</div>'
       + '<div class="cj-bill-s" style="color:' + (s < 0 ? 'var(--red)' : 'var(--t1)') + '">' + cjMonto(s, b.moneda) + '</div>'
       + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\u2248 Gs ' + fmtNum(cjEnGs(s, b.moneda)) + '</div>' : '')
       + (b.identificador ? '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">' + b.identificador + '</div>' : '')
+      + '<div style="display:flex;gap:6px;margin-top:9px;">'
+        + '<button type="button" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="cjExtracto(' + b.id + ')">Extracto</button>'
+        + '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjEditarBilletera(' + b.id + ')">Editar</button>'
+      + '</div>'
     + '</div>';
   }).join('');
   cont.innerHTML = html
     + '<div class="cj-bill" style="border-style:dashed;border-color:var(--blue);">'
-      + '<div class="cj-bill-n">\uD83D\uDCB0 Total en guaran\u00edes</div>'
+      + '<div class="cj-bill-n">\uD83D\uDCB0 Total general</div>'
       + '<div class="cj-bill-s" style="color:var(--cyan)">Gs ' + fmtNum(totalGs) + '</div>'
       + '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
+      + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
     + '</div>';
 }
 
-function cjPintarPendientes(){
-  const cont = document.getElementById('cj-pendientes');
-  if(!cont) return;
-  if(!CJ_PEND.length){ cont.innerHTML = ''; return; }
-  cont.innerHTML = '<div style="font-size:12.5px;font-weight:700;color:var(--amber);margin-bottom:8px;">\uD83D\uDCCC ' + CJ_PEND.length + ' pendiente' + (CJ_PEND.length===1?'':'s') + ' por resolver</div>'
-    + CJ_PEND.map(p=>
-      '<div class="cj-pend">'
-      + '<div style="flex:1;min-width:180px;">'
-        + '<div style="font-size:13.5px;color:var(--t1);font-weight:600;">' + p.titulo + (p.prioridad==='alta'?' <span style="color:var(--red);font-size:11px;">URGENTE</span>':'') + '</div>'
-        + '<div style="font-size:11.5px;color:var(--t3);margin-top:2px;">'
-          + (p.pedido_numero ? p.pedido_numero + ' \u00b7 ' : '')
-          + (p.asignado_a ? 'para ' + p.asignado_a + ' \u00b7 ' : '')
-          + (p.detalle || '') + '</div>'
-      + '</div>'
-      + (p.monto_estimado ? '<div style="font-size:13px;font-weight:700;color:var(--amber);">Gs ' + fmtNum(p.monto_estimado) + '</div>' : '')
-      + '<button class="inv-b" onclick="cjResolver(' + p.id + ')">\u2713 Resuelto</button>'
-    + '</div>').join('');
-}
+function cjPintarPendientes(){ cjAlertaPendientes(); }
 
 function cjLlenarFiltros(){
   const sc = document.getElementById('cj-filtro-cat');
@@ -15676,7 +15811,226 @@ async function pgRedibujar(){
   if(pgPendiente){ pgPendiente = false; pgRedibujar(); }
 }
 
-// ══════ PLANTILLA OFICIAL PREMIUM 1 (basada en el diseno real) ══════
+// ═�
+// PUNTO 1: Diferencia peso declarado vs real
+function calcFletePeso(){
+  var decl=parseFloat((document.getElementById('f-peso-decl')||{}).value)||0;
+  var real=parseFloat((document.getElementById('f-peso-real')||{}).value)||0;
+  var alerta=document.getElementById('peso-diff-alert'); if(!alerta) return;
+  if(decl>0&&real>0&&Math.abs(real-decl)>0.05){
+    alerta.style.display='block';
+    alerta.textContent='Diferencia de '+Math.abs(real-decl).toFixed(2)+' kg ('+((Math.abs(real-decl)/decl)*100).toFixed(1)+'%) entre peso declarado y real.';
+  } else { alerta.style.display='none'; }
+}
+
+// PUNTO 6: Pagos parciales por billetera
+var _opBilleteras = [];
+async function opCargar(orderId){
+  if(!orderId) return;
+  try { var r=await sbFetch('/rest/v1/order_pagos?order_id=eq.'+orderId+'&order=fecha.asc&limit=50'); opRender(r||[]); } catch(e){}
+}
+function opRender(rows){
+  var lista=document.getElementById('op-lista'); if(!lista) return;
+  var badge=document.getElementById('op-total-badge');
+  var total=rows.reduce(function(s,r){return s+parseFloat(r.monto||0);},0);
+  if(badge) badge.textContent=rows.length?'Total: Gs '+total.toLocaleString('es-PY'):'';
+  var isBz=currentUser&&currentUser.role==='finanzas';
+  lista.innerHTML=!rows.length?'<div style="font-size:12px;color:var(--t3);">Sin pagos registrados.</div>'
+    :rows.map(function(r){
+      var b=_opBilleteras.find(function(x){return x.id==r.billetera_id;});
+      return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);">'
+        +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;">Gs '+parseFloat(r.monto).toLocaleString('es-PY')+(b?' - '+b.nombre:'')+'</div>'
+        +'<div style="font-size:11px;color:var(--t3);">'+r.fecha+(r.concepto?' - '+r.concepto:'')+' - '+(r.cargado_por||'?')+'</div></div>'
+        +(r.confirmado_beatriz?'<span style="font-size:11px;color:var(--green);">confirmado</span>'
+          :(isBz?'<button type="button" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="opConfirmar('+r.id+')">Confirmar</button>':'<span style="font-size:11px;color:var(--amber);">pendiente</span>'))
+        +'</div>';
+    }).join('');
+}
+async function opNuevo(){
+  if(!currentOrder) return;
+  if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?activa=is.true&order=orden.asc&limit=20')||[];}catch(e){} }
+  var opts=_opBilleteras.map(function(b){return '<option value="'+b.id+'">'+b.nombre+'</option>';}).join('');
+  invModal('Registrar pago','<div style="display:grid;gap:12px;">'
+    +'<div class="field"><label class="lbl">Monto (Gs) *</label><input class="inp" id="op-monto" type="text" inputmode="numeric" placeholder="0" oninput="fmtMoneyInput(this)"></div>'
+    +'<div class="field"><label class="lbl">Fecha *</label><input class="inp" id="op-fecha" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    +'<div class="field"><label class="lbl">Billetera</label><select class="inp" id="op-bill"><option value="">-- Sin especificar --</option>'+opts+'</select></div>'
+    +'<div class="field"><label class="lbl">Concepto</label><input class="inp" id="op-concepto" placeholder="Ej: sena, anticipo, pago final"></div>'
+    +'</div>', async function(){
+    var monto=numVal('op-monto'); var fecha=(document.getElementById('op-fecha')||{}).value;
+    if(!monto||monto<=0){showToast('Ingresa el monto','error');return false;}
+    if(!fecha){showToast('Ingresa la fecha','error');return false;}
+    try {
+      await sbFetch('/rest/v1/order_pagos','POST',{order_id:currentOrder.id,monto:monto,fecha:fecha,
+        concepto:(document.getElementById('op-concepto')||{}).value||null,
+        billetera_id:(document.getElementById('op-bill')||{}).value?parseInt(document.getElementById('op-bill').value):null,
+        cargado_por:currentUser?currentUser.role:'lucas',creado_en:new Date().toISOString()});
+      var rows=await sbFetch('/rest/v1/order_pagos?order_id=eq.'+currentOrder.id+'&select=monto&limit=100');
+      var tot=(rows||[]).reduce(function(s,r){return s+parseFloat(r.monto||0);},0);
+      await sbFetch('/rest/v1/orders?id=eq.'+currentOrder.id,'PATCH',{valor_pagado:tot,pago_marcado_por:currentUser?currentUser.role:'lucas',pago_marcado_en:new Date().toISOString()});
+      currentOrder.valor_pagado=tot; await opCargar(currentOrder.id); setMoney('f-pagado',tot);
+      logHistory(currentOrder.id,'Pago Gs '+tot.toLocaleString('es-PY'));
+      showToast('Pago registrado','success'); return true;
+    } catch(e){showToast('Error al guardar','error');return false;}
+  });
+}
+async function opConfirmar(pagoId){
+  if(!confirm('Confirmas este pago?')) return;
+  try {
+    await sbFetch('/rest/v1/order_pagos?id=eq.'+pagoId,'PATCH',{confirmado_beatriz:true,confirmado_en:new Date().toISOString()});
+    if(currentOrder) await opCargar(currentOrder.id);
+    showToast('Confirmado','success'); await cargarPagosPendientes();
+  } catch(e){showToast('Error','error');}
+}
+
+// PUNTO 9: Alerta pedidos sin datos financieros
+function alertaSinCosto(){
+  var el=document.getElementById('alerta-sin-costo');
+  var lista=document.getElementById('alerta-sin-costo-lista');
+  if(!el||!lista||!orders){return;}
+  var rol=currentUser?currentUser.role:'';
+  if(rol!=='admin'&&rol!=='finanzas'){el.style.display='none';return;}
+  var ACTIVOS=['aprobado','comprado','listo-envio','entregado'];
+  var prob=orders.filter(function(o){return ACTIVOS.includes(o.estado)&&!o.archivado&&(!parseFloat(o.precio_costo)||(!parseFloat(o.costo_envio)&&!parseFloat(o.flete_courier_gs)));});
+  if(!prob.length){el.style.display='none';return;}
+  el.style.display='block';
+  lista.innerHTML=prob.map(function(o){
+    var items=[];
+    if(!parseFloat(o.precio_costo)) items.push('sin costo pieza');
+    if(!parseFloat(o.costo_envio)&&!parseFloat(o.flete_courier_gs)) items.push('sin costo envio');
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--brd);">'
+      +'<div style="flex:1;font-size:12.5px;"><b>'+(o.numero_pedido||('#'+o.id))+'</b> - '+(o.cliente_nombre||'sin cliente')+'</div>'
+      +'<div style="font-size:11.5px;color:var(--amber);">'+items.join(', ')+'</div>'
+      +'<button type="button" class="btn btn-ghost" style="font-size:11.5px;padding:4px 10px;" onclick="openOrder('+o.id+')">Ver</button></div>';
+  }).join('');
+}
+
+
+// BLOQUE B: Caja avanzada
+
+// PUNTO 4/7: Extracto completo de una billetera con filtro
+function cjExtracto(billeteraId){
+  const b=CJ_BILL.find(x=>x.id===billeteraId); if(!b) return;
+  let movs=CJ_MOV.filter(m=>m.billetera_id===billeteraId||m.billetera_destino_id===billeteraId);
+  let entTotal=0,salTotal=0;
+  movs.forEach(function(m){
+    const gs=m.monto_gs?parseFloat(m.monto_gs):cjEnGs(m.monto,m.moneda,m.cotizacion);
+    if(m.tipo==='entrada') entTotal+=gs; else if(m.tipo==='salida') salTotal+=gs;
+  });
+  const cats=[...new Set(movs.map(function(m){return m.categoria_id;}).filter(Boolean))];
+  const catOpts='<option value="">Todas las categorias</option>'+cats.map(function(id){
+    const c=CJ_CAT.find(function(x){return x.id===id;}); return c?'<option value="'+id+'">'+c.nombre+'</option>':'';
+  }).join('');
+  const html='<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<select class="inp" id="ext-cat" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'+catOpts+'</select>'
+    +'<select class="inp" id="ext-tipo" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'
+    +'<option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option><option value="transferencia">Transferencias</option></select>'
+    +'<input class="inp" id="ext-buscar" placeholder="Buscar..." style="flex:1;min-width:140px;" oninput="cjExtractoFiltrar('+billeteraId+')">'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:13px;">'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">ENTRADAS</div><div style="font-size:16px;font-weight:800;color:var(--green);">Gs '+fmtNum(entTotal)+'</div></div>'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">SALIDAS</div><div style="font-size:16px;font-weight:800;color:var(--red);">Gs '+fmtNum(salTotal)+'</div></div>'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">BALANCE</div><div style="font-size:16px;font-weight:800;color:'+(entTotal-salTotal>=0?'var(--cyan)':'var(--red)')+';">Gs '+fmtNum(entTotal-salTotal)+'</div></div>'
+    +'</div><div id="ext-lista"></div>';
+  invModal('Extracto: '+b.nombre, html, null);
+  setTimeout(function(){cjExtractoFiltrar(billeteraId);},100);
+}
+
+function cjExtractoFiltrar(billeteraId){
+  const lista=document.getElementById('ext-lista'); if(!lista) return;
+  const catF=(document.getElementById('ext-cat')||{}).value||'';
+  const tipoF=(document.getElementById('ext-tipo')||{}).value||'';
+  const q=((document.getElementById('ext-buscar')||{}).value||'').toLowerCase();
+  const movs=CJ_MOV.filter(function(m){
+    if(m.billetera_id!==billeteraId&&m.billetera_destino_id!==billeteraId) return false;
+    if(catF&&String(m.categoria_id)!==catF) return false;
+    if(tipoF&&m.tipo!==tipoF) return false;
+    if(q){ const blob=[m.concepto,m.pedido_numero,m.cliente,m.proveedor,m.notas].filter(Boolean).join(' ').toLowerCase(); if(blob.indexOf(q)<0) return false; }
+    return true;
+  });
+  if(!movs.length){lista.innerHTML='<div style="text-align:center;color:var(--t3);padding:20px;">Sin movimientos con esos filtros.</div>';return;}
+  lista.innerHTML=movs.map(function(m){
+    const cat=CJ_CAT.find(function(c){return c.id===m.categoria_id;});
+    const esTr=m.tipo==='transferencia',esEnt=m.tipo==='entrada';
+    const col=esTr?'var(--cyan)':(esEnt?'var(--green)':'var(--red)');
+    const sig=esTr?'\u21C4':(esEnt?'+':'\u2212');
+    const gs=m.monto_gs?parseFloat(m.monto_gs):cjEnGs(m.monto,m.moneda,m.cotizacion);
+    return '<div class="cj-mov">'
+      +'<div class="cj-mov-i" style="background:rgba(255,255,255,.07);color:'+col+'">'+sig+'</div>'
+      +'<div class="cj-mov-c"><div class="cj-mov-t">'+(m.concepto||(cat?cat.nombre:'Sin concepto'))+'</div>'
+      +'<div class="cj-mov-s">'+new Date(m.fecha+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'})+(cat?' - '+cat.nombre:'')+'</div></div>'
+      +'<div class="cj-mov-m" style="color:'+col+'">'+sig+' Gs '+fmtNum(gs)+'</div></div>';
+  }).join('');
+}
+
+// PUNTO 5/8: Nueva billetera desde la UI
+async function cjNuevaBilletera(){
+  const html='<div style="display:grid;gap:12px;">'
+    +'<div class="field"><label class="lbl">Nombre *</label><input class="inp" id="nb-nom" placeholder="Ej: Banco Atlas, Visa terminada en 4417"></div>'
+    +'<div class="field"><label class="lbl">Identificador visible (no el numero completo)</label><input class="inp" id="nb-id" placeholder="Ej: terminada en 4417"></div>'
+    +'<div class="field"><label class="lbl">Tipo</label><select class="inp" id="nb-tipo"><option value="banco">Banco</option><option value="digital">Digital (Nubank, Atlas)</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option></select></div>'
+    +'<div class="field"><label class="lbl">Moneda</label><select class="inp" id="nb-mon"><option value="PYG">Guaranies</option><option value="BRL">Reales</option><option value="USD">Dolares</option></select></div>'
+    +'<div class="field"><label class="lbl">Saldo inicial</label><input class="inp" id="nb-si" type="number" placeholder="0"></div>'
+    +'<div class="field"><label class="lbl">Titular (opcional)</label><input class="inp" id="nb-tit" placeholder="Ej: Lucas Gonzalez"></div>'
+    +'</div>';
+  invModal('Nueva cuenta / tarjeta', html, async function(){
+    const nom=(document.getElementById('nb-nom')||{}).value.trim();
+    if(!nom){showToast('Ingresa el nombre','error');return false;}
+    try {
+      await sbFetch('/rest/v1/fin_billeteras','POST',{
+        nombre:nom,
+        identificador:(document.getElementById('nb-id')||{}).value.trim()||null,
+        tipo:(document.getElementById('nb-tipo')||{}).value||'banco',
+        moneda:(document.getElementById('nb-mon')||{}).value||'PYG',
+        saldo_inicial:parseFloat((document.getElementById('nb-si')||{}).value)||0,
+        titular:(document.getElementById('nb-tit')||{}).value.trim()||null,
+        activa:true,orden:CJ_BILL.length+1,creado_en:new Date().toISOString()
+      });
+      await cjCargar(); showToast('Cuenta creada','success'); return true;
+    } catch(e){showToast('Error al guardar','error');return false;}
+  });
+}
+
+// PUNTO 5: Nueva categoria permanente
+async function cjNuevaCategoria(){
+  const html='<div style="display:grid;gap:12px;">'
+    +'<div class="field"><label class="lbl">Nombre *</label><input class="inp" id="nc-nom" placeholder="Ej: Flete, Comisiones, Reparaciones"></div>'
+    +'<div class="field"><label class="lbl">Tipo</label><select class="inp" id="nc-tipo"><option value="ambos">Entradas y salidas</option><option value="entrada">Solo entradas</option><option value="salida">Solo salidas</option></select></div>'
+    +'</div>';
+  invModal('Nueva categoria', html, async function(){
+    const nom=(document.getElementById('nc-nom')||{}).value.trim();
+    if(!nom){showToast('Ingresa el nombre','error');return false;}
+    try {
+      await sbFetch('/rest/v1/fin_categorias','POST',{
+        nombre:nom,tipo:(document.getElementById('nc-tipo')||{}).value||'ambos',
+        activa:true,orden:CJ_CAT.length+1
+      });
+      await cjCargar(); showToast('Categoria creada y guardada','success'); return true;
+    } catch(e){showToast('Error al guardar','error');return false;}
+  });
+}
+
+// PUNTO 3: Pendientes con alerta de proximidad
+function cjAlertaPendientes(){
+  const cont=document.getElementById('cj-pendientes'); if(!cont) return;
+  if(!CJ_PEND||!CJ_PEND.length){cont.innerHTML='';return;}
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  cont.innerHTML=CJ_PEND.map(function(p){
+    let diasTxt='', colD='var(--t3)';
+    if(p.fecha_limite){
+      const dias=Math.round((new Date(p.fecha_limite)-hoy)/(1000*60*60*24));
+      colD=dias<=0?'var(--red)':dias<=3?'var(--red)':dias<=7?'var(--amber)':'var(--t3)';
+      diasTxt='<div style="font-size:11px;color:'+colD+';margin-top:3px;">'+(dias<0?Math.abs(dias)+' dias de retraso':dias===0?'Hoy':dias+' dias restantes')+'</div>';
+    }
+    return '<div class="cj-pend">'
+      +'<div style="flex:1;min-width:180px;"><div style="font-size:13.5px;color:var(--t1);font-weight:600;">'+p.titulo+'</div>'
+      +'<div style="font-size:11.5px;color:var(--t3);margin-top:2px;">'+(p.pedido_numero?p.pedido_numero+' - ':'')+(p.detalle||'')+'</div>'
+      +diasTxt+'</div>'
+      +(p.monto_estimado?'<div style="font-size:13px;font-weight:700;color:var(--amber);">Gs '+fmtNum(p.monto_estimado)+'</div>':'')
+      +'<button class="inv-b" onclick="cjResolver('+p.id+')">&#10003;</button></div>';
+  }).join('');
+}
+
+// === PLANTILLA OFICIAL PREMIUM 1 (basada en el diseno real) ===
 // En vez de reconstruir cada elemento con codigo, se usa el PNG exportado de
 // Claude Design como molde. El molde ya trae horneados: logo, degrades, panel,
 // bloque cobalto y contacto. El codigo solo agrega la foto (por debajo) y el
@@ -15989,7 +16343,7 @@ function ctTab(t){
     return;
   }
 
-  // ══════ CARGA LIBRE ══════
+  // === CARGA LIBRE ===
   if(t === 'libre'){
     desc.textContent = 'Para trabajos viejos o contenido que no viene de un pedido. Se sube la foto y se completan los datos a mano.';
     cuerpo.innerHTML = '<div class="card" style="max-width:520px;">'
@@ -16037,7 +16391,7 @@ function ctTab(t){
 // Instagram no da el enlace directo desde el id: se manda al perfil
 function ctShortcode(){ return ''; }
 
-// ══════ CALENDARIO SEMANAL ══════
+// === CALENDARIO SEMANAL ===
 let ctSemanaOffset = 0;
 
 function ctCalendario(){
@@ -16258,7 +16612,7 @@ async function ctCarrusel(orderId){
   }
 }
 
-// ══════ CARGA LIBRE ══════
+// === CARGA LIBRE ===
 let ctLibreFotos = [];
 
 function ctLibrePrevia(files){
