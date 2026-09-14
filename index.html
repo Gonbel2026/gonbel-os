@@ -8545,8 +8545,7 @@ async function autoSaveOrder(){
     vehiculo_id: currentOrder?.vehiculo_id || null,
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
-    precio_costo: (function(){var sc=piezasItems.reduce(function(s,x){return s+((parseFloat(x.cb)||parseFloat(x.cr)||0)*(parseInt(x.q,10)||1));},0);return sc>0?sc:numVal('f-costo');})()
-    +0,
+    precio_costo: numVal('f-costo'),
     precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
     costo_envio: numVal('f-costo-envio'),
     peso_declarado: numVal('f-peso-decl')||null,
@@ -8621,8 +8620,7 @@ async function saveOrder(){
     vehiculo_id: currentOrder?.vehiculo_id || null,
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
-    precio_costo: (function(){var sc=piezasItems.reduce(function(s,x){return s+((parseFloat(x.cb)||parseFloat(x.cr)||0)*(parseInt(x.q,10)||1));},0);return sc>0?sc:numVal('f-costo');})()
-    +0,
+    precio_costo: numVal('f-costo'),
     precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
     costo_envio: numVal('f-costo-envio'),
     valor_pagado: numVal('f-pagado'),
