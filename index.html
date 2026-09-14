@@ -1553,6 +1553,24 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .cx-subtitle{font-size:12.5px;color:rgba(148,163,184,.6);margin-bottom:0;font-family:'IBM Plex Mono','Courier New',monospace;}
 .cx-last-scan{font-size:11px;color:rgba(148,163,184,.45);font-family:'IBM Plex Mono','Courier New',monospace;margin-top:4px;}
 .cx-section-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(59,142,255,.7);text-transform:uppercase;margin:20px 0 10px;padding-left:2px;}
+
+.pv-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.pv-header h2{font-size:20px;font-weight:700;color:var(--t1);margin:0;flex:1;}
+.pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;margin-bottom:20px;}
+.pv-card{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:13px;padding:16px 18px;cursor:pointer;transition:.15s;}
+.pv-card:hover{background:rgba(255,255,255,.07);border-color:rgba(59,142,255,.35);}
+.pv-rank{font-size:11px;font-weight:800;color:var(--t3);background:rgba(255,255,255,.07);border-radius:6px;padding:2px 8px;}
+.pv-rank.top{background:rgba(245,166,35,.18);color:var(--amber);}
+.pv-name{font-size:14px;font-weight:700;color:var(--t1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pv-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;}
+.pv-stat{text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:7px 4px;}
+.pv-stat-n{font-size:16px;font-weight:800;color:var(--t1);}
+.pv-stat-l{font-size:10px;color:var(--t3);margin-top:2px;}
+.pv-last{font-size:11.5px;color:var(--t3);margin-top:9px;padding-top:8px;border-top:1px solid var(--brd);}
+.pv-tabla{width:100%;border-collapse:collapse;font-size:13px;}
+.pv-tabla th{text-align:left;font-size:10.5px;color:var(--t3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--brd);}
+.pv-tabla td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.pv-tabla tr:hover td{background:rgba(255,255,255,.03);}
 </style>
 </head>
 <body>
@@ -1642,6 +1660,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   <a class="sb-item" data-page="clientes" onclick="showPage('clientes',this)"><span class="si">👥</span> Clientes</a>
   <a class="sb-item" data-page="proveedores" onclick="showPage('proveedores',this)"><span class="si">🏭</span> Proveedores</a>
   <a class="sb-item" data-page="config" onclick="showPage('config',this)"><span class="si">⚙️</span> Configuración</a>
+  <a class="sb-item" data-page="proveedores" onclick="showPage('proveedores',this)"><span class="si">🏭</span> Proveedores</a>
   <a class="sb-item" data-page="conexiones" onclick="showPage('conexiones',this)"><span class="si">🛰️</span> Conexiones</a>
   <div class="ah-acciones">
     <div class="gb-wrap">
@@ -2341,7 +2360,24 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
     </div>
   </div>
 
-    <div class="page" id="page-conexiones">
+      <div class="page" id="page-proveedores">
+    <div class="pv-header">
+      <h2>&#x1F3ED; Proveedores</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="pv-buscar" class="inp" placeholder="Buscar..." style="width:200px;" oninput="pvRender()">
+        <button class="btn btn-ghost" onclick="pvCargar(true)">&#x21BB; Actualizar</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="bs-chip on" id="pvf-todos" onclick="pvVista('todos')">Todos</button>
+      <button class="bs-chip" id="pvf-ml" onclick="pvVista('ml')">ML Brasil</button>
+      <button class="bs-chip" id="pvf-ebay" onclick="pvVista('ebay')">eBay</button>
+      <button class="bs-chip" id="pvf-otros" onclick="pvVista('otros')">Otros</button>
+    </div>
+    <div id="pv-cuerpo"></div>
+  </div>
+
+<div class="page" id="page-conexiones">
     <div class="cx-header">
       <h2>&#x1F6F0;&#xFE0F; Conexiones del Sistema</h2>
       <button class="cx-scan-btn" onclick="cxEscanear()">&#x27F3; Verificar todo</button>
@@ -2855,7 +2891,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
             <div><label style="font-size:11px;color:var(--t3);">Detalle</label><input id="f-flete-nota" type="text" placeholder="Ej: DHL 2.3 kg" class="inp" style="margin-top:4px;"></div>
           </div>
         </div>
-          <input type="checkbox" id="f-pagado-completo" onchange="calcMargen()" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
+          <input type="checkbox" id="f-pagado-completo" onchange="calcMargen();scheduleAutoSave(100)" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--green);">✓ Pedido totalmente pagado</div>
             <div style="font-size:11px;color:var(--t3);margin-top:2px;">Marcar cuando el cliente completó el pago total</div>
@@ -4574,8 +4610,11 @@ function importarPiezas(manual){
   renderPiezasItems();
   if(manual) showToast('⚡ '+nuevos.length+' pieza(s) cargadas','success');
 }
-// Alias usado desde el modal grande y la barra rápida — siempre importa en modo silencioso
-function autoImportar(){ importarPiezas(false); }
+// autoImportar: solo carga si el array está vacío (evita duplicados al reabrir)
+function autoImportar(){
+  if(piezasItems && piezasItems.length > 0) return; // ya tiene items, no pisar
+  importarPiezas(false);
+}
 
 // ══════ v54: MÁRGENES RÁPIDOS ══════
 function aplicarMargen(i, pct){
@@ -7353,6 +7392,7 @@ document.addEventListener('keydown', e=>{
 // Solo cuentan los pedidos desde Aprobado en adelante: un presupuesto no es una deuda.
 function saldoPedido(o){
   if(!ESTADOS_VENTA.includes(o.estado)) return 0;
+  if(o.pagado_completo) return 0; // marcado como totalmente pagado
   const venta = parseFloat(o.precio_venta) || 0;
   const pagado = parseFloat(o.valor_pagado) || 0;
   return Math.max(0, venta - pagado);
@@ -8546,7 +8586,8 @@ async function autoSaveOrder(){
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
     precio_costo: numVal('f-costo'),
-    precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
+    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0);return _sv>0?_sv:numVal('f-venta');})()
+    +0,
     costo_envio: numVal('f-costo-envio'),
     peso_declarado: numVal('f-peso-decl')||null,
     peso_real: numVal('f-peso-real')||null,
@@ -8621,7 +8662,7 @@ async function saveOrder(){
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
     precio_costo: numVal('f-costo'),
-    precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
+    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0);return _sv>0?_sv:numVal('f-venta');})()+0,
     costo_envio: numVal('f-costo-envio'),
     valor_pagado: numVal('f-pagado'),
     piezas_items: piezasItems.length ? JSON.stringify(piezasItems) : null,
@@ -16397,6 +16438,136 @@ function cxInit(){
   }
 }
 
+
+// MODULO PROVEEDORES
+var pvDatos = [];
+var pvVistaActual = 'todos';
+var pvListaActual = [];
+var pvCargado = false;
+
+async function pvCargar(forzar){
+  if(pvCargado && !forzar) return;
+  document.getElementById('pv-cuerpo').innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3);">Cargando proveedores...</div>';
+  var mapa = {};
+
+  (orders||[]).forEach(function(o){
+    var items = [];
+    try { items = o.piezas_items ? JSON.parse(o.piezas_items) : []; } catch(e){}
+    items.forEach(function(it){
+      var prov = (it.pr||it.proveedorManual||'').trim();
+      if(!prov) return;
+      var key = prov.toLowerCase();
+      if(!mapa[key]) mapa[key]={nombre:prov,compras:0,piezas:0,origen:/mercado|mlb|^ml$/i.test(prov)?'ml':/ebay/i.test(prov)?'ebay':'otro',ultima:null,pedidos:[],montos:[]};
+      mapa[key].compras++;
+      mapa[key].piezas += parseInt(it.q,10)||1;
+      var fecha=o.fecha_pedido||o.created_at||null;
+      if(fecha && (!mapa[key].ultima||fecha>mapa[key].ultima)) mapa[key].ultima=fecha;
+      if(!mapa[key].pedidos.includes(o.id)) mapa[key].pedidos.push(o.id);
+      var cb=parseFloat(it.cb)||parseFloat(it.cr)||0;
+      if(cb>0) mapa[key].montos.push(cb*(parseInt(it.q,10)||1));
+    });
+  });
+
+  try {
+    var ext = await sbFetch('/rest/v1/compras_externas?select=origen,vendedor,num_compra,precio_usd,fecha_compra&limit=500');
+    (ext||[]).forEach(function(c){
+      if(!c.vendedor) return;
+      var key = c.vendedor.toLowerCase();
+      var origen = c.origen==='eBay'?'ebay':'ml';
+      if(!mapa[key]) mapa[key]={nombre:c.vendedor,compras:0,piezas:0,origen:origen,ultima:null,pedidos:[],montos:[]};
+      mapa[key].compras++;
+      if(c.precio_usd) mapa[key].montos.push(parseFloat(c.precio_usd)||0);
+      if(c.fecha_compra && (!mapa[key].ultima||c.fecha_compra>mapa[key].ultima)) mapa[key].ultima=c.fecha_compra;
+    });
+  } catch(e){}
+
+  pvDatos = Object.values(mapa).sort(function(a,b){return b.compras-a.compras;});
+  pvCargado = true;
+  pvRender();
+}
+
+function pvVista(v){
+  pvVistaActual=v;
+  ['todos','ml','ebay','otros'].forEach(function(k){
+    var b=document.getElementById('pvf-'+k); if(b) b.classList.toggle('on',k===v);
+  });
+  pvRender();
+}
+
+function pvRender(){
+  var cont=document.getElementById('pv-cuerpo'); if(!cont) return;
+  var q=((document.getElementById('pv-buscar')||{}).value||'').toLowerCase().trim();
+  var lista=pvDatos.filter(function(p){
+    if(pvVistaActual==='ml' && p.origen!=='ml') return false;
+    if(pvVistaActual==='ebay' && p.origen!=='ebay') return false;
+    if(pvVistaActual==='otros' && (p.origen==='ml'||p.origen==='ebay')) return false;
+    if(q && p.nombre.toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  pvListaActual=lista;
+  if(!lista.length){cont.innerHTML='<div style="padding:30px;text-align:center;color:var(--t3);">Sin proveedores.</div>';return;}
+
+  var top=lista.slice(0,6);
+  var resto=lista.slice(6);
+
+  var cards=top.map(function(p,i){
+    var esTop=i<3;
+    var sumaGs=p.montos.reduce(function(s,x){return s+x;},0);
+    var sumaFmt=sumaGs>0?'Gs '+fmtNum(Math.round(sumaGs)):'--';
+    var ultimaFmt=p.ultima?new Date(p.ultima.substring(0,10)+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'}):'--';
+    var icono=p.origen==='ml'?'&#x1F7E2;':p.origen==='ebay'?'&#x1F6D2;':'&#x1F3ED;';
+    return '<div class="pv-card" onclick="pvVerDetalle('+i+')">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+        +'<span class="pv-rank '+(esTop?'top':'')+'">'+icono+' #'+(i+1)+'</span>'
+        +'<span class="pv-name">'+p.nombre+'</span>'
+      +'</div>'
+      +'<div class="pv-stats">'
+        +'<div class="pv-stat"><div class="pv-stat-n">'+p.compras+'</div><div class="pv-stat-l">compras</div></div>'
+        +'<div class="pv-stat"><div class="pv-stat-n">'+p.pedidos.length+'</div><div class="pv-stat-l">pedidos</div></div>'
+        +'<div class="pv-stat"><div class="pv-stat-n" style="font-size:12px;">'+sumaFmt+'</div><div class="pv-stat-l">costo total</div></div>'
+      +'</div>'
+      +'<div class="pv-last">Ultima compra: '+ultimaFmt+'</div>'
+      +'</div>';
+  }).join('');
+
+  var tabla='';
+  if(resto.length){
+    tabla='<div class="card"><table class="pv-tabla"><thead><tr>'
+      +'<th>Proveedor</th><th>Origen</th><th>Compras</th><th>Pedidos</th><th>Ultima compra</th>'
+      +'</tr></thead><tbody>'
+      +resto.map(function(p,i){
+        var icono=p.origen==='ml'?'ML':p.origen==='ebay'?'eBay':'Otro';
+        var ult=p.ultima?new Date(p.ultima.substring(0,10)+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'}):'--';
+        return '<tr onclick="pvVerDetalle('+(i+6)+')" style="cursor:pointer;">'
+          +'<td style="font-weight:600;">'+p.nombre+'</td>'
+          +'<td><span style="font-size:11px;color:var(--t3);">'+icono+'</span></td>'
+          +'<td>'+p.compras+'</td>'
+          +'<td>'+p.pedidos.length+'</td>'
+          +'<td style="color:var(--t3);">'+ult+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div>';
+  }
+  cont.innerHTML='<div class="pv-grid">'+cards+'</div>'+tabla;
+}
+
+function pvVerDetalle(idx){
+  var p=pvListaActual[idx]; if(!p) return;
+  var pedidosRel=(orders||[]).filter(function(o){return p.pedidos.includes(o.id);});
+  var html='<div style="font-size:12.5px;color:var(--t3);margin-bottom:13px;">'+p.compras+' compras en '+p.pedidos.length+' pedidos</div>'
+    +'<div style="display:grid;gap:7px;">'
+    +pedidosRel.slice(0,20).map(function(o){
+      return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);">'
+        +'<div style="flex:1;"><b>'+(o.numero_pedido||o.numero||'#'+o.id)+'</b> - '+(o.cliente_nombre||'sin cliente')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--t3);">'+(o.marca||'')+' '+(o.modelo||'')+'</div>'
+        +'<button type="button" class="btn btn-ghost" style="font-size:11.5px;padding:4px 10px;" onclick="invCerrarModal();openOrder('+o.id+')">Ver</button>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+  invModal(p.nombre, html, null);
+}
+
+
 // === PLANTILLA OFICIAL PREMIUM 1 (basada en el diseno real) ===
 // En vez de reconstruir cada elemento con codigo, se usa el PNG exportado de
 // Claude Design como molde. El molde ya trae horneados: logo, degrades, panel,
@@ -16591,6 +16762,13 @@ async function pgPublicar(){
     const res = await pgLlamarPublicar(fila.id);
     pgEstado('<div class="pg-ok">✅ Publicado en Instagram · media ' + res.ig_media_id + '</div>');
     showToast('📸 Publicado en Instagram', 'success');
+    // Marcar las fotos como publicadas
+    if(pgFoto && pgFoto.id) {
+      try { await sbFetch('/rest/v1/pedido_fotos?id=eq.'+pgFoto.id, 'PATCH', {publicada: true, publicada_en: new Date().toISOString()}); } catch(e){}
+    }
+    // Publicar tambien en WhatsApp Status
+    const _waUrl = (res && res.foto_url) || (pgFoto && pgFoto.url);
+    if(_waUrl) pgPublicarWaStatus(_waUrl).catch(function(e){console.warn('WA Status:', e.message);});
     setTimeout(() => { pgCerrar(); if(document.getElementById('page-contenido').classList.contains('active')) ctCargar(true); }, 1500);
   } catch(e){
     pgEstado('<div class="pg-err">❌ ' + (e.message || e) + '</div>');
@@ -16598,6 +16776,35 @@ async function pgPublicar(){
 }
 
 // Llama a la Edge Function y devuelve el mensaje real si falla
+
+async function pgPublicarWaStatus(imageUrl){
+  // Publica la imagen como Story/Status de WhatsApp Business usando la API de Meta
+  // Requiere: phone_number_id y wa_token en meta_config (mismas creds que IG)
+  try {
+    const cfg = await sbFetch('/rest/v1/meta_config?select=page_token,wa_phone_id&limit=1');
+    if(!cfg||!cfg[0]||!cfg[0].wa_phone_id) return; // sin WA configurado, no error
+    const token = cfg[0].page_token;
+    const phoneId = cfg[0].wa_phone_id;
+    // Subir la imagen al servidor de Meta para WA
+    const uploadRes = await fetch('https://graph.facebook.com/v19.0/'+phoneId+'/media',{
+      method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({messaging_product:'whatsapp',type:'image',link:imageUrl})
+    });
+    const uploadJson = await uploadRes.json();
+    if(!uploadJson.id) return; // upload fallido, sin error visible
+    // Publicar como Status
+    await fetch('https://graph.facebook.com/v19.0/'+phoneId+'/messages',{
+      method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messaging_product:'whatsapp',
+        to:'status',
+        type:'image',
+        image:{id:uploadJson.id}
+      })
+    });
+    console.log('WA Status publicado');
+  } catch(e){ console.warn('WA Status error:', e.message); }
+}
 async function pgLlamarPublicar(postId){
   let r, txt;
   try {
