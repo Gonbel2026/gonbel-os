@@ -4501,7 +4501,8 @@ function importarPiezas(manual){
     if(cambio){ crSyncDesdeAbajo(); crLlenarModelos(); if(manual) showToast('🚗 Vehículo detectado: '+veh.marca+' '+veh.modelo,'success'); }
   }
 
-  const nuevos = parsearPiezas(lineas.join('\n'));
+  const _t=Date.now();
+  const nuevos = parsearPiezas(lineas.join('\n')).map(function(it,i){it._uid='pz_'+(_t+i)+'_'+Math.random().toString(36).slice(2,6);return it;});
   if(nuevos.length === 0){
     if(manual) showToast('No se detectaron piezas en la lista de arriba','error');
     return;
@@ -8488,8 +8489,9 @@ async function autoSaveOrder(){
     vehiculo_id: currentOrder?.vehiculo_id || null,
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
-    precio_costo: numVal('f-costo'),
-    precio_venta: numVal('f-venta'),
+    precio_costo: (function(){var sc=piezasItems.reduce(function(s,x){return s+((parseFloat(x.cb)||parseFloat(x.cr)||0)*(parseInt(x.q,10)||1));},0);return sc>0?sc:numVal('f-costo');})()
+    +0,
+    precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
     costo_envio: numVal('f-costo-envio'),
     peso_declarado: numVal('f-peso-decl')||null,
     peso_real: numVal('f-peso-real')||null,
@@ -8563,8 +8565,9 @@ async function saveOrder(){
     vehiculo_id: currentOrder?.vehiculo_id || null,
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
-    precio_costo: numVal('f-costo'),
-    precio_venta: numVal('f-venta'),
+    precio_costo: (function(){var sc=piezasItems.reduce(function(s,x){return s+((parseFloat(x.cb)||parseFloat(x.cr)||0)*(parseInt(x.q,10)||1));},0);return sc>0?sc:numVal('f-costo');})()
+    +0,
+    precio_venta: piezasItems.length ? piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0) : numVal('f-venta'),
     costo_envio: numVal('f-costo-envio'),
     valor_pagado: numVal('f-pagado'),
     piezas_items: piezasItems.length ? JSON.stringify(piezasItems) : null,
