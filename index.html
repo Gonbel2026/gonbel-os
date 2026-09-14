@@ -3457,6 +3457,9 @@ function pintarPaginaActiva(){
   if(activa('page-control'))    renderControl();
   if(activa('page-financiero')) fpSimple();
   if(activa('page-clientes'))   renderClientes();
+  if(activa('page-proveedores')){ pvCargar(); }
+  if(activa('page-conexiones')){ cxRenderTodo(); if(!cxInicializado){ cxInicializado=true; setTimeout(cxEscanear,300); } }
+  if(activa('page-financiero')) { alertaSinCosto(); cargarPagosPendientes(); }
 }
 
 
@@ -9637,6 +9640,7 @@ function renderDevoluciones(){
       + '<div style="display:flex;gap:6px;">'
         + '<button class="inv-b" onclick="devFecha(' + o.id + ')">\uD83D\uDCC5 Fecha l\u00edmite</button>'
         + '<button class="inv-b" onclick="invDesdeDevolucion(' + o.id + ')">\uD83D\uDCE6 A inventario</button>'
+        + '<button class="inv-b" onclick="devRegistrarReembolso(' + o.id + ')" style="background:rgba(34,197,94,.12);color:var(--green);" title="Registrar reembolso recibido">\uD83D\uDCB0 Reembolso</button>'
         + '<button class="inv-b" onclick="openOrder(' + o.id + ')">Abrir</button>'
         + '<button class="inv-b" onclick="devDescartar(' + o.id + ')" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>'
       + '</div>'
@@ -11471,7 +11475,7 @@ async function buscarMensajesML(manual){
           <div class="ml-msg-m">${m.cliente || (m.pedido_numero ? '' : 'Sin pedido vinculado todavía')}</div>
         </div>
         <span class="ml-msg-badge">${m.no_leidos} sin leer</span>
-        <button type="button" onclick="event.stopPropagation();this.closest('.ml-msg-row').remove();if(!document.querySelector('.ml-msg-row')){document.getElementById('ml-msg-banner').style.display='none';}" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;" title="Descartar">&times;</button>
+        <button type="button" onclick="event.stopPropagation();mlDescartarMsg('${m.pack_id}',${m.no_leidos},this)" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;" title="Descartar">&times;</button>
       </div>`).join('');
     if(manual) showToast(mmDatos.length+' conversación(es) con mensajes nuevos','success');
     actualizarCampanita();
@@ -11480,6 +11484,18 @@ async function buscarMensajesML(manual){
 
 // Pone en cero el historial viejo de "sin leer" de Mercado Livre de una sola vez — de ahí en más
 // solo van a avisar los mensajes cuyo contador realmente suba (los genuinamente nuevos)
+async function mlDescartarMsg(packId, noLeidos, btn){
+  const row = btn.closest('.ml-msg-row'); if(row) row.remove();
+  if(!document.querySelector('.ml-msg-row')) document.getElementById('ml-msg-banner').style.display='none';
+  // Marcar como visto en el servidor para que no vuelva a aparecer
+  try {
+    await fetch(ML_MSG + '?accion=marcar_visto', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pack_id:String(packId), no_leidos:noLeidos})
+    });
+  } catch(e){ /* no critico */ }
+}
+
 async function limpiarHistorialMensajesML(){
   if(!confirm('Esto marca como "ya visto" todo lo que Mercado Livre tiene como sin leer ahora mismo. De ahí en más, solo va a avisar cuando llegue algo realmente nuevo. ¿Continuar?')) return;
   try {
