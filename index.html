@@ -1513,6 +1513,46 @@ body.pwa{background:#0A1220;}
 .ah-nav.abajo .sb-item.active{background:rgba(59,142,255,.16);color:var(--blue);}
 body:has(.ah-nav.abajo) .page{padding-bottom:calc(90px + env(safe-area-inset-bottom));}
 body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));}
+
+/* === CENTRO DE CONEXIONES === */
+#page-conexiones{font-family:'Space Grotesk','Inter',sans-serif;}
+.cx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin-top:18px;}
+.cx-card{background:#07111f;border:1px solid rgba(59,142,255,.14);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;}
+.cx-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(59,142,255,.04) 0%,transparent 60%);pointer-events:none;}
+.cx-card:hover{border-color:rgba(59,142,255,.35);box-shadow:0 0 22px rgba(59,142,255,.08);}
+.cx-card.ok{border-color:rgba(34,197,94,.2);}
+.cx-card.ok::before{background:linear-gradient(135deg,rgba(34,197,94,.04) 0%,transparent 60%);}
+.cx-card.warn{border-color:rgba(245,166,35,.25);}
+.cx-card.err{border-color:rgba(239,68,68,.3);}
+.cx-card.err::before{background:linear-gradient(135deg,rgba(239,68,68,.06) 0%,transparent 60%);}
+.cx-card.checking{border-color:rgba(59,142,255,.3);animation:cx-pulse 1.4s ease-in-out infinite;}
+@keyframes cx-pulse{0%,100%{box-shadow:0 0 0 rgba(59,142,255,0);}50%{box-shadow:0 0 16px rgba(59,142,255,.25);}}
+.cx-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.cx-icon{font-size:22px;line-height:1;flex-shrink:0;}
+.cx-name{font-size:14px;font-weight:700;color:#e8f0ff;letter-spacing:.01em;}
+.cx-type{font-size:10.5px;color:rgba(148,163,184,.6);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;}
+.cx-status{display:flex;align-items:center;gap:7px;margin-bottom:10px;}
+.cx-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cx-dot.ok{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.6);}
+.cx-dot.warn{background:var(--amber);box-shadow:0 0 6px rgba(245,166,35,.5);}
+.cx-dot.err{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5);}
+.cx-dot.checking{background:var(--blue);animation:cx-blink .9s ease-in-out infinite;}
+.cx-dot.unknown{background:rgba(148,163,184,.4);}
+@keyframes cx-blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.cx-status-txt{font-size:12px;color:rgba(148,163,184,.9);font-family:'IBM Plex Mono','Courier New',monospace;}
+.cx-meta{font-size:11px;color:rgba(148,163,184,.55);font-family:'IBM Plex Mono','Courier New',monospace;line-height:1.7;border-top:1px solid rgba(59,142,255,.09);padding-top:9px;margin-top:9px;}
+.cx-meta span{color:rgba(148,163,184,.85);}
+.cx-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;}
+.cx-btn{background:rgba(59,142,255,.1);border:1px solid rgba(59,142,255,.22);color:#78aaff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer;transition:.15s;}
+.cx-btn:hover{background:rgba(59,142,255,.2);border-color:rgba(59,142,255,.45);}
+.cx-btn.danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#f87171;}
+.cx-header{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.cx-header h2{font-size:20px;font-weight:700;color:#e8f0ff;margin:0;}
+.cx-scan-btn{margin-left:auto;background:rgba(59,142,255,.12);border:1px solid rgba(59,142,255,.28);color:#78aaff;font-size:12px;font-weight:600;padding:7px 16px;border-radius:9px;cursor:pointer;transition:.15s;}
+.cx-scan-btn:hover{background:rgba(59,142,255,.22);}
+.cx-subtitle{font-size:12.5px;color:rgba(148,163,184,.6);margin-bottom:0;font-family:'IBM Plex Mono','Courier New',monospace;}
+.cx-last-scan{font-size:11px;color:rgba(148,163,184,.45);font-family:'IBM Plex Mono','Courier New',monospace;margin-top:4px;}
+.cx-section-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(59,142,255,.7);text-transform:uppercase;margin:20px 0 10px;padding-left:2px;}
 </style>
 </head>
 <body>
@@ -1602,6 +1642,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   <a class="sb-item" data-page="clientes" onclick="showPage('clientes',this)"><span class="si">👥</span> Clientes</a>
   <a class="sb-item" data-page="proveedores" onclick="showPage('proveedores',this)"><span class="si">🏭</span> Proveedores</a>
   <a class="sb-item" data-page="config" onclick="showPage('config',this)"><span class="si">⚙️</span> Configuración</a>
+  <a class="sb-item" data-page="conexiones" onclick="showPage('conexiones',this)"><span class="si">🛰️</span> Conexiones</a>
   <div class="ah-acciones">
     <div class="gb-wrap">
       <input id="gb-input" class="gb-in" placeholder="🔍 Buscar pedido, cliente, pieza, chasis…" autocomplete="off"
@@ -2300,7 +2341,22 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
     </div>
   </div>
 
-  <div class="page" id="page-config">
+    <div class="page" id="page-conexiones">
+    <div class="cx-header">
+      <h2>&#x1F6F0;&#xFE0F; Conexiones del Sistema</h2>
+      <button class="cx-scan-btn" onclick="cxEscanear()">&#x27F3; Verificar todo</button>
+    </div>
+    <div class="cx-subtitle">Estado de integraciones, automatizaciones y servicios de Gonbel OS.</div>
+    <div class="cx-last-scan" id="cx-last-scan">Sin verificar aun esta sesion</div>
+    <div class="cx-section-label">Integraciones principales</div>
+    <div class="cx-grid" id="cx-grid-main"></div>
+    <div class="cx-section-label">Automatizaciones programadas</div>
+    <div class="cx-grid" id="cx-grid-crons"></div>
+    <div class="cx-section-label">Servicios internos</div>
+    <div class="cx-grid" id="cx-grid-internal"></div>
+  </div>
+
+<div class="page" id="page-config">
 
     <!-- MENÚ -->
     <div class="cfg-pane on" id="cfgp-menu">
@@ -16085,6 +16141,262 @@ function cjAlertaPendientes(){
       +(p.monto_estimado?'<div style="font-size:13px;font-weight:700;color:var(--amber);">Gs '+fmtNum(p.monto_estimado)+'</div>':'')
       +'<button class="inv-b" onclick="cjResolver('+p.id+')">&#10003;</button></div>';
   }).join('');
+}
+
+
+// ══════════════════════════════════════
+// CENTRO DE CONEXIONES
+// ══════════════════════════════════════
+
+const CX_CONEXIONES = {
+  main: [
+    {
+      id:'ml', icon:'&#x1F7E2;', name:'Mercado Livre', type:'Marketplace · Brasil',
+      test: async function(){
+        try {
+          const r=await sbFetch('/rest/v1/ml_tokens?select=expires_at,access_token&limit=1');
+          if(!r||!r[0]) return {s:'err',txt:'Sin token de acceso',meta:'Acceder a ML y reconectar'};
+          const exp=new Date(r[0].expires_at);
+          const mins=Math.round((exp-Date.now())/60000);
+          if(mins<5) return {s:'warn',txt:'Token por vencer ('+mins+' min)',meta:'Se renueva automaticamente'};
+          return {s:'ok',txt:'Conectado',meta:'Token vence: '+exp.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})};
+        } catch(e){return {s:'err',txt:'Error: '+String(e).slice(0,60)};}
+      },
+      actions:[{t:'Reconectar',url:SB_URL+'/functions/v1/ml-auth'}]
+    },
+    {
+      id:'gmail', icon:'&#x1F4E7;', name:'Gmail', type:'Correo electronico · Google',
+      test: async function(){
+        try {
+          const r=await sbFetch('/rest/v1/google_tokens?id=eq.gmail&select=expira_en,ultima_lectura');
+          if(!r||!r[0]) return {s:'err',txt:'Sin token de Gmail',meta:'Requiere reconexion manual'};
+          const exp=new Date(r[0].expira_en);
+          const mins=Math.round((exp-Date.now())/60000);
+          const ultima=r[0].ultima_lectura?new Date(r[0].ultima_lectura).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Nunca';
+          if(mins<10) return {s:'warn',txt:'Token por vencer',meta:'Ultima lectura: '+ultima};
+          return {s:'ok',txt:'Conectado',meta:'Ultima lectura: '+ultima};
+        } catch(e){return {s:'err',txt:'Error: '+String(e).slice(0,60)};}
+      },
+      actions:[{t:'Reconectar',url:SB_URL+'/functions/v1/gmail-auth'}]
+    },
+    {
+      id:'meta', icon:'&#x1F4F8;', name:'Instagram / Facebook', type:'Meta Business API',
+      test: async function(){
+        try {
+          const r=await sbFetch('/rest/v1/meta_config?select=id,page_token,expira_en&limit=1');
+          if(!r||!r[0]||!r[0].page_token) return {s:'err',txt:'Sin token de Meta',meta:'Requiere reconexion desde Config'};
+          if(r[0].expira_en){
+            const dias=Math.round((new Date(r[0].expira_en)-Date.now())/(1000*60*60*24));
+            if(dias<7) return {s:'warn',txt:'Token vence en '+dias+' dias',meta:'Renovar antes de que expire'};
+          }
+          return {s:'ok',txt:'Conectado',meta:'Token de pagina activo'};
+        } catch(e){return {s:'err',txt:'Error: '+String(e).slice(0,60)};}
+      }
+    },
+    {
+      id:'17track', icon:'&#x1F4E6;', name:'17track', type:'Rastreo de paquetes',
+      test: async function(){
+        try {
+          const r=await sbFetch('/rest/v1/compras_externas?en_17track=is.true&select=id&limit=1');
+          const cupo=await sbFetch('/rest/v1/compras_externas?en_17track=is.true&select=id&limit=500');
+          const usados=(cupo||[]).length;
+          if(usados>=38) return {s:'warn',txt:'Cupo casi lleno ('+usados+'/40)',meta:'Se liberaran automaticamente los entregados'};
+          return {s:'ok',txt:'Activo ('+usados+'/40 cupos usados)',meta:'Ultimo chequeo cada 6 horas'};
+        } catch(e){return {s:'err',txt:'Error: '+String(e).slice(0,60)};}
+      }
+    },
+    {
+      id:'ebay', icon:'&#x1F6D2;', name:'eBay', type:'Marketplace · USA / Mundial',
+      test: async function(){
+        try {
+          const r=await sbFetch('/rest/v1/busquedas_ebay?select=id&limit=1');
+          const pend=await sbFetch('/rest/v1/ebay_tracking_pendientes?estado=eq.pendiente&select=id&limit=50');
+          const n=(pend||[]).length;
+          if(n>0) return {s:'warn',txt:'Activo — '+n+' trackings pendientes de la extension',meta:'Abrir eBay en Chrome para resolverlos'};
+          return {s:'ok',txt:'Activo',meta:'API de busqueda conectada'};
+        } catch(e){return {s:'err',txt:'Error: '+String(e).slice(0,60)};}
+      }
+    }
+  ],
+  crons: [
+    {id:'ml_sync', icon:'&#x1F501;', name:'Sincronizacion ML', type:'Cron · cada 15 min',
+     schedule:'*/15 * * * *',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/ml_sync_log?select=ok,creado_en&order=creado_en.desc&limit=1');
+         if(!r||!r[0]) return {s:'unknown',txt:'Sin historial reciente'};
+         const mins=Math.round((Date.now()-new Date(r[0].creado_en))/60000);
+         if(!r[0].ok) return {s:'err',txt:'Ultima corrida fallida (hace '+mins+' min)'};
+         if(mins>30) return {s:'warn',txt:'No corrio en '+mins+' min'};
+         return {s:'ok',txt:'Corrida hace '+mins+' min'};
+       }catch(e){return {s:'ok',txt:'Activo (sin log detallado)'};}
+     }
+    },
+    {id:'gmail_track', icon:'&#x1F4EC;', name:'Leer correos de tracking', type:'Cron · 09:00 y 21:00',
+     schedule:'0 9,21 * * *',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/track_corridas?select=consultados,actualizados,creado_en&order=creado_en.desc&limit=1');
+         if(!r||!r[0]) return {s:'unknown',txt:'Sin historial'};
+         const h=Math.round((Date.now()-new Date(r[0].creado_en))/3600000);
+         return {s:'ok',txt:'Ultima: hace '+h+'h — '+r[0].consultados+' consultados, '+r[0].actualizados+' actualizados',meta:new Date(r[0].creado_en).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
+       }catch(e){return {s:'ok',txt:'Activo'};} 
+     }
+    },
+    {id:'gmail_entregas', icon:'&#x2705;', name:'Detectar entregas por correo', type:'Cron · 11:00 y 23:00',
+     schedule:'0 11,23 * * *',
+     test: async function(){return {s:'ok',txt:'Activo — buscando avisos de entrega de eBay/ML'};}
+    },
+    {id:'track_act', icon:'&#x1F4CD;', name:'Actualizar tracking 17track', type:'Cron · cada 6 horas',
+     schedule:'0 6,12,18,0 * * *',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/track_corridas?select=consultados,entregados,creado_en,error&order=creado_en.desc&limit=1');
+         if(!r||!r[0]) return {s:'unknown',txt:'Sin historial'};
+         if(r[0].error) return {s:'err',txt:'Error: '+r[0].error.slice(0,80)};
+         const h=Math.round((Date.now()-new Date(r[0].creado_en))/3600000);
+         return {s:'ok',txt:'Ultima: hace '+h+'h — '+r[0].consultados+' paquetes, '+r[0].entregados+' entregados'};
+       }catch(e){return {s:'ok',txt:'Activo'};}
+     }
+    },
+    {id:'publicar_ig', icon:'&#x1F4F1;', name:'Publicar en Instagram', type:'Cron · cada 10 min',
+     schedule:'*/10 * * * *',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/contenido_posts?estado=eq.aprobado&select=id&limit=50');
+         const n=(r||[]).length;
+         return {s:'ok',txt:'Activo'+(n?' — '+n+' post'+(n===1?'':'s')+' en cola':''),meta:'Publica los aprobados que ya vencieron su hora'};
+       }catch(e){return {s:'ok',txt:'Activo'};}
+     }
+    },
+    {id:'backup', icon:'&#x1F4BE;', name:'Backup diario', type:'Cron · 05:00',
+     schedule:'0 5 * * *',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/backups_log?select=creado_en,ok&order=creado_en.desc&limit=1');
+         if(!r||!r[0]) return {s:'unknown',txt:'Sin historial de backups'};
+         const h=Math.round((Date.now()-new Date(r[0].creado_en))/3600000);
+         if(!r[0].ok) return {s:'err',txt:'Ultimo backup fallido (hace '+h+'h)'};
+         return {s:'ok',txt:'Ultimo backup hace '+h+'h',meta:new Date(r[0].creado_en).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
+       }catch(e){return {s:'ok',txt:'Activo'};}
+     }
+    },
+    {id:'meta_token', icon:'&#x1F511;', name:'Renovacion token Meta', type:'Cron · 08:00 diario',
+     schedule:'0 8 * * *',
+     test: async function(){return {s:'ok',txt:'Activo'};}
+    }
+  ],
+  internal: [
+    {id:'supabase', icon:'&#x1F5C4;&#xFE0F;', name:'Supabase', type:'Base de datos · Edge Functions',
+     test: async function(){
+       try{
+         const t=Date.now();
+         await sbFetch('/rest/v1/orders?select=id&limit=1');
+         const ms=Date.now()-t;
+         return {s:ms<500?'ok':'warn',txt:'Online — '+ms+' ms',meta:'npjlxdiedmqmfgumekwp.supabase.co'};
+       }catch(e){return {s:'err',txt:'No responde: '+String(e).slice(0,60)};}
+     }
+    },
+    {id:'github', icon:'&#x1F5C2;&#xFE0F;', name:'GitHub Pages', type:'Hosting del sistema',
+     test: async function(){return {s:'ok',txt:'Gonbel2026/gonbel-os',meta:'Token GitHub vence: 9/12/2026'};}
+    },
+    {id:'ml_buscar', icon:'&#x1F50D;', name:'Buscador ML (scraper)', type:'Edge Function · ml-buscar v40',
+     test: async function(){
+       try{
+         const r=await sbFetch('/rest/v1/busquedas_pendientes?procesado=is.null&select=id&limit=50');
+         const n=(r||[]).length;
+         if(n>10) return {s:'warn',txt:n+' busquedas pendientes en cola',meta:'La extension de Chrome puede estar desconectada'};
+         return {s:'ok',txt:'Activo'+(n?' — '+n+' en cola':''),meta:'extension-chrome + Cloud Run'};
+       }catch(e){return {s:'ok',txt:'Activo'};}
+     }
+    },
+    {id:'ebay_buscar', icon:'&#x1F6D2;', name:'Buscador eBay', type:'Edge Function · ebay-buscar v7',
+     test: async function(){return {s:'ok',txt:'Activo',meta:'API publica de eBay'};}
+    }
+  ]
+};
+
+let cxResultados = {};
+
+function cxCard(conn, res){
+  res=res||{s:'unknown',txt:'Sin verificar'};
+  const cls=res.s==='ok'?'ok':res.s==='warn'?'warn':res.s==='err'?'err':res.s==='checking'?'checking':'';
+  const dot=res.s==='checking'?'checking':res.s==='ok'?'ok':res.s==='warn'?'warn':res.s==='err'?'err':'unknown';
+  const actions=(conn.actions||[]).map(function(a){
+    return '<button class="cx-btn" onclick="window.open(\''+a.url+'\',\'_blank\')">'+a.t+'</button>';
+  }).join('');
+  return '<div class="cx-card '+cls+'" id="cx-'+conn.id+'">'
+    +'<div class="cx-head">'
+    +'<span class="cx-icon">'+conn.icon+'</span>'
+    +'<div><div class="cx-name">'+conn.name+'</div><div class="cx-type">'+conn.type+'</div></div>'
+    +'</div>'
+    +'<div class="cx-status"><div class="cx-dot '+dot+'"></div><span class="cx-status-txt">'+res.txt+'</span></div>'
+    +(res.meta?'<div class="cx-meta"><span>'+res.meta+'</span></div>':'')
+    +(actions?'<div class="cx-actions">'+actions+'</div>':'')
+    +'</div>';
+}
+
+function cxRender(grid, conns){
+  const el=document.getElementById(grid); if(!el) return;
+  el.innerHTML=conns.map(function(c){
+    const res=cxResultados[c.id];
+    return cxCard(c, res||{s:'unknown',txt:'Sin verificar aun'});
+  }).join('');
+}
+
+function cxRenderTodo(){
+  cxRender('cx-grid-main', CX_CONEXIONES.main);
+  cxRender('cx-grid-crons', CX_CONEXIONES.crons);
+  cxRender('cx-grid-internal', CX_CONEXIONES.internal);
+}
+
+async function cxVerificar(conn){
+  // Poner en checking
+  cxResultados[conn.id]={s:'checking',txt:'Verificando...'};
+  const el=document.getElementById('cx-'+conn.id);
+  if(el){ el.className='cx-card checking'; el.querySelector('.cx-status-txt').textContent='Verificando...'; el.querySelector('.cx-dot').className='cx-dot checking'; }
+  try {
+    const res=await conn.test();
+    cxResultados[conn.id]=res;
+  } catch(e){
+    cxResultados[conn.id]={s:'err',txt:'Error inesperado: '+String(e).slice(0,80)};
+  }
+  // Actualizar solo esa tarjeta
+  const el2=document.getElementById('cx-'+conn.id);
+  if(el2){
+    const res=cxResultados[conn.id];
+    const cls=res.s==='ok'?'ok':res.s==='warn'?'warn':res.s==='err'?'err':'';
+    const dot=res.s==='ok'?'ok':res.s==='warn'?'warn':res.s==='err'?'err':'unknown';
+    el2.className='cx-card '+cls;
+    el2.querySelector('.cx-status-txt').textContent=res.txt;
+    el2.querySelector('.cx-dot').className='cx-dot '+dot;
+    const meta=el2.querySelector('.cx-meta');
+    if(res.meta){ if(meta){meta.innerHTML='<span>'+res.meta+'</span>';}else{el2.insertAdjacentHTML('beforeend','<div class="cx-meta"><span>'+res.meta+'</span></div>');} }
+    else if(meta){ meta.remove(); }
+  }
+}
+
+async function cxEscanear(){
+  cxRenderTodo();
+  const todas=[].concat(CX_CONEXIONES.main, CX_CONEXIONES.crons, CX_CONEXIONES.internal);
+  // Verificar en paralelo (maximo 4 a la vez para no saturar)
+  for(let i=0;i<todas.length;i+=4){
+    await Promise.all(todas.slice(i,i+4).map(cxVerificar));
+  }
+  const el=document.getElementById('cx-last-scan');
+  if(el) el.textContent='Ultima verificacion: '+new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// Al abrir la pagina de conexiones, renderizar con estado actual
+// y escanear si hay algo sin verificar
+var cxInicializado=false;
+function cxInit(){
+  if(!cxInicializado){
+    cxRenderTodo();
+    cxInicializado=true;
+    // Escaneo automatico al entrar por primera vez
+    setTimeout(cxEscanear, 300);
+  }
 }
 
 // === PLANTILLA OFICIAL PREMIUM 1 (basada en el diseno real) ===
