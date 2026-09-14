@@ -4440,6 +4440,7 @@ function renderPiezasItems(){
         <button type="button" class="pz-loc ${it.loc?'on':''}" title="${it.loc?'Ya está en el local':'Marcar como llegada al local'}" onclick="piezasItems[${i}].loc=!piezasItems[${i}].loc;if(piezasItems[${i}].loc){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].ret=false;piezasItems[${i}].fl=new Date().toISOString();}renderPiezasItems()">📍</button>
         <button type="button" class="pz-env ${it.env?'on':''}" title="${it.env?'Ya enviada al cliente':'Marcar como enviada al cliente'}" onclick="piezasItems[${i}].env=!piezasItems[${i}].env;if(piezasItems[${i}].env){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].loc=true;piezasItems[${i}].ret=false;piezasItems[${i}].fen=new Date().toISOString();}renderPiezasItems();autoEntregarSiUnicaPieza(${i})">🚚</button>
         <button type="button" class="pz-bs" title="${(it.bs||'ml')==='ebay'?'Se busca en eBay (flete a Miami) — tocá para cambiar a Mercado Livre':'Se busca en Mercado Livre (flete a Foz) — tocá para cambiar a eBay'}" onclick="piezasItems[${i}].bs=((piezasItems[${i}].bs||'ml')==='ml'?'ebay':'ml');renderPiezasItems()">${(it.bs||'ml')==='ebay'?'🇺🇸':'🇧🇷'}</button>
+        <button type="button" class="pz-btn ${it.dev?'on':''}" style="${it.dev?'background:rgba(239,68,68,.18);color:var(--red);':''}" title="Devolucion" onclick="pzAbrirDevolucion(${i})">🔄</button>
         <button type="button" class="pz-btn" title="Quitar" onclick="delPiezaRow(${i})">✕</button>
       </div>
       <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' × Gs '+Number(it.p).toLocaleString('de-DE')+' = <b style="color:var(--t1)">Gs '+Number(it.q*it.p).toLocaleString('de-DE')+'</b>'):''}</div>
@@ -16444,6 +16445,59 @@ var pvDatos = [];
 var pvVistaActual = 'todos';
 var pvListaActual = [];
 var pvCargado = false;
+
+// Devolucion por pieza individual desde el desglose
+async function pzAbrirDevolucion(idx){
+  var it=piezasItems[idx]; if(!it) return;
+  var orderId=currentOrder&&currentOrder.id;
+  var desc=it.d||('Pieza #'+(idx+1));
+  var yaEnDev=it.dev;
+  var html='<div style="display:grid;gap:13px;">'
+    +'<div class="pg-hint" style="margin-bottom:0;">'
+    +(yaEnDev
+        ?'<b style="color:var(--red);">\uD83D\uDD04 '+desc+'</b> ya est\u00e1 marcada para devoluci\u00f3n.'
+        :'Marcando <b>'+desc+'</b> para devoluci\u00f3n. El resto del pedido no se afecta.')
+    +'</div>'
+    +'<div class="field"><label class="lbl">Motivo</label>'
+    +'<input class="inp" id="dev-pz-motivo" placeholder="Ej: lleg\u00f3 da\u00f1ada, no corresponde..." value="'+(it.dev_motivo||'')+'"></div>'
+    +'<div class="field"><label class="lbl">Fecha l\u00edmite para devolver (opcional)</label>'
+    +'<input class="inp" id="dev-pz-fecha" type="date" value="'+(it.dev_fecha||'')+'"></div>'
+    +(yaEnDev?'<button type="button" class="btn" style="background:rgba(255,255,255,.08);color:var(--t3);margin-top:4px;" onclick="pzCancelarDevolucion('+idx+');invCerrarModal()">\u2715 Cancelar devoluci\u00f3n de esta pieza</button>':'')
+    +'</div>';
+  invModal('\uD83D\uDD04 Devoluci\u00f3n: '+desc, html, async function(){
+    var motivo=(document.getElementById('dev-pz-motivo')||{}).value||'';
+    var fecha=(document.getElementById('dev-pz-fecha')||{}).value||'';
+    piezasItems[idx].dev=true;
+    piezasItems[idx].dev_motivo=motivo;
+    piezasItems[idx].dev_fecha=fecha;
+    try {
+      await sbFetch('/rest/v1/orders?id=eq.'+orderId,'PATCH',{
+        piezas_items:JSON.stringify(piezasItems),
+        estado:'devolucion'
+      });
+      if(currentOrder) currentOrder.estado='devolucion';
+      logHistory(orderId,'\uD83D\uDD04 Devoluci\u00f3n iniciada: '+desc+(motivo?' \u2014 '+motivo:'')+(fecha?' (hasta '+fecha+')':''));
+      renderPiezasItems();
+      var ord=(orders||[]).find(function(o){return o.id===orderId;});
+      if(ord){ord.estado='devolucion';ord.piezas_items=JSON.stringify(piezasItems);renderKanban();}
+      showToast('\uD83D\uDD04 '+desc+' marcada para devoluci\u00f3n','success');
+    } catch(e){showToast('Error al guardar','error');return false;}
+    return true;
+  });
+}
+
+async function pzCancelarDevolucion(idx){
+  var it=piezasItems[idx]; if(!it) return;
+  it.dev=false; it.dev_motivo=''; it.dev_fecha='';
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.'+(currentOrder&&currentOrder.id),'PATCH',{
+      piezas_items:JSON.stringify(piezasItems)
+    });
+    renderPiezasItems();
+    showToast('Devoluci\u00f3n cancelada','success');
+  } catch(e){showToast('Error','error');}
+}
+
 
 async function pvCargar(forzar){
   if(pvCargado && !forzar) return;
