@@ -15683,10 +15683,10 @@ async function pgComponer(cv, d){
   ctx.fillStyle = PG_CLARO; ctx.font = '700 27px "Barlow Condensed", sans-serif';
   ctx.fillText('BRASIL  ·  ESTADOS UNIDOS  ·  EUROPA  ·  CHINA', 168, topY + 96);
 
-  // 4. Bloque de título (deja lugar al sello a la derecha)
+  // 4. Bloque de título
   const maxT = W - 92 - 300;
-  // En historia el lienzo es mucho mas alto: el titulo se separa mas de la franja
-  const tY = topY + (esHist ? 230 : 178);
+  // En feed: desde la franja. En historia: anclado al pie junto al CTA
+  const tY = esHist ? (H - 120 - 620) : (topY + 178);
   ctx.fillStyle = '#fff'; ctx.fillRect(64, tY, 7, 92);
   const pieza = (d.pieza || '').toUpperCase();
   pgAjustar(ctx, pieza, t => t + 'px Anton, sans-serif', 70, maxT, 40);
@@ -15702,7 +15702,8 @@ async function pgComponer(cv, d){
   ctx.fillStyle = PG_CLARO; ctx.fillText(mar, 94, tY + 212);
 
   // 5. Sello
-  await pgSello(ctx, W - 288, topY + 144, 236);
+  const _selY = esHist ? (tY - 100) : (topY + 144);
+  await pgSello(ctx, W - 288, _selY, 236);
 
   // 6. Banda inferior (sólida, como en la referencia)
   const bandaY = H - pisoY - bandaH;
