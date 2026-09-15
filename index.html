@@ -15655,7 +15655,7 @@ async function pgComponer(cv, d){
 
   // Instagram tapa arriba el nombre de usuario y abajo la barra de respuesta:
   // en historias todo se corre para adentro de la zona segura.
-  const topY   = esHist ? 190 : 0;      // donde arranca la franja
+  const topY   = 0;      // la franja va pegada arriba en ambos formatos
   const bandaH = esHist ? 620 : 312;    // en historia el degradado es largo y suave
   const pisoY  = esHist ? 120 : 0;      // franja que tapa la barra de respuesta
 
@@ -15683,9 +15683,24 @@ async function pgComponer(cv, d){
   ctx.fillStyle = PG_CLARO; ctx.font = '700 27px "Barlow Condensed", sans-serif';
   ctx.fillText('BRASIL  ·  ESTADOS UNIDOS  ·  EUROPA  ·  CHINA', 168, topY + 96);
 
-  // 4. Bloque de título
+  // 4. Banda inferior PRIMERO (para que titulo y sello queden por ENCIMA,
+  // no tapados por ella — este era el bug real: se pintaba despues y ocultaba el texto)
+  const bandaY = H - pisoY - bandaH;
+  if(esHist){
+    const g = ctx.createLinearGradient(0, bandaY, 0, H);
+    g.addColorStop(0, 'rgba(10,12,16,0)');
+    g.addColorStop(0.08, 'rgba(10,12,16,.75)');
+    g.addColorStop(0.18, 'rgba(10,12,16,.94)');
+    g.addColorStop(0.30, '#0A0C10');
+    g.addColorStop(1, '#0A0C10');
+    ctx.fillStyle = g; ctx.fillRect(0, bandaY, W, H - bandaY);
+  } else {
+    ctx.fillStyle = '#0A0C10'; ctx.fillRect(0, bandaY, W, bandaH);
+  }
+  const pieH = H - pisoY;
+
+  // 5. Bloque de título (ahora SI, encima de la banda oscura)
   const maxT = W - 92 - 300;
-  // En feed: desde la franja. En historia: anclado al pie junto al CTA
   const tY = esHist ? (H - 120 - 620 + 70) : (topY + 178);
   ctx.fillStyle = '#fff'; ctx.fillRect(64, tY, 7, 92);
   const pieza = (d.pieza || '').toUpperCase();
@@ -15701,26 +15716,9 @@ async function pgComponer(cv, d){
   pgAjustar(ctx, mar, t => '500 ' + t + 'px "Barlow Condensed", sans-serif', 30, maxT, 20);
   ctx.fillStyle = PG_CLARO; ctx.fillText(mar, 94, tY + 212);
 
-  // 5. Sello
+  // 6. Sello (tambien encima de la banda)
   const _selY = esHist ? (tY + 6) : (topY + 144);
   await pgSello(ctx, W - 288, _selY, 236);
-
-  // 6. Banda inferior (sólida, como en la referencia)
-  const bandaY = H - pisoY - bandaH;
-  if(esHist){
-    // La foto llega hasta el borde: encima va solo un degradado, nunca un bloque
-    // negro. Antes tapaba un tercio de la imagen.
-    const g = ctx.createLinearGradient(0, bandaY, 0, H);
-    g.addColorStop(0, 'rgba(10,12,16,0)');
-    g.addColorStop(0.08, 'rgba(10,12,16,.75)');
-    g.addColorStop(0.18, 'rgba(10,12,16,.94)');
-    g.addColorStop(0.30, '#0A0C10');
-    g.addColorStop(1, '#0A0C10');
-    ctx.fillStyle = g; ctx.fillRect(0, bandaY, W, H - bandaY);
-  } else {
-    ctx.fillStyle = '#0A0C10'; ctx.fillRect(0, bandaY, W, bandaH);
-  }
-  const pieH = H - pisoY;   // desde donde se mide el contenido de abajo
 
   // 7. Llamada a la acción
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
