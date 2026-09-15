@@ -15712,8 +15712,9 @@ async function pgComponer(cv, d){
     // negro. Antes tapaba un tercio de la imagen.
     const g = ctx.createLinearGradient(0, bandaY, 0, H);
     g.addColorStop(0, 'rgba(10,12,16,0)');
-    g.addColorStop(0.45, 'rgba(10,12,16,.70)');
-    g.addColorStop(0.75, 'rgba(10,12,16,.93)');
+    g.addColorStop(0.08, 'rgba(10,12,16,.75)');
+    g.addColorStop(0.18, 'rgba(10,12,16,.94)');
+    g.addColorStop(0.30, '#0A0C10');
     g.addColorStop(1, '#0A0C10');
     ctx.fillStyle = g; ctx.fillRect(0, bandaY, W, H - bandaY);
   } else {
@@ -15896,6 +15897,8 @@ function pgAbrir(f, o, post){
   PG_W = PG_MEDIDAS[PG_FORMATO].w; PG_H = PG_MEDIDAS[PG_FORMATO].h;
   document.getElementById('pg-fmt-feed').classList.toggle('on', PG_FORMATO === 'feed');
   document.getElementById('pg-fmt-historia').classList.toggle('on', PG_FORMATO === 'historia');
+  const _prevEl = document.querySelector('.pg-prev');
+  if(_prevEl) _prevEl.style.aspectRatio = (PG_FORMATO === 'historia') ? '9/16' : '4/5';
   ['x','y','zoom'].forEach(k=>{
     const sl = document.getElementById({x:'pg-sl-x',y:'pg-sl-y',zoom:'pg-sl-z'}[k]);
     const et = document.getElementById({x:'pg-v-x',y:'pg-v-y',zoom:'pg-v-z'}[k]);
@@ -15944,6 +15947,10 @@ function pgFormato(f){
   document.getElementById('pg-fmt-historia').classList.toggle('on', f === 'historia');
   const sub = document.getElementById('pg-sub');
   if(sub) sub.textContent = (f === 'historia' ? 'Historia \u00b7 1080 \u00d7 1920' : 'Formato oficial \u00b7 1080 \u00d7 1350');
+  // El contenedor visual tiene que reflejar la proporcion real: sin esto,
+  // Historia (9:16) se ve recortada dentro del marco de Feed (4:5)
+  const prev = document.querySelector('.pg-prev');
+  if(prev) prev.style.aspectRatio = (f === 'historia') ? '9/16' : '4/5';
   pgRedibujar();
 }
 
