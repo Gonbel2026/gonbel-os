@@ -16692,6 +16692,9 @@ async function pgComponerPremium(cv, d, foto, wm){
   // El molde real, anclado al pie en historia
   ctx.drawImage(frame, 0, moldeY, 1080, 1350);
 
+  // Sello real, misma posicion y tamano que en Reposicion (x:W-288, y:144)
+  await pgSello(ctx, W - 288, moldeY + 144, 236);
+
   // Categoria: x:64,y:856, Barlow Medium 22px, letterspacing 0.30em
   const categoria = (d.categoria || '').toUpperCase();
   if(categoria){
