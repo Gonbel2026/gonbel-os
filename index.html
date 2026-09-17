@@ -16664,8 +16664,12 @@ function pgFramePremium(){
 async function pgComponerPremium(cv, d, foto, wm){
   const esHist = (d.formato || PG_FORMATO) === 'historia';
   const W = 1080, H = esHist ? 1920 : 1350;
-  // En historia el molde de 1350 se ancla al pie, dentro de la zona segura de IG
-  const moldeY = esHist ? (H - 120 - 1350) : 0;
+  // El molde es fijo en 1080x1350 (4:5); Historia es 1080x1920 (9:16).
+  // No se puede estirar sin deformar el logo y el texto, asi que se CENTRA
+  // verticalmente (reparte el sobrante arriba/abajo por igual) y se rellena
+  // el resto con un degradado que continua el propio degradado del molde,
+  // para que no se vea un corte brusco entre la foto y el diseno.
+  const moldeY = esHist ? Math.round((H - 1350) / 2) : 0;
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const frame = await pgFramePremium();
@@ -16689,8 +16693,25 @@ async function pgComponerPremium(cv, d, foto, wm){
   ctx.drawImage(wm, 260 + Math.round((560 - ww) / 2), moldeY + 320 + Math.round((560 - wh) / 2), ww, wh);
   ctx.restore();
 
-  // El molde real, anclado al pie en historia
+  // En Historia: extender el degradado del molde hacia arriba, para que la
+  // transicion foto->diseno sea continua en vez de un corte de golpe
+  if(esHist && moldeY > 0){
+    const gExt = ctx.createLinearGradient(0, 0, 0, moldeY);
+    gExt.addColorStop(0, 'rgba(10,12,16,0)');
+    gExt.addColorStop(1, 'rgba(10,12,16,0.78)');
+    ctx.fillStyle = gExt; ctx.fillRect(0, 0, W, moldeY);
+  }
+
+  // El molde real, centrado en historia
   ctx.drawImage(frame, 0, moldeY, 1080, 1350);
+
+  // En Historia: continuar el negro solido del molde hacia abajo, en vez
+  // de dejar foto cruda asomando debajo del diseno
+  const extraAbajo = H - (moldeY + 1350);
+  if(esHist && extraAbajo > 0){
+    ctx.fillStyle = '#0A0C10';
+    ctx.fillRect(0, moldeY + 1350, W, extraAbajo);
+  }
 
   // Sello real, misma posicion y tamano que en Reposicion (x:W-288, y:144)
   await pgSello(ctx, W - 288, moldeY + 144, 236);
