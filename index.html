@@ -6386,6 +6386,18 @@ function saveBigEdit(){
     document.getElementById('f-piezas').value = piezasItems.map(x=>x.d).join('\n');
     renderPiezasItems();
     if(proveedoresNuevos.length) registrarProveedoresLocales(proveedoresNuevos);
+    // El costo que el usuario acaba de escribir a mano en el desglose (cb de cada pieza)
+    // tiene que reflejarse YA en el campo Costo del pedido, sin esperar a que se reabra.
+    // Esto es una accion manual explicita del usuario, no un calculo automatico desde
+    // texto pegado -- la regla de 'costo solo automatico si viene de ML/eBay' sigue intacta,
+    // esto solo sincroniza lo que el propio usuario acaba de tipear y confirmar.
+    const sumaCb = piezasItems.reduce((s,x)=>s+((parseFloat(x.cb)||0)*(parseInt(x.q,10)||1)),0);
+    if(sumaCb > 0){
+      setMoney('f-costo', sumaCb);
+      costoAutoUltimo = sumaCb;
+      try{ calcMargen(); }catch(e){}
+      if(!cargandoPedido) scheduleAutoSave(400);
+    }
   } else {
     if(bigEditTarget) document.getElementById(bigEditTarget).value = document.getElementById('bigedit-ta').value;
   }
