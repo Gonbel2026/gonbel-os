@@ -1571,6 +1571,49 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .pv-tabla th{text-align:left;font-size:10.5px;color:var(--t3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--brd);}
 .pv-tabla td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
 .pv-tabla tr:hover td{background:rgba(255,255,255,.03);}
+
+/* === BANDEJA DE WHATSAPP === */
+#page-whatsapp{padding:0 !important;height:calc(100vh - var(--headh,140px));display:flex;}
+.wa-shell{display:flex;width:100%;height:100%;background:#0b1220;border-radius:14px;overflow:hidden;border:1px solid var(--brd);}
+.wa-lista{width:340px;flex-shrink:0;border-right:1px solid var(--brd);display:flex;flex-direction:column;background:rgba(255,255,255,.02);}
+.wa-lista-h{padding:16px;border-bottom:1px solid var(--brd);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+.wa-lista-body{flex:1;overflow-y:auto;}
+.wa-item{display:flex;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:.12s;position:relative;}
+.wa-item:hover,.wa-item.on{background:rgba(59,142,255,.08);}
+.wa-item.on{border-left:3px solid var(--blue);}
+.wa-ava{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0;font-size:15px;}
+.wa-item-body{flex:1;min-width:0;}
+.wa-item-nombre{font-size:13.5px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px;}
+.wa-item-msg{font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.wa-item-hora{font-size:10.5px;color:var(--t3);position:absolute;top:12px;right:14px;}
+.wa-badge-nl{background:var(--green);color:#04140b;font-size:10.5px;font-weight:800;border-radius:20px;padding:1px 7px;min-width:18px;text-align:center;}
+.wa-badge-pausa{font-size:9.5px;font-weight:800;letter-spacing:.03em;color:var(--amber);background:rgba(245,166,35,.15);border-radius:5px;padding:1px 6px;}
+.wa-chat{flex:1;display:flex;flex-direction:column;min-width:0;}
+.wa-chat-h{padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.02);}
+.wa-chat-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:9px;background:#0a0f1a;}
+.wa-msg{max-width:62%;padding:9px 13px;border-radius:11px;font-size:13.5px;line-height:1.4;position:relative;}
+.wa-msg.entrante{align-self:flex-start;background:#1e2939;color:#e8edf5;border-bottom-left-radius:3px;}
+.wa-msg.saliente{align-self:flex-end;background:#0b5b3f;color:#e8f5ee;border-bottom-right-radius:3px;}
+.wa-msg.ia{background:#1a3a5c;}
+.wa-msg-meta{font-size:9.5px;opacity:.55;margin-top:4px;text-align:right;}
+.wa-chat-input{display:flex;gap:9px;padding:13px 16px;border-top:1px solid var(--brd);background:rgba(255,255,255,.02);}
+.wa-chat-input input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:20px;padding:10px 16px;color:var(--t1);font-size:13.5px;outline:none;}
+.wa-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px;flex-direction:column;gap:10px;}
+.wa-toggle-ia{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;cursor:pointer;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--brd);}
+.wa-toggle-ia.pausada{background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.3);color:var(--amber);}
+.wa-toggle-ia.activa{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.28);color:var(--green);}
+.wa-back-mobile{display:none;}
+
+@media(max-width:760px){
+  #page-whatsapp{height:calc(100vh - 120px);}
+  .wa-shell{border-radius:0;}
+  .wa-lista{width:100%;border-right:none;}
+  .wa-lista.oculto-mobile{display:none;}
+  .wa-chat{display:none;}
+  .wa-chat.activo-mobile{display:flex;position:absolute;inset:0;background:#0a0f1a;z-index:5;}
+  .wa-back-mobile{display:flex;background:none;border:none;color:var(--t1);font-size:20px;cursor:pointer;padding:0 4px;}
+  .wa-msg{max-width:80%;}
+}
 </style>
 </head>
 <body>
@@ -1660,6 +1703,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   <a class="sb-item" data-page="clientes" onclick="showPage('clientes',this)"><span class="si">👥</span> Clientes</a>
   <a class="sb-item" data-page="proveedores" onclick="showPage('proveedores',this)"><span class="si">🏭</span> Proveedores</a>
   <a class="sb-item" data-page="config" onclick="showPage('config',this)"><span class="si">⚙️</span> Configuración</a>
+  <a class="sb-item" data-page="whatsapp" onclick="showPage('whatsapp',this)"><span class="si">💬</span> WhatsApp</a>
   <a class="sb-item" data-page="conexiones" onclick="showPage('conexiones',this)"><span class="si">🛰️</span> Conexiones</a>
   <div class="ah-acciones">
     <div class="gb-wrap">
@@ -2374,6 +2418,21 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <button class="bs-chip" id="pvf-otros" onclick="pvVista('otros')">Otros</button>
     </div>
     <div id="pv-cuerpo"></div>
+  </div>
+
+  <div class="page" id="page-whatsapp">
+    <div class="wa-shell">
+      <div class="wa-lista" id="wa-lista">
+        <div class="wa-lista-h">&#x1F4AC; WhatsApp <span id="wa-total-nl" style="margin-left:auto;"></span></div>
+        <div class="wa-lista-body" id="wa-lista-body"></div>
+      </div>
+      <div class="wa-chat" id="wa-chat">
+        <div class="wa-empty" id="wa-empty">
+          <div style="font-size:34px;">&#x1F4AC;</div>
+          <div>Eleg\u00ed una conversaci\u00f3n para verla</div>
+        </div>
+      </div>
+    </div>
   </div>
 
 <div class="page" id="page-conexiones">
@@ -3457,6 +3516,7 @@ function pintarPaginaActiva(){
   if(activa('page-financiero')) fpSimple();
   if(activa('page-clientes'))   renderClientes();
   if(activa('page-proveedores')){ pvCargar(); }
+  if(activa('page-whatsapp')){ waCargar(); waIniciarPolling(); }
   if(activa('page-conexiones')){ cxRenderTodo(); if(!cxInicializado){ cxInicializado=true; setTimeout(cxEscanear,300); } }
   if(activa('page-financiero')) { alertaSinCosto(); cargarPagosPendientes(); }
 }
@@ -16653,6 +16713,182 @@ function pvVerDetalle(idx){
     }).join('')
     +'</div>';
   invModal(p.nombre, html, null);
+}
+
+
+
+// BANDEJA DE WHATSAPP
+var waHilos = [];
+var waHiloActivo = null;
+var waMsgsCache = {};
+var waCargado = false;
+var waPollTimer = null;
+
+async function waCargar(forzar){
+  if(waCargado && !forzar) return;
+  try {
+    waHilos = await sbFetch('/rest/v1/wa_hilos?select=*&order=ultimo_msg_en.desc&limit=200') || [];
+  } catch(e){ waHilos = []; }
+  waCargado = true;
+  waRenderLista();
+  waActualizarContador();
+}
+
+function waActualizarContador(){
+  var total = waHilos.reduce(function(s,h){return s+(h.no_leidos||0);},0);
+  var el = document.getElementById('wa-total-nl');
+  if(el) el.innerHTML = total>0 ? '<span class="wa-badge-nl">'+total+'</span>' : '';
+}
+
+function waIniciales(nombre, waId){
+  if(nombre) return nombre.trim().slice(0,2).toUpperCase();
+  return (waId||'??').slice(-2);
+}
+
+function waFormatoHora(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  var hoy = new Date();
+  var esHoy = d.toDateString()===hoy.toDateString();
+  return esHoy ? d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})
+               : d.toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'});
+}
+
+function waRenderLista(){
+  var cont = document.getElementById('wa-lista-body'); if(!cont) return;
+  if(!waHilos.length){
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12.5px;">Todav\\u00eda no hay conversaciones.</div>';
+    return;
+  }
+  cont.innerHTML = waHilos.map(function(h){
+    var nombre = h.nombre || h.wa_id;
+    var pausaTag = h.ia_pausada ? '<span class="wa-badge-pausa">'+(h.pausada_por||'HUMANO').toUpperCase()+'</span>' : '';
+    return '<div class="wa-item '+(waHiloActivo===h.id?'on':'')+'" onclick="waAbrir('+h.id+')">'
+      +'<div class="wa-ava">'+waIniciales(h.nombre,h.wa_id)+'</div>'
+      +'<div class="wa-item-body">'
+        +'<div class="wa-item-nombre">'+nombre+' '+pausaTag+'</div>'
+        +'<div class="wa-item-msg">'+(h.ultimo_msg||'')+'</div>'
+      +'</div>'
+      +'<div class="wa-item-hora">'+waFormatoHora(h.ultimo_msg_en)+'</div>'
+      +(h.no_leidos>0?'<span class="wa-badge-nl" style="position:absolute;bottom:12px;right:14px;">'+h.no_leidos+'</span>':'')
+      +'</div>';
+  }).join('');
+}
+
+async function waAbrir(hiloId){
+  waHiloActivo = hiloId;
+  waRenderLista();
+  var h = waHilos.find(function(x){return x.id===hiloId;});
+  if(!h) return;
+
+  // Marcar como leido
+  if(h.no_leidos>0){
+    h.no_leidos = 0;
+    try { await sbFetch('/rest/v1/wa_hilos?id=eq.'+hiloId,'PATCH',{no_leidos:0}); } catch(e){}
+    waActualizarContador();
+  }
+
+  var chat = document.getElementById('wa-chat');
+  var esBz = currentUser && currentUser.role === 'finanzas';
+  var pausada = h.ia_pausada;
+
+  chat.innerHTML = '<div class="wa-chat-h">'
+    + '<button class="wa-back-mobile" onclick="waVolverLista()">&#8592;</button>'
+    + '<div class="wa-ava">'+waIniciales(h.nombre,h.wa_id)+'</div>'
+    + '<div><div style="font-weight:700;font-size:14px;">'+(h.nombre||h.wa_id)+'</div><div style="font-size:11.5px;color:var(--t3);">'+h.wa_id+'</div></div>'
+    + '<div class="wa-toggle-ia '+(pausada?'pausada':'activa')+'" onclick="waToggleIA('+hiloId+')">'
+        + (pausada ? '\\u23F8\\uFE0F IA pausada \\u2014 toc\\u00e1 para reanudar' : '\\u2705 IA activa \\u2014 toc\\u00e1 para pausar')
+      + '</div>'
+    + '</div>'
+    + '<div class="wa-chat-body" id="wa-chat-body"><div style="text-align:center;color:var(--t3);font-size:12px;">Cargando...</div></div>'
+    + '<div class="wa-chat-input">'
+      + '<input type="text" id="wa-input-txt" placeholder="Escrib\\u00ed un mensaje..." onkeydown="waTeclaInput(event,'+hiloId+')">'
+      + '<button class="btn btn-primary" onclick="waEnviar('+hiloId+')">Enviar</button>'
+    + '</div>';
+
+  chat.classList.add('activo-mobile');
+  document.getElementById('wa-lista').classList.add('oculto-mobile');
+
+  await waCargarMensajes(hiloId);
+}
+
+function waVolverLista(){
+  document.getElementById('wa-chat').classList.remove('activo-mobile');
+  document.getElementById('wa-lista').classList.remove('oculto-mobile');
+}
+
+async function waCargarMensajes(hiloId){
+  var msgs = [];
+  try { msgs = await sbFetch('/rest/v1/wa_msgs?hilo_id=eq.'+hiloId+'&order=creado_en.asc&limit=200') || []; } catch(e){}
+  waMsgsCache[hiloId] = msgs;
+  waPintarMensajes(hiloId);
+}
+
+function waPintarMensajes(hiloId){
+  var body = document.getElementById('wa-chat-body'); if(!body) return;
+  var msgs = waMsgsCache[hiloId] || [];
+  if(!msgs.length){
+    body.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;">Sin mensajes todav\\u00eda.</div>';
+    return;
+  }
+  body.innerHTML = msgs.map(function(m){
+    var esIa = m.autor === 'ia';
+    var hora = new Date(m.creado_en).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+    var autorTag = m.direccion==='saliente' ? (esIa?'IA':(m.autor||'').toUpperCase())+' \\u00b7 ' : '';
+    return '<div class="wa-msg '+m.direccion+(esIa?' ia':'')+'">'+(m.texto||'')
+      +'<div class="wa-msg-meta">'+autorTag+hora+'</div></div>';
+  }).join('');
+  body.scrollTop = body.scrollHeight;
+}
+
+function waTeclaInput(e, hiloId){
+  if(e.key === 'Enter') waEnviar(hiloId);
+}
+
+async function waEnviar(hiloId){
+  var input = document.getElementById('wa-input-txt');
+  var texto = (input.value||'').trim();
+  if(!texto) return;
+  input.value = '';
+  try {
+    await sbFetch('/functions/v1/wa-enviar','POST',{
+      hilo_id: hiloId, texto: texto,
+      autor: currentUser ? currentUser.role : 'lucas'
+    });
+    await waCargarMensajes(hiloId);
+    await waCargar(true);
+    // Al enviar, la IA queda pausada en este hilo -- refrescar el encabezado
+    var h = waHilos.find(function(x){return x.id===hiloId;});
+    if(h){ h.ia_pausada = true; h.pausada_por = currentUser?currentUser.role:'lucas'; }
+    waAbrir(hiloId);
+  } catch(e){ showToast('No se pudo enviar','error'); }
+}
+
+async function waToggleIA(hiloId){
+  var h = waHilos.find(function(x){return x.id===hiloId;});
+  if(!h) return;
+  var nuevoEstado = !h.ia_pausada;
+  try {
+    await sbFetch('/rest/v1/wa_hilos?id=eq.'+hiloId,'PATCH',{
+      ia_pausada: nuevoEstado,
+      pausada_por: nuevoEstado ? (currentUser?currentUser.role:'lucas') : null,
+      pausada_en: nuevoEstado ? new Date().toISOString() : null
+    });
+    h.ia_pausada = nuevoEstado;
+    h.pausada_por = nuevoEstado ? (currentUser?currentUser.role:'lucas') : null;
+    showToast(nuevoEstado ? 'IA pausada en esta conversaci\\u00f3n' : 'IA reactivada','success');
+    waAbrir(hiloId);
+  } catch(e){ showToast('Error al cambiar el estado','error'); }
+}
+
+// Actualizacion en vivo: cada 8 segundos, mientras la pagina esta abierta
+function waIniciarPolling(){
+  if(waPollTimer) return;
+  waPollTimer = setInterval(function(){
+    if(!document.getElementById('page-whatsapp') || !document.getElementById('page-whatsapp').classList.contains('active')) return;
+    waCargar(true);
+    if(waHiloActivo) waCargarMensajes(waHiloActivo);
+  }, 8000);
 }
 
 
