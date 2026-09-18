@@ -1573,7 +1573,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .pv-tabla tr:hover td{background:rgba(255,255,255,.03);}
 
 /* === BANDEJA DE WHATSAPP === */
-#page-whatsapp{padding:0 !important;height:calc(100vh - var(--headh,140px));display:flex;}
+#page-whatsapp{padding:0 !important;height:calc(100vh - 220px);min-height:520px;display:flex !important;flex-direction:row !important;gap:0 !important;}
 .wa-shell{display:flex;width:100%;height:100%;background:#0b1220;border-radius:14px;overflow:hidden;border:1px solid var(--brd);}
 .wa-lista{width:340px;flex-shrink:0;border-right:1px solid var(--brd);display:flex;flex-direction:column;background:rgba(255,255,255,.02);}
 .wa-lista-h{padding:16px;border-bottom:1px solid var(--brd);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
@@ -2439,7 +2439,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <div class="wa-chat" id="wa-chat">
         <div class="wa-empty" id="wa-empty">
           <div style="font-size:34px;">&#x1F4AC;</div>
-          <div>Eleg\u00ed una conversaci\u00f3n para verla</div>
+          <div>Elegí una conversación para verla</div>
         </div>
       </div>
     </div>
@@ -9420,6 +9420,7 @@ function showPage(id, el){
   if(id==='inventario') invCargar();
   if(id==='mapasistema') msPintar();
   if(id==='contenido') ctCargar();
+  if(id==='whatsapp'){ waCargar(true); waIniciarPolling(); }
 }
 
 // ══════ MAPA DEL SISTEMA ══════
