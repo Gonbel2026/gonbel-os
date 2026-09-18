@@ -2433,7 +2433,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   <div class="page" id="page-whatsapp">
     <div class="wa-shell">
       <div class="wa-lista" id="wa-lista">
-        <div class="wa-lista-h">&#x1F4AC; WhatsApp <span id="wa-total-nl" style="margin-left:auto;"></span></div>
+        <div class="wa-lista-h" style="flex-direction:column;align-items:stretch;gap:9px;"><div style="display:flex;align-items:center;gap:6px;">&#x1F4AC; WhatsApp <span id="wa-total-nl" style="margin-left:auto;"></span></div><input type="text" id="wa-buscar" placeholder="Buscar..." style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:8px;padding:7px 11px;color:var(--t1);font-size:12.5px;outline:none;box-sizing:border-box;" oninput="waRenderLista()"><div style="display:flex;gap:6px;"><button type="button" class="wa-filtro on" id="wa-f-todas" onclick="waFiltrar('todas')" style="flex:1;font-size:11px;padding:5px 4px;border-radius:7px;border:1px solid var(--brd);background:rgba(59,142,255,.14);color:var(--blue);cursor:pointer;">Todas</button><button type="button" class="wa-filtro" id="wa-f-atencion" onclick="waFiltrar('atencion')" style="flex:1;font-size:11px;padding:5px 4px;border-radius:7px;border:1px solid var(--brd);background:rgba(255,255,255,.04);color:var(--t3);cursor:pointer;">Urgentes</button><button type="button" class="wa-filtro" id="wa-f-noleidas" onclick="waFiltrar('noleidas')" style="flex:1;font-size:11px;padding:5px 4px;border-radius:7px;border:1px solid var(--brd);background:rgba(255,255,255,.04);color:var(--t3);cursor:pointer;">Sin leer</button></div></div>
         <div class="wa-lista-body" id="wa-lista-body"></div>
       </div>
       <div class="wa-chat" id="wa-chat">
@@ -16817,13 +16817,36 @@ function waFormatoHora(iso){
                : d.toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'});
 }
 
+var waFiltroActual = 'todas';
+function waFiltrar(f){
+  waFiltroActual = f;
+  ['todas','atencion','noleidas'].forEach(function(k){
+    var b = document.getElementById('wa-f-'+k);
+    if(!b) return;
+    var on = (k===f);
+    b.style.background = on ? 'rgba(59,142,255,.14)' : 'rgba(255,255,255,.04)';
+    b.style.color = on ? 'var(--blue)' : 'var(--t3)';
+  });
+  waRenderLista();
+}
+
 function waRenderLista(){
   var cont = document.getElementById('wa-lista-body'); if(!cont) return;
-  if(!waHilos.length){
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12.5px;">Todavía no hay conversaciones.</div>';
+  var q = ((document.getElementById('wa-buscar')||{}).value||'').toLowerCase().trim();
+  var lista = waHilos.filter(function(h){
+    if(waFiltroActual==='atencion' && !h.requiere_atencion) return false;
+    if(waFiltroActual==='noleidas' && !(h.no_leidos>0)) return false;
+    if(q){
+      var blob = ((h.nombre||'')+' '+(h.wa_id||'')+' '+(h.ultimo_msg||'')).toLowerCase();
+      if(blob.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  if(!lista.length){
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12.5px;">'+(q||waFiltroActual!=='todas'?'Sin resultados para este filtro.':'Todavía no hay conversaciones.')+'</div>';
     return;
   }
-  cont.innerHTML = waHilos.map(function(h){
+  cont.innerHTML = lista.map(function(h){
     var nombre = h.nombre || h.wa_id;
     var pausaTag = '';
     if(h.requiere_atencion){
@@ -16870,7 +16893,7 @@ async function waAbrir(hiloId){
     + '</div>'
     + '<div class="wa-chat-body" id="wa-chat-body"><div style="text-align:center;color:var(--t3);font-size:12px;">Cargando...</div></div>'
     + '<div class="wa-chat-input">'
-      + '<input type="text" id="wa-input-txt" placeholder="Escribí un mensaje..." onkeydown="waTeclaInput(event,'+hiloId+')">'
+      + '<textarea id="wa-input-txt" rows="1" placeholder="Escribí un mensaje... (Enter para enviar, Shift+Enter para bajar de linea)" onkeydown="waTeclaInput(event,'+hiloId+')" oninput="waAjustarAlto(this)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:16px;padding:10px 16px;color:var(--t1);font-size:13.5px;outline:none;resize:none;max-height:110px;font-family:inherit;line-height:1.4;"></textarea>'
       + '<button class="btn btn-primary" onclick="waEnviar('+hiloId+')">Enviar</button>'
     + '</div>';
 
@@ -16910,7 +16933,15 @@ function waPintarMensajes(hiloId){
 }
 
 function waTeclaInput(e, hiloId){
-  if(e.key === 'Enter') waEnviar(hiloId);
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    waEnviar(hiloId);
+  }
+}
+
+function waAjustarAlto(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
 }
 
 async function waEnviar(hiloId){
@@ -16918,6 +16949,7 @@ async function waEnviar(hiloId){
   var texto = (input.value||'').trim();
   if(!texto) return;
   input.value = '';
+  input.style.height = 'auto';
   try {
     await sbFetch('/functions/v1/wa-enviar','POST',{
       hilo_id: hiloId, texto: texto,
