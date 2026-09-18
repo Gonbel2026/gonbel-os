@@ -16820,7 +16820,7 @@ function waFormatoHora(iso){
 function waRenderLista(){
   var cont = document.getElementById('wa-lista-body'); if(!cont) return;
   if(!waHilos.length){
-    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12.5px;">Todav\\u00eda no hay conversaciones.</div>';
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12.5px;">Todavía no hay conversaciones.</div>';
     return;
   }
   cont.innerHTML = waHilos.map(function(h){
@@ -16865,12 +16865,12 @@ async function waAbrir(hiloId){
     + '<div class="wa-ava">'+waIniciales(h.nombre,h.wa_id)+'</div>'
     + '<div><div style="font-weight:700;font-size:14px;">'+(h.nombre||h.wa_id)+'</div><div style="font-size:11.5px;color:var(--t3);">'+h.wa_id+'</div></div>'
     + '<div class="wa-toggle-ia '+(pausada?'pausada':'activa')+'" onclick="waToggleIA('+hiloId+')">'
-        + (pausada ? '\\u23F8\\uFE0F IA pausada \\u2014 toc\\u00e1 para reanudar' : '\\u2705 IA activa \\u2014 toc\\u00e1 para pausar')
+        + (pausada ? '⏸️ IA pausada — tocá para reanudar' : '✅ IA activa — tocá para pausar')
       + '</div>'
     + '</div>'
     + '<div class="wa-chat-body" id="wa-chat-body"><div style="text-align:center;color:var(--t3);font-size:12px;">Cargando...</div></div>'
     + '<div class="wa-chat-input">'
-      + '<input type="text" id="wa-input-txt" placeholder="Escrib\\u00ed un mensaje..." onkeydown="waTeclaInput(event,'+hiloId+')">'
+      + '<input type="text" id="wa-input-txt" placeholder="Escribí un mensaje..." onkeydown="waTeclaInput(event,'+hiloId+')">'
       + '<button class="btn btn-primary" onclick="waEnviar('+hiloId+')">Enviar</button>'
     + '</div>';
 
@@ -16896,13 +16896,13 @@ function waPintarMensajes(hiloId){
   var body = document.getElementById('wa-chat-body'); if(!body) return;
   var msgs = waMsgsCache[hiloId] || [];
   if(!msgs.length){
-    body.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;">Sin mensajes todav\\u00eda.</div>';
+    body.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;">Sin mensajes todavía.</div>';
     return;
   }
   body.innerHTML = msgs.map(function(m){
     var esIa = m.autor === 'ia';
     var hora = new Date(m.creado_en).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-    var autorTag = m.direccion==='saliente' ? (esIa?'IA':(m.autor||'').toUpperCase())+' \\u00b7 ' : '';
+    var autorTag = m.direccion==='saliente' ? (esIa?'IA':(m.autor||'').toUpperCase())+' · ' : '';
     return '<div class="wa-msg '+m.direccion+(esIa?' ia':'')+'">'+(m.texto||'')
       +'<div class="wa-msg-meta">'+autorTag+hora+'</div></div>';
   }).join('');
@@ -16944,7 +16944,7 @@ async function waToggleIA(hiloId){
     });
     h.ia_pausada = nuevoEstado;
     h.pausada_por = nuevoEstado ? (currentUser?currentUser.role:'lucas') : null;
-    showToast(nuevoEstado ? 'IA pausada en esta conversaci\\u00f3n' : 'IA reactivada','success');
+    showToast(nuevoEstado ? 'IA pausada en esta conversación' : 'IA reactivada','success');
     waAbrir(hiloId);
   } catch(e){ showToast('Error al cambiar el estado','error'); }
 }
