@@ -1766,6 +1766,16 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <div id="ml-msg-lista"></div>
     </div>
 
+    <div id="wa-atencion-banner" style="display:none;border:1px solid var(--red);border-radius:14px;padding:15px 17px;margin-bottom:16px;background:rgba(239,68,68,.08);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;flex-wrap:wrap;">
+        <span style="font-size:17px;">💬</span>
+        <span style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff;">WhatsApp — necesitan tu atención</span>
+        <span id="wa-atencion-contador" style="font-size:12px;color:var(--t3);"></span>
+        <button type="button" onclick="document.getElementById('wa-atencion-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;" title="Cerrar aviso">&times;</button>
+      </div>
+      <div id="wa-atencion-lista"></div>
+    </div>
+
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr) auto;">
       <div class="stat s-blue cc-clic" onclick="ccVerLista('activos')"><span class="stat-icon">📋</span><div class="stat-val" id="cc-activos">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-cyan cc-clic" onclick="ccVerLista('encamino')"><span class="stat-icon">🚚</span><div class="stat-val" id="cc-encamino">—</div><div class="stat-lbl">En camino</div></div>
@@ -3478,7 +3488,8 @@ async function loadAll(){
     foCargarConteos(),
     cargarPagosPendientes(),
     cargarComprasExternas(),
-    cargarTareas()
+    cargarTareas(),
+    waCargarAtencion()
   ];
 
   try {
@@ -16717,6 +16728,57 @@ function pvVerDetalle(idx){
 
 
 
+// Banner de "requiere atencion" en el Centro de Control
+async function waCargarAtencion(){
+  var rows = [];
+  try {
+    rows = await sbFetch('/rest/v1/wa_hilos?requiere_atencion=is.true&descartada=is.false&select=*&order=pausada_en.desc&limit=30') || [];
+  } catch(e){ rows = []; }
+  window._waAtencionRows = rows;
+  var banner = document.getElementById('wa-atencion-banner');
+  var lista = document.getElementById('wa-atencion-lista');
+  var contador = document.getElementById('wa-atencion-contador');
+  if(!banner || !lista) return;
+  if(!rows.length){ banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+  if(contador) contador.textContent = rows.length + ' pendiente' + (rows.length===1?'':'s');
+
+  var etiquetas = { descuento:'Pidi\u00f3 descuento', reclamo:'Reclamo', cotizacion:'Pieza sin stock', manual:'Atenci\u00f3n manual' };
+  var colores = { descuento:'var(--amber)', reclamo:'var(--red)', cotizacion:'var(--blue)', manual:'var(--t3)' };
+
+  lista.innerHTML = rows.map(function(h){
+    var motivo = h.motivo_atencion || 'manual';
+    var etiqueta = etiquetas[motivo] || motivo;
+    var color = colores[motivo] || 'var(--t3)';
+    var nombre = h.nombre || h.wa_id;
+    return '<div style="display:flex;gap:11px;align-items:center;padding:10px 12px;border:1px solid var(--brd);border-radius:10px;margin-bottom:7px;background:rgba(255,255,255,.03);flex-wrap:wrap;">'
+      + '<div style="flex:1;min-width:180px;">'
+        + '<div style="font-size:13.5px;color:var(--t1);font-weight:600;">'+nombre+' <span style="font-size:11px;color:'+color+';font-weight:700;margin-left:4px;">'+etiqueta+'</span></div>'
+        + '<div style="font-size:11.5px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px;">'+(h.ultimo_msg||'')+'</div>'
+        + (h.vehiculo_datos ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\uD83D\uDE97 '+h.vehiculo_datos+'</div>' : '')
+      + '</div>'
+      + '<button class="inv-b" onclick="waAbrirDesdeControl('+h.id+')">Abrir</button>'
+      + '<button class="inv-b" onclick="waDescartarAtencion('+h.id+')" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar aviso">&times;</button>'
+      + '</div>';
+  }).join('');
+}
+
+async function waDescartarAtencion(hiloId){
+  try { await sbFetch('/rest/v1/wa_hilos?id=eq.'+hiloId,'PATCH',{descartada:true}); } catch(e){}
+  window._waAtencionRows = (window._waAtencionRows||[]).filter(function(h){return h.id!==hiloId;});
+  waCargarAtencion();
+}
+
+function waAbrirDesdeControl(hiloId){
+  var link = document.querySelector('[data-page="whatsapp"]');
+  if(link) showPage('whatsapp', link);
+  setTimeout(async function(){
+    await waCargar(true);
+    waAbrir(hiloId);
+  }, 150);
+}
+
+
 // BANDEJA DE WHATSAPP
 var waHilos = [];
 var waHiloActivo = null;
@@ -16762,7 +16824,12 @@ function waRenderLista(){
   }
   cont.innerHTML = waHilos.map(function(h){
     var nombre = h.nombre || h.wa_id;
-    var pausaTag = h.ia_pausada ? '<span class="wa-badge-pausa">'+(h.pausada_por||'HUMANO').toUpperCase()+'</span>' : '';
+    var pausaTag = '';
+    if(h.requiere_atencion){
+      pausaTag = '<span class="wa-badge-pausa" style="color:var(--red);background:rgba(239,68,68,.15);">⚠ REQUIERE ATENCIÓN</span>';
+    } else if(h.ia_pausada){
+      pausaTag = '<span class="wa-badge-pausa">'+(h.pausada_por||'HUMANO').toUpperCase()+'</span>';
+    }
     return '<div class="wa-item '+(waHiloActivo===h.id?'on':'')+'" onclick="waAbrir('+h.id+')">'
       +'<div class="wa-ava">'+waIniciales(h.nombre,h.wa_id)+'</div>'
       +'<div class="wa-item-body">'
