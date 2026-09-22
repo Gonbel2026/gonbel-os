@@ -2281,7 +2281,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   <div class="page" id="page-financiero">
       <div id="pagos-pendientes-panel" class="card" style="display:none;margin-bottom:16px;"></div>
       <div id="alerta-sin-costo" class="card" style="display:none;margin-bottom:16px;border-color:rgba(245,166,35,.35);background:rgba(245,166,35,.05);">
-        <div class="card-t" style="color:var(--amber);">&#9888;&#65039; Pedidos con datos incompletos</div>
+        <div id="alerta-sin-costo-header"></div>
         <div id="alerta-sin-costo-lista" style="display:grid;gap:7px;margin-top:10px;"></div>
       </div>
       <div class="fin-tabs">
@@ -8205,7 +8205,7 @@ async function confirmarPagoBeatriz(orderId){
   const o = orders.find(x=>x.id==orderId); if(!o) return;
   if(!confirm('Confirmas y bloqueas el pago de '+( o.cliente_nombre||'este pedido')+'?')) return;
   try {
-    await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {pago_confirmado_beatriz:true, pago_confirmado_en:new Date().toISOString()});
+    await sbFetch('/rest/v1/rpc/confirmar_pago_beatriz', 'POST', {p_order_id:orderId});
     o.pago_confirmado_beatriz=true; o.pago_confirmado_en=new Date().toISOString();
     logHistory(orderId,'Pago confirmado y bloqueado por Beatriz');
     fillModal(o); showToast('Pago confirmado y bloqueado','success'); await cargarPagosPendientes();
@@ -8228,7 +8228,10 @@ function renderPagosPendientes(){
   if(!_pagPend.length || !visible) return;
   const esBeatriz = rol === 'finanzas';
   const yaExp = el.dataset.exp==='1';
-  const header = '<div class="card-t" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:11px;" onclick="var e=this.closest(\'#pagos-pendientes-panel\');e.dataset.exp=e.dataset.exp===\'1\'?\'0\':\'1\';renderPagosPendientes();">'+'<span>&#128203;</span><b>Pagos por confirmar</b>'+'<span class="badge" style="background:var(--amber);color:#1a1200;">' + _pagPend.length + '</span>'+(esBeatriz?'<span style="font-size:11.5px;color:var(--t3);margin-left:4px;">Confirma cada uno para cerrarlo</span>':'')+'<span style="font-size:12px;color:var(--t3);margin-left:auto;">'+(yaExp?'\u25b2 ocultar':'\u25bc ver todos')+'</span>'+'</div>';
+  const header = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;">'
+    +'<div class="card-t" style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;" onclick="var e=this.closest(\'#pagos-pendientes-panel\');e.dataset.exp=e.dataset.exp===\'1\'?\'0\':\'1\';renderPagosPendientes();">'+'<span>&#128203;</span><b>Pagos por confirmar</b>'+'<span class="badge" style="background:var(--amber);color:#1a1200;">' + _pagPend.length + '</span>'+(esBeatriz?'<span style="font-size:11.5px;color:var(--t3);margin-left:4px;">Confirma cada uno para cerrarlo</span>':'')+'<span style="font-size:12px;color:var(--t3);margin-left:auto;">'+(yaExp?'\u25b2 ocultar':'\u25bc ver todos')+'</span>'+'</div>'
+    +'<button type="button" class="btn btn-ghost" style="font-size:12px;padding:5px 10px;" onclick="verHistorialPagos()">&#128340; Historial</button>'
+    +'</div>';
   const lista = yaExp ? _pagPend : _pagPend.slice(0,3);
   el.innerHTML = header
     + lista.map(p => {
@@ -8243,11 +8246,29 @@ async function confirmarPagoBeatrizDirecto(orderId){
   const o = orders.find(x=>x.id==orderId);
   if(!confirm('Confirmas el pago de '+(o?o.cliente_nombre:'#'+orderId)+'?')) return;
   try {
-    await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {pago_confirmado_beatriz:true, pago_confirmado_en:new Date().toISOString()});
+    await sbFetch('/rest/v1/rpc/confirmar_pago_beatriz', 'POST', {p_order_id:orderId});
     if(o){ o.pago_confirmado_beatriz=true; o.pago_confirmado_en=new Date().toISOString(); }
     logHistory(orderId,'Pago confirmado por Beatriz'); showToast('Confirmado','success');
     await loadAll(); await cargarPagosPendientes();
   } catch(e){ showToast('Error','error'); }
+}
+
+async function verHistorialPagos(){
+  try {
+    const r = await sbFetch('/rest/v1/orders?select=id,numero_pedido,cliente_nombre,valor_pagado,pago_confirmado_en,pago_marcado_por&pago_confirmado_beatriz=is.true&order=pago_confirmado_en.desc&limit=30');
+    const rows = r || [];
+    const html = !rows.length
+      ? '<div style="text-align:center;color:var(--t3);padding:20px;">Todavia no hay pagos confirmados.</div>'
+      : rows.map(function(p){
+          const monto=(Number(p.valor_pagado)||0).toLocaleString('es-PY');
+          const fecha=p.pago_confirmado_en?new Date(p.pago_confirmado_en).toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);">'
+            +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;">'+(p.numero_pedido||('#'+p.id))+' - '+(p.cliente_nombre||'')+'</div>'
+            +'<div style="font-size:11.5px;color:var(--t3);">Gs '+monto+(p.pago_marcado_por?' - marcado por '+p.pago_marcado_por:'')+' - confirmado '+fecha+'</div></div>'
+            +'<button type="button" class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="invCerrarModal();openOrder('+p.id+')">Ver</button></div>';
+        }).join('');
+    invModal('Historial de pagos confirmados', html, null);
+  } catch(e){ showToast('Error al cargar historial','error'); }
 }
 
 async function drop(e, colId){
@@ -16142,17 +16163,30 @@ async function opConfirmar(pagoId){
 }
 
 // PUNTO 9: Alerta pedidos sin datos financieros
+function alertaSinCostoToggle(){
+  var el=document.getElementById('alerta-sin-costo');
+  el.dataset.exp = el.dataset.exp==='1' ? '0' : '1';
+  alertaSinCosto();
+}
 function alertaSinCosto(){
   var el=document.getElementById('alerta-sin-costo');
+  var head=document.getElementById('alerta-sin-costo-header');
   var lista=document.getElementById('alerta-sin-costo-lista');
-  if(!el||!lista||!orders){return;}
+  if(!el||!lista||!head||!orders){return;}
   var rol=currentUser?currentUser.role:'';
   if(rol!=='admin'&&rol!=='finanzas'){el.style.display='none';return;}
   var ACTIVOS=['aprobado','comprado','listo-envio','entregado'];
   var prob=orders.filter(function(o){return ACTIVOS.includes(o.estado)&&!o.archivado&&(!parseFloat(o.precio_costo)||(!parseFloat(o.costo_envio)&&!parseFloat(o.flete_courier_gs)));});
-  if(!prob.length){el.style.display='none';return;}
+  if(!prob.length){el.style.display='none';el.dataset.exp='0';return;}
   el.style.display='block';
-  lista.innerHTML=prob.map(function(o){
+  var yaExp = el.dataset.exp==='1';
+  head.innerHTML = '<div class="card-t" style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--amber);" onclick="alertaSinCostoToggle()">'
+    +'<span>&#9888;&#65039;</span><b>Pedidos con datos incompletos</b>'
+    +'<span class="badge" style="background:var(--amber);color:#1a1200;">'+prob.length+'</span>'
+    +'<span style="font-size:12px;color:var(--t3);margin-left:auto;">'+(yaExp?'\u25b2 ocultar':'\u25bc ver todos')+'</span>'
+    +'</div>';
+  var mostrar = yaExp ? prob : prob.slice(0,3);
+  lista.innerHTML=mostrar.map(function(o){
     var items=[];
     if(!parseFloat(o.precio_costo)) items.push('sin costo pieza');
     if(!parseFloat(o.costo_envio)&&!parseFloat(o.flete_courier_gs)) items.push('sin costo envio');
@@ -16180,27 +16214,39 @@ function cjExtracto(billeteraId){
     const c=CJ_CAT.find(function(x){return x.id===id;}); return c?'<option value="'+id+'">'+c.nombre+'</option>':'';
   }).join('');
   const html='<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">'
-    +'<select class="inp" id="ext-cat" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'+catOpts+'</select>'
-    +'<select class="inp" id="ext-tipo" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'
+    +'<select class="inp" id="extm-plazo" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'
+    +'<option value="">Todo el tiempo</option><option value="7">Ultima semana</option><option value="30">Ultimos 30 dias</option><option value="90">Ultimos 90 dias</option><option value="mes">Este mes</option></select>'
+    +'<select class="inp" id="extm-cat" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'+catOpts+'</select>'
+    +'<select class="inp" id="extm-tipo" style="width:auto;" onchange="cjExtractoFiltrar('+billeteraId+')">'
     +'<option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option><option value="transferencia">Transferencias</option></select>'
-    +'<input class="inp" id="ext-buscar" placeholder="Buscar..." style="flex:1;min-width:140px;" oninput="cjExtractoFiltrar('+billeteraId+')">'
+    +'<input class="inp" id="extm-buscar" placeholder="Buscar..." style="flex:1;min-width:140px;" oninput="cjExtractoFiltrar('+billeteraId+')">'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:13px;">'
     +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">ENTRADAS</div><div style="font-size:16px;font-weight:800;color:var(--green);">Gs '+fmtNum(entTotal)+'</div></div>'
     +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">SALIDAS</div><div style="font-size:16px;font-weight:800;color:var(--red);">Gs '+fmtNum(salTotal)+'</div></div>'
     +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">BALANCE</div><div style="font-size:16px;font-weight:800;color:'+(entTotal-salTotal>=0?'var(--cyan)':'var(--red)')+';">Gs '+fmtNum(entTotal-salTotal)+'</div></div>'
-    +'</div><div id="ext-lista"></div>';
+    +'</div><div id="extm-lista"></div>';
   invModal('Extracto: '+b.nombre, html, null);
   setTimeout(function(){cjExtractoFiltrar(billeteraId);},100);
 }
 
+function cjFechaDesdePlazo(plazo){
+  if(!plazo) return null;
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  if(plazo==='mes'){ return new Date(hoy.getFullYear(),hoy.getMonth(),1); }
+  const dias=parseInt(plazo,10); if(!dias) return null;
+  const d=new Date(hoy); d.setDate(d.getDate()-dias); return d;
+}
 function cjExtractoFiltrar(billeteraId){
-  const lista=document.getElementById('ext-lista'); if(!lista) return;
-  const catF=(document.getElementById('ext-cat')||{}).value||'';
-  const tipoF=(document.getElementById('ext-tipo')||{}).value||'';
-  const q=((document.getElementById('ext-buscar')||{}).value||'').toLowerCase();
+  const lista=document.getElementById('extm-lista'); if(!lista) return;
+  const plazoF=(document.getElementById('extm-plazo')||{}).value||'';
+  const catF=(document.getElementById('extm-cat')||{}).value||'';
+  const tipoF=(document.getElementById('extm-tipo')||{}).value||'';
+  const q=((document.getElementById('extm-buscar')||{}).value||'').toLowerCase();
+  const desde=cjFechaDesdePlazo(plazoF);
   const movs=CJ_MOV.filter(function(m){
     if(m.billetera_id!==billeteraId&&m.billetera_destino_id!==billeteraId) return false;
+    if(desde && m.fecha && new Date(m.fecha+'T00:00:00')<desde) return false;
     if(catF&&String(m.categoria_id)!==catF) return false;
     if(tipoF&&m.tipo!==tipoF) return false;
     if(q){ const blob=[m.concepto,m.pedido_numero,m.cliente,m.proveedor,m.notas].filter(Boolean).join(' ').toLowerCase(); if(blob.indexOf(q)<0) return false; }
