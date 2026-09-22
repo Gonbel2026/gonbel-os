@@ -20,6 +20,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&family=Anton&family=Barlow+Condensed:wght@300;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#0d1a2d;--bg2:#152a45;--bg3:#1d3757;--bg4:#254468;--bg5:#2e527d;
@@ -2857,6 +2859,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
         <div style="font-size:11px;color:var(--t3);margin:-4px 0 10px;">Cargá cada pieza con su precio. El total se suma solo y define el Precio de Venta. ✓ = ya comprada.</div>
         <button type="button" class="btn btn-primary" onclick="importarPiezas(true)" style="width:100%;justify-content:center;margin-bottom:10px;">⚡ Cargar automático desde la lista de arriba</button>
         <datalist id="dl-prov"><option>Mercado Livre</option><option>eBay</option><option>AliExpress</option><option>Amazon</option><option>Proveedor local</option><option>Brasil - Frontera</option></datalist>
+        <datalist id="dl-condicion"><option>Original Nuevo</option><option>Usado Original</option><option>Alternativo</option></datalist>
         <div class="ml-paste">
           <div style="font-size:12px;font-weight:700;color:#FFE500;margin-bottom:9px;">🛒 Registrar una compra</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -4505,6 +4508,7 @@ function renderPiezasItems(){
     <div class="pz-card">
       <div class="pz-row" style="margin-bottom:0;">
         <input type="text" placeholder="Descripción de la pieza" value="${(it.d||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].d=this.value">
+        <input type="text" list="dl-condicion" class="pz-cant" style="width:132px;" title="Condición de la pieza (para el presupuesto)" placeholder="Condición" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value">
         <input type="number" min="1" step="1" class="pz-cant" title="Cantidad" placeholder="1" value="${it.q && it.q > 1 ? it.q : ''}" oninput="piezasItems[${i}].q=Math.max(1,parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})">
         <input type="text" inputmode="numeric" placeholder="Precio Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()">
         <button type="button" class="pz-chk ${it.c?'ok':''}" title="${it.c?'Comprada':'Marcar como comprada'}" onclick="piezasItems[${i}].c=!piezasItems[${i}].c;renderPiezasItems()">${it.c?'✓':''}</button>
@@ -9517,9 +9521,11 @@ const MS_FASES = [
       'Capital inmovilizado a la vista',
       'Entrada directa desde devoluciones'
     ]},
-    {i:'\uD83D\uDCC4', n:'Presupuestos PDF', e:'activo', p:100, d:[
-      'Python + ReportLab, dos formatos oficiales',
-      'Presupuesto y Control de Pedidos'
+    {i:'\uD83D\uDCC4', n:'Presupuestos PDF', e:'activo', p:90, d:[
+      'Dise\u00F1o oficial con logo, n\u00FAmero correlativo A\u00D1O-NNNN desde Supabase (tabla presupuestos)',
+      'Descarga real de PDF (html2canvas + jsPDF), ya no depende del di\u00E1logo de impresi\u00F3n',
+      'Guarda historial completo (cliente, veh\u00EDculo, items, total) en cada generaci\u00F3n',
+      'Pendiente: variante Control de Pedidos multi-veh\u00EDculo (formato especial documentado, no implementado a\u00FAn)'
     ]},
     {i:'\uD83D\uDCB1', n:'Divisas', e:'activo', p:100, d:[
       'USD/Gs y BRL/Gs desde open.er-api.com',
@@ -12706,7 +12712,7 @@ function updateWALink(){
 // ── FORMAT ──
 function fmtNum(n){ return Math.round(n).toLocaleString('es-PY'); }
 
-// ══════ v47: PRESUPUESTO PDF ══════
+// ══════ v187: PRESUPUESTO PDF (formato oficial) ══════
 function generarPresupuesto(){
   const val = id => { const e=document.getElementById(id); return e ? (e.value||'').trim() : ''; };
   const cliente = val('f-cliente-nombre');
@@ -12714,79 +12720,154 @@ function generarPresupuesto(){
   const items = piezasItems.filter(x=>(x.d||'').trim());
   if(!items.length){ showToast('Cargá al menos una pieza con precio','error'); return; }
 
-  const veh = [val('f-marca'), val('f-modelo'), val('f-año')].filter(Boolean).join(' ') || '—';
+  const html = '<div style="display:grid;gap:12px;">'
+    + '<div class="field"><label class="lbl">Forma de pago</label><select class="inp" id="pp-forma"><option>Contado</option><option>Transferencia</option><option>50% adelanto - 50% contra entrega</option><option>A convenir</option></select></div>'
+    + '<div class="field"><label class="lbl">Plazo de entrega (opcional)</label><input class="inp" id="pp-plazo" placeholder="Ej: 10 a 15 dias"></div>'
+    + '</div>';
+  invModal('Generar presupuesto', html, async function(){
+    const formaPago = document.getElementById('pp-forma').value;
+    const plazo = document.getElementById('pp-plazo').value.trim();
+    await ejecutarGeneracionPresupuesto(formaPago, plazo);
+    return true;
+  });
+}
+
+async function ejecutarGeneracionPresupuesto(formaPago, plazo){
+  const val = id => { const e=document.getElementById(id); return e ? (e.value||'').trim() : ''; };
+  const cliente = val('f-cliente-nombre');
+  const clienteRuc = val('f-cliente-ruc');
+  const items = piezasItems.filter(x=>(x.d||'').trim());
+  const marca = val('f-marca'), modelo = val('f-modelo'), anio = val('f-año');
+  const vehiculo = [marca, modelo, anio].filter(Boolean).join(' ');
+  const chasis = val('f-vin');
+  const totalItems = items.reduce((s,x)=>s+(parseInt(x.q,10)||1),0);
   const total = items.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
   const hoy = new Date();
-  const venc = new Date(hoy.getTime() + 7*86400000);
+  const diasValidez = parseInt((document.getElementById('cfg-validez')||{}).value,10) || 5;
+  const venc = new Date(hoy.getTime() + diasValidez*86400000);
   const f = d => d.toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const tel = val('cfg-tel') || '0974 780 008';
+  const email = val('cfg-email') || 'gonbel-imp@hotmail.com';
 
-  document.getElementById('print-area').innerHTML = `
-  <div style="font-family:'Inter',Arial,sans-serif;color:#0d1520;padding:34px 40px;max-width:800px;margin:0 auto;background:#fff;">
-    <div style="background:linear-gradient(100deg,#0a1424,#12294d);border-radius:10px;padding:26px 30px;color:#fff;">
-      <div style="font-family:'Space Grotesk',Arial,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.5px;">GONBEL IMPORTS</div>
-      <div style="font-size:12px;color:#7fc4ff;margin-top:4px;letter-spacing:2px;">AUTOPARTES Y ACCESORIOS IMPORTADOS</div>
-      <div style="height:2px;background:#2f8fff;margin:16px 0 14px;width:80px;"></div>
-      <table style="width:100%;font-size:11.5px;color:#c8d6e8;"><tr>
-        <td style="vertical-align:top;line-height:1.9;">
-          Tel: 0974 780 008<br>Email: gonbel-imp@hotmail.com<br>WhatsApp: 0974 780 008
-        </td>
-        <td style="vertical-align:top;text-align:right;line-height:1.9;">
-          Ciudad del Este, Paraguay<br>Cnel. Cabrera esq. Cnel. A. Ramos<br>Envíos a todo el país
-        </td>
-      </tr></table>
+  showToast('Generando presupuesto...','success');
+
+  let numero;
+  try {
+    const r = await sbFetch('/rest/v1/rpc/siguiente_numero_presupuesto','POST',{p_anio:hoy.getFullYear()});
+    numero = (typeof r === 'string') ? r : (r && r[0]) || (hoy.getFullYear()+'-0001');
+    numero = String(numero).replace(/"/g,'');
+  } catch(e){ showToast('Error al generar el numero de presupuesto','error'); return; }
+
+  // 7 columnas si hay pocos items (cabe "Modelo de vehiculo"), 5/6 si hay muchos (vehiculo va solo en la cabecera)
+  const usarColVehiculo = items.length <= 4 && false; // el pedido siempre es de un solo vehiculo: se muestra arriba, nunca repetido por fila
+  let fuenteTabla = items.length > 12 ? 11 : (items.length > 8 ? 12 : 12.5);
+
+  const filasHtml = items.map((x,i)=>{
+    const cant = parseInt(x.q,10)||1;
+    const unit = parseFloat(x.p)||0;
+    const sub = unit*cant;
+    const cond = (x.cond||'Nuevo').trim();
+    const notaEntrega = x.entregaNota ? '<div style="font-size:10px;color:#1B6FC8;font-style:italic;margin-top:2px;">Entrega: '+x.entregaNota+'</div>' : '';
+    return '<tr style="background:'+(i%2?'#F7FAFD':'#fff')+';border-bottom:1px solid #A8C8F0;">'
+      + '<td style="padding:9px 10px;color:#6B7A8D;">'+(i+1)+'</td>'
+      + '<td style="padding:9px 10px;">'+esc(x.d)+notaEntrega+'</td>'
+      + '<td style="padding:9px 10px;color:#6B7A8D;">'+esc(cond)+'</td>'
+      + '<td style="padding:9px 10px;text-align:center;">'+cant+'</td>'
+      + '<td style="padding:9px 10px;text-align:right;">Gs. '+fmtNum(unit)+'</td>'
+      + '<td style="padding:9px 10px;text-align:right;font-weight:700;">Gs. '+fmtNum(sub)+'</td>'
+      + '</tr>';
+  }).join('');
+
+  const condicionesPartes = ['Validez del presupuesto: '+diasValidez+' dias', 'Forma de pago: '+formaPago.toLowerCase()];
+  if(plazo) condicionesPartes.push('Entrega: '+plazo);
+
+  const _pa = document.getElementById('print-area');
+  _pa.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
+  _pa.innerHTML = `
+  <div id="pp-card" style="font-family:'Inter',Arial,sans-serif;color:#0d1520;width:750px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 3px 14px #D8E4F0;border:1px solid #E3EAF3;padding:32px 36px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <img src="${LOGO}" style="width:54px;height:54px;border-radius:10px;object-fit:cover;">
+        <div>
+          <div style="font-family:Arial,sans-serif;font-weight:700;font-size:19px;color:#0B1F3A;">GONBEL IMPORTS</div>
+          <div style="font-size:10.5px;color:#6B7A8D;margin-top:3px;line-height:1.55;">
+            Importacion de repuestos automotrices<br>
+            RUC 6616665-9 &middot; Ciudad del Este, Paraguay<br>
+            Tel./WhatsApp: ${esc(tel)} &middot; ${esc(email)}
+          </div>
+        </div>
+      </div>
+      <div style="border:1.5px solid #1B6FC8;border-radius:10px;padding:10px 18px;text-align:center;min-width:150px;">
+        <div style="font-weight:700;color:#1B6FC8;font-size:13px;">PRESUPUESTO</div>
+        <div style="font-size:10px;color:#6B7A8D;margin-top:5px;line-height:1.6;">
+          N.o ${esc(numero)}<br>Fecha: ${f(hoy)}<br>Valido hasta: ${f(venc)}
+        </div>
+      </div>
     </div>
+    <div style="height:2px;background:#1B6FC8;margin:18px 0 16px;"></div>
 
-    <table style="width:100%;margin-top:26px;"><tr>
-      <td><div style="font-family:'Space Grotesk',Arial,sans-serif;font-size:25px;font-weight:700;">PRESUPUESTO</div></td>
-      <td style="text-align:right;font-size:11.5px;color:#5c6b80;line-height:1.8;">
-        Fecha: <b style="color:#0d1520;">${f(hoy)}</b><br>Validez: <b style="color:#0d1520;">${f(venc)}</b>
-      </td>
-    </tr></table>
-    <div style="height:3px;background:#2f8fff;margin:14px 0 22px;"></div>
+    ${cliente ? `<div style="font-size:13px;"><b>Cliente: ${esc(cliente)}</b>${clienteRuc?` &nbsp; <span style="color:#6B7A8D;">RUC: ${esc(clienteRuc)}</span>`:''}</div>` : ''}
+    ${vehiculo ? `<div style="font-size:12px;color:#6B7A8D;margin-top:3px;">Vehiculo: ${esc(vehiculo)}${chasis?` &middot; Chasis: ${esc(chasis)}`:''}</div>` : ''}
 
-    <div style="background:#f2f6fb;border-left:4px solid #2f8fff;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:22px;">
-      <div style="font-size:9.5px;font-weight:700;color:#5c6b80;letter-spacing:1.4px;">CLIENTE</div>
-      <div style="font-size:17px;font-weight:700;margin-top:5px;">${cliente}</div>
-    </div>
-
-    <div style="font-size:9.5px;font-weight:700;color:#5c6b80;letter-spacing:1.4px;margin-bottom:9px;">DETALLE DE REPUESTOS</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
-      <thead><tr style="background:#0a1424;color:#fff;">
-        <th style="text-align:left;padding:11px 14px;font-weight:600;">Repuesto / Vehículo</th>
-        <th style="text-align:center;padding:11px 8px;font-weight:600;width:52px;">Cant.</th>
-        <th style="text-align:center;padding:11px 10px;font-weight:600;width:105px;">Condición</th>
-        <th style="text-align:right;padding:11px 14px;font-weight:600;width:135px;">Precio</th>
+    <table style="width:100%;border-collapse:collapse;font-size:${fuenteTabla}px;margin-top:16px;">
+      <thead><tr style="background:#EEF5FC;">
+        <th style="text-align:left;padding:9px 10px;font-weight:700;width:26px;">#</th>
+        <th style="text-align:left;padding:9px 10px;font-weight:700;">Repuesto</th>
+        <th style="text-align:left;padding:9px 10px;font-weight:700;width:110px;">Estado</th>
+        <th style="text-align:center;padding:9px 10px;font-weight:700;width:48px;">Cant.</th>
+        <th style="text-align:right;padding:9px 10px;font-weight:700;width:100px;">Precio unit.</th>
+        <th style="text-align:right;padding:9px 10px;font-weight:700;width:110px;">Subtotal</th>
       </tr></thead>
-      <tbody>
-        ${items.map((x,i)=>`<tr style="background:${i%2?'#f7fafd':'#fff'};border-bottom:1px solid #e3eaf3;">
-          <td style="padding:12px 14px;">${x.d}<div style="font-size:10.5px;color:#5c6b80;margin-top:3px;">${veh}</div></td>
-          <td style="padding:12px 8px;text-align:center;font-weight:600;">${parseInt(x.q,10)||1}</td>
-          <td style="padding:12px 10px;text-align:center;color:#5c6b80;">Nuevo</td>
-          <td style="padding:12px 14px;text-align:right;font-weight:700;">Gs ${fmtNum((x.p||0)*(parseInt(x.q,10)||1))}${(parseInt(x.q,10)||1)>1?`<div style="font-size:10px;color:#5c6b80;font-weight:400;margin-top:2px;">Gs ${fmtNum(x.p||0)} c/u</div>`:''}</td>
-        </tr>`).join('')}
-      </tbody>
+      <tbody>${filasHtml}</tbody>
     </table>
 
-    <table style="width:100%;margin-top:18px;"><tr>
-      <td></td>
-      <td style="text-align:right;background:#f2f6fb;border-radius:8px;padding:15px 20px;width:290px;">
-        <div style="font-size:10px;font-weight:700;color:#5c6b80;letter-spacing:1.2px;">TOTAL (IVA INCLUIDO)</div>
-        <div style="font-family:'Space Grotesk',Arial,sans-serif;font-size:25px;font-weight:700;color:#0a58c8;margin-top:7px;">Gs ${fmtNum(total)}</div>
-      </td>
-    </tr></table>
-
-    <div style="border:1px solid #d6e2f0;border-radius:9px;padding:15px 18px;margin-top:24px;background:#fbfdff;">
-      <div style="font-size:9.5px;font-weight:700;color:#5c6b80;letter-spacing:1.4px;margin-bottom:7px;">GARANTÍA</div>
-      <div style="font-size:12px;line-height:1.65;color:#33445c;">Garantizamos el correcto funcionamiento del producto y asumimos la responsabilidad total de la entrega, conforme a los términos acordados.</div>
+    <div style="text-align:right;margin-top:10px;font-size:11px;color:#6B7A8D;">Total items: ${totalItems} unidades</div>
+    <div style="border-top:1px solid #0B1F3A;margin-top:6px;"></div>
+    <div style="text-align:right;margin-top:12px;">
+      <div style="font-weight:700;color:#0B1F3A;font-size:12px;">TOTAL (IVA incluido)</div>
+      <div style="font-weight:700;color:#1B6FC8;font-size:23px;margin-top:4px;">Gs. ${fmtNum(total)}</div>
     </div>
 
-    <div style="margin-top:30px;padding-top:15px;border-top:1px solid #e3eaf3;text-align:center;font-size:10.5px;color:#7a8798;">
-      Ciudad del Este, Paraguay &nbsp;·&nbsp; 0974 780 008 &nbsp;·&nbsp; Autopartes y accesorios importados
+    <div style="background:#E8F2FC;border-radius:9px;padding:12px 16px;margin-top:18px;font-size:11.5px;">
+      <b>Condiciones:</b> <span style="color:#1B6FC8;">${condicionesPartes.join(' &middot; ')}</span>
     </div>
   </div>`;
-  setTimeout(()=>{ window.print(); }, 250);
-  showToast('📄 Elegí "Guardar como PDF" en el diálogo','success');
+
+  await new Promise(r=>setTimeout(r,200));
+  try {
+    const card = document.getElementById('pp-card');
+    const canvas = await html2canvas(card, {scale:2.5, backgroundColor:'#ffffff', useCORS:true});
+    const img = canvas.toDataURL('image/jpeg',0.95);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW - 20;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    const finalH = Math.min(imgH, pageH - 20);
+    const finalW = finalH === imgH ? imgW : (canvas.width * finalH) / canvas.height;
+    pdf.addImage(img, 'JPEG', (pageW-finalW)/2, 12, finalW, finalH);
+    pdf.save('Presupuesto_'+numero+'.pdf');
+    _pa.style.cssText = 'display:none;';
+  } catch(e){ _pa.style.cssText = 'display:none;'; showToast('Error al generar el PDF: '+(e.message||e),'error'); return; }
+
+  try {
+    await sbFetch('/rest/v1/presupuestos','POST',{
+      numero, anio: hoy.getFullYear(), correlativo: parseInt(numero.split('-')[1],10)||0,
+      order_id: (currentOrder && currentOrder.id) || null,
+      cliente_nombre: cliente, cliente_ruc: clienteRuc||null,
+      vehiculo: vehiculo||null, chasis: chasis||null,
+      items: items.map(x=>({d:x.d,cond:x.cond||'',q:parseInt(x.q,10)||1,p:parseFloat(x.p)||0})),
+      total, forma_pago: formaPago, plazo_entrega: plazo||null,
+      fecha_emision: hoy.toISOString().slice(0,10), fecha_validez: venc.toISOString().slice(0,10),
+      creado_por: (currentUser && currentUser.name) || null
+    });
+  } catch(e){ /* el PDF ya se descargo; si falla el guardado en historial no bloqueamos al usuario */ }
+
+  showToast('📄 Presupuesto '+numero+' descargado','success');
 }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
 
 // ══════ v47: LINK DE SEGUIMIENTO ══════
 function copiarLinkSeguimiento(){
@@ -16091,7 +16172,7 @@ async function pgRedibujar(){
   if(pgPendiente){ pgPendiente = false; pgRedibujar(); }
 }
 
-// ═�
+// ═�
 // PUNTO 1: Diferencia peso declarado vs real
 function calcFletePeso(){
   var decl=parseFloat((document.getElementById('f-peso-decl')||{}).value)||0;
