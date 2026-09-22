@@ -2962,7 +2962,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
             <div><label style="font-size:11px;color:var(--t3);">Detalle</label><input id="f-flete-nota" type="text" placeholder="Ej: DHL 2.3 kg" class="inp" style="margin-top:4px;"></div>
           </div>
         </div>
-          <input type="checkbox" id="f-pagado-completo" onchange="calcMargen();scheduleAutoSave(100)" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
+          <input type="checkbox" id="f-pagado-completo" onchange="pagadoCompletoToggle()" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--green);">✓ Pedido totalmente pagado</div>
             <div style="font-size:11px;color:var(--t3);margin-top:2px;">Marcar cuando el cliente completó el pago total</div>
@@ -8616,6 +8616,19 @@ function toggleFinanciero(){
 function updateCardColor(){ toggleFinanciero(); }
 
 // ── CALC MARGEN ──
+function ventaTotalCalculada(){
+  const sv = piezasItems.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+  return sv>0 ? sv : (numVal('f-venta')||0);
+}
+function pagadoCompletoToggle(){
+  const completo = document.getElementById('f-pagado-completo').checked;
+  if(completo){
+    const venta = ventaTotalCalculada();
+    setMoney('f-pagado', venta);
+  }
+  calcMargen();
+  scheduleAutoSave(100);
+}
 function calcMargen(){
   try{ pintarResumenModal(); }catch(e){}
   const venta = numVal('f-venta')||0;
@@ -10573,6 +10586,72 @@ function cjPintarMovs(){
 // ── Alta y edicion de movimientos ──
 function cjNuevoMov(tipo){ cjEditarMov(null, tipo); }
 
+// ── Autocompletar Pedido / Cliente en el modal de movimiento de Caja ──
+function cjBuscarPedidoMov(q, esEscritura){
+  const dd = document.getElementById('cm-pedido-dd');
+  if(!dd) return;
+  if(esEscritura){ const oidEl = document.getElementById('cm-pedido-oid'); if(oidEl) oidEl.value = ''; }
+  const term = (q||'').trim().toLowerCase();
+  const fuente = (typeof orders !== 'undefined' ? orders : []).slice()
+    .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  const matches = (term
+    ? fuente.filter(o=>{
+        const texto = [o.numero_pedido, o.numero, o.cliente_nombre, o.marca, o.modelo].filter(Boolean).join(' ').toLowerCase();
+        return texto.includes(term);
+      })
+    : fuente).slice(0,20);
+  if(!matches.length){
+    dd.innerHTML = '<div class="cr-dd-nuevo" style="cursor:default;">Sin pedidos que coincidan</div>';
+    dd.classList.add('on');
+    return;
+  }
+  dd.innerHTML = matches.map(o=>'<div class="cr-dd-row" onclick="cjElegirPedidoMov(' + o.id + ')">'
+      + '<div><span>' + esc(o.numero_pedido||o.numero||('#'+o.id)) + ' — ' + esc(o.cliente_nombre||'') + '</span><small>' + esc([o.marca,o.modelo].filter(Boolean).join(' ')) + '</small></div>'
+      + '</div>').join('');
+  dd.classList.add('on');
+}
+function cjElegirPedidoMov(orderId){
+  const o = (typeof orders !== 'undefined' ? orders : []).find(x=>x.id===orderId);
+  if(!o) return;
+  const inp = document.getElementById('cm-pedido');
+  const oidEl = document.getElementById('cm-pedido-oid');
+  if(inp) inp.value = o.numero_pedido || o.numero || ('#'+o.id);
+  if(oidEl) oidEl.value = o.id;
+  document.getElementById('cm-pedido-dd')?.classList.remove('on');
+}
+function cjBuscarClienteMov(q, esEscritura){
+  const dd = document.getElementById('cm-tercero-dd');
+  if(!dd) return;
+  if(esEscritura){ const cidEl = document.getElementById('cm-tercero-cid'); if(cidEl) cidEl.value = ''; }
+  const term = (q||'').trim().toLowerCase();
+  const fuente = typeof clients !== 'undefined' ? clients : [];
+  const matches = (term
+    ? fuente.filter(c=>(c.nombre||'').toLowerCase().includes(term) || (c.numero||'').toLowerCase().includes(term) || (c.tel||'').includes(term))
+    : fuente).slice(0,20);
+  if(!matches.length){
+    dd.innerHTML = '<div class="cr-dd-nuevo" style="cursor:default;">Sin clientes que coincidan</div>';
+    dd.classList.add('on');
+    return;
+  }
+  dd.innerHTML = matches.map(c=>'<div class="cr-dd-row" onclick="cjElegirClienteMov(' + c.id + ')">'
+      + '<b>' + esc(c.numero||'') + '</b><div><span>' + esc(c.nombre||'') + '</span><small>' + esc(c.tipo||'') + (c.ciudad?' · '+esc(c.ciudad):'') + '</small></div>'
+      + '</div>').join('');
+  dd.classList.add('on');
+}
+function cjElegirClienteMov(clientId){
+  const c = (typeof clients !== 'undefined' ? clients : []).find(x=>x.id===clientId);
+  if(!c) return;
+  const inp = document.getElementById('cm-tercero');
+  const cidEl = document.getElementById('cm-tercero-cid');
+  if(inp) inp.value = c.nombre;
+  if(cidEl) cidEl.value = c.id;
+  document.getElementById('cm-tercero-dd')?.classList.remove('on');
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#cm-pedido-wrap')){ document.getElementById('cm-pedido-dd')?.classList.remove('on'); }
+  if(!e.target.closest('#cm-tercero-wrap')){ document.getElementById('cm-tercero-dd')?.classList.remove('on'); }
+});
+
 function cjEditarMov(id, tipoNuevo){
   const m = id ? CJ_MOV.find(x=>x.id===id) : null;
   const tipo = m ? m.tipo : (tipoNuevo || 'salida');
@@ -10593,8 +10672,15 @@ function cjEditarMov(id, tipoNuevo){
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cm-moneda">'
       + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + ((m?m.moneda:'PYG')===x?' selected':'') + '>' + x + '</option>').join('') + '</select></div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="cm-concepto" value="' + v('concepto') + '" placeholder="Ej: pago de mercader\u00eda del #P053"></div>'
-    + '<div><label class="lbl">Pedido (opcional)</label><input class="inp" id="cm-pedido" value="' + v('pedido_numero') + '" placeholder="#P053"></div>'
-    + '<div><label class="lbl">' + (tipo === 'entrada' ? 'Cliente' : 'Proveedor') + ' (opcional)</label><input class="inp" id="cm-tercero" value="' + (tipo==='entrada'?v('cliente'):v('proveedor')) + '"></div>'
+    + '<div style="position:relative;" id="cm-pedido-wrap"><label class="lbl">Pedido (opcional)</label>'
+      + '<input class="inp" id="cm-pedido" autocomplete="off" value="' + v('pedido_numero') + '" placeholder="#P053" oninput="cjBuscarPedidoMov(this.value,true)" onfocus="cjBuscarPedidoMov(this.value,false)">'
+      + '<input type="hidden" id="cm-pedido-oid" value="' + (m && m.order_id ? m.order_id : '') + '">'
+      + '<div class="cr-dd" id="cm-pedido-dd"></div></div>'
+    + '<div style="position:relative;" id="cm-tercero-wrap"><label class="lbl">' + (tipo === 'entrada' ? 'Cliente' : 'Proveedor') + ' (opcional)</label>'
+      + '<input class="inp" id="cm-tercero" autocomplete="off" value="' + (tipo==='entrada'?v('cliente'):v('proveedor')) + '"'
+        + (tipo==='entrada' ? ' oninput="cjBuscarClienteMov(this.value,true)" onfocus="cjBuscarClienteMov(this.value,false)"' : '') + '>'
+      + (tipo==='entrada' ? '<input type="hidden" id="cm-tercero-cid" value="' + (m && m.cliente_id ? m.cliente_id : '') + '"><div class="cr-dd" id="cm-tercero-dd"></div>' : '')
+      + '</div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Notas</label><input class="inp" id="cm-notas" value="' + v('notas') + '"></div>'
     + '</div>';
 
@@ -10605,6 +10691,10 @@ function cjEditarMov(id, tipoNuevo){
     if(!monto || monto <= 0){ showToast('Falta el monto','error'); return false; }
     const moneda = g('moneda').value;
     const cot = cjTasa(moneda);
+    const pedidoOidEl = document.getElementById('cm-pedido-oid');
+    const pedidoOid = pedidoOidEl && pedidoOidEl.value ? parseInt(pedidoOidEl.value,10) : null;
+    const terceroCidEl = document.getElementById('cm-tercero-cid');
+    const terceroCid = terceroCidEl && terceroCidEl.value ? parseInt(terceroCidEl.value,10) : null;
     const datos = {
       fecha: g('fecha').value,
       tipo,
@@ -10617,7 +10707,9 @@ function cjEditarMov(id, tipoNuevo){
       monto_gs: cjEnGs(monto, moneda, cot),
       concepto: g('concepto').value.trim() || null,
       pedido_numero: g('pedido').value.trim() || null,
+      order_id: pedidoOid || null,
       cliente: tipo === 'entrada' ? (g('tercero').value.trim() || null) : null,
+      cliente_id: tipo === 'entrada' ? (terceroCid || null) : null,
       proveedor: tipo !== 'entrada' ? (g('tercero').value.trim() || null) : null,
       notas: g('notas').value.trim() || null,
       cargado_por: (currentUser && currentUser.name) || null,
