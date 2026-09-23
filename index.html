@@ -606,6 +606,8 @@ body.solo-lectura .btn-primary[onclick*="Nuevo"],
 body.solo-lectura .btn-primary[onclick*="nuevo"],
 body.solo-lectura #piezas-add,
 body.solo-lectura .pz-btn[title="Quitar"]{display:none !important;}
+/* Excepción: Beatriz (finanzas) sí debe poder registrar entradas de caja — su función principal */
+body.solo-lectura .btn-primary[onclick*="cjNuevoMov"]{display:flex !important;}
 .cr-txt{width:100%;min-height:96px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:12px;color:#fff;font-size:16px;padding:13px 15px;outline:none;font-family:'Inter',sans-serif;resize:vertical;box-sizing:border-box;line-height:1.5;}
 .cr-txt:focus{border-color:var(--blue);}
 .cr-prev{border:1px solid var(--brd);border-radius:12px;padding:13px;margin-top:12px;background:rgba(255,255,255,.03);}
@@ -9531,6 +9533,7 @@ const MS_FASES = [
       'Caja \u2192 Extracto por cuenta con filtro de plazo (semana, 30/90 d\u00EDas, mes) adem\u00e1s de categor\u00EDa, tipo y b\u00fasqueda',
       'Pagos a confirmar de Beatriz: el bot\u00F3n Confirmar ahora s\u00ED funciona (RPC dedicada) y hay Historial de pagos confirmados',
       'Entrada / Salida / Transferencia: los campos Pedido y Cliente autocompletan contra pedidos y clientes reales y quedan vinculados (order_id, cliente_id), siguen siendo opcionales',
+      'Corregido: a Beatriz (finanzas) no le aparecía el botón “Registrar entrada” en Caja — un CSS de solo-lectura lo ocultaba por error, ya lo ve igual que Salida y Transferencia',
       'Pendiente: cargar costo en #P050 y #P043, ambos de Francis'
     ]},
     {i:'\uD83D\uDCE6', n:'Inventario', e:'activo', p:80, d:[
