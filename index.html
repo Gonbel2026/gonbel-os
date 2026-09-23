@@ -6162,7 +6162,7 @@ function bpRenderLista(){
         <button type="button" class="bp-mon ${monActivo==='brl'?'on':''}" onclick="bpCambiarMoneda(${i},'brl')" title="Reales">R$</button>
         <button type="button" class="bp-mon ${monActivo==='usd'?'on':''}" onclick="bpCambiarMoneda(${i},'usd')" title="Dólares">U$</button>
       </div>
-      <input type="text" inputmode="numeric" class="bp-costo" id="bp-costo-${i}" placeholder="0" value="${mostrar?Number(mostrar).toLocaleString('de-DE'):''}"
+      <input type="text" inputmode="numeric" class="bp-costo" id="bp-costo-${i}" placeholder="0" value="${mostrar?Number(mostrar).toLocaleString(monActivo==='gs'?'de-DE':'en-US'):''}"
         oninput="bpEditarCosto(${i}, this)" onkeydown="bpCostoKeydown(event, ${i})">
       <span class="bp-gs-eq" id="bp-eq-${i}">${monActivo!=='gs' && gsActivo ? '≈ Gs '+fmtNum(gsActivo) : ''}</span>
       ${otroTxt?`<span class="bp-otro-valor">${otroTxt}</span>`:''}
@@ -6325,7 +6325,7 @@ function bpSimboloMoneda(moneda){
   return moneda==='brl' ? 'R$' : (moneda==='usd' ? 'U$' : 'Gs');
 }
 function bpFmtMoneda(valor, moneda){
-  return bpSimboloMoneda(moneda) + ' ' + (moneda==='gs' ? fmtNum(valor) : Number(valor).toLocaleString('es-PY'));
+  return bpSimboloMoneda(moneda) + ' ' + (moneda==='gs' ? fmtNum(valor) : Number(valor).toLocaleString('en-US'));
 }
 function bpMonedaPresu(mon){
   bpMonedaSalida = mon;
@@ -9534,6 +9534,7 @@ const MS_FASES = [
       'Pagos a confirmar de Beatriz: el bot\u00F3n Confirmar ahora s\u00ED funciona (RPC dedicada) y hay Historial de pagos confirmados',
       'Entrada / Salida / Transferencia: los campos Pedido y Cliente autocompletan contra pedidos y clientes reales y quedan vinculados (order_id, cliente_id), siguen siendo opcionales',
       'Corregido: a Beatriz (finanzas) no le aparecía el botón “Registrar entrada” en Caja — un CSS de solo-lectura lo ocultaba por error, ya lo ve igual que Salida y Transferencia',
+      'Formato de miles por moneda: Guaraníes siempre con punto (1.000.000), Dólares y Reales siempre con coma (1,000,000) — en Caja, billeteras y búsqueda de precios',
       'Pendiente: cargar costo en #P050 y #P043, ambos de Francis'
     ]},
     {i:'\uD83D\uDCE6', n:'Inventario', e:'activo', p:80, d:[
@@ -10417,7 +10418,7 @@ function cjEnGs(monto, moneda, cotiz){
 function cjSimbolo(m){ return m === 'USD' ? 'USD' : (m === 'BRL' ? 'R$' : 'Gs'); }
 function cjMonto(monto, moneda){
   const v = parseFloat(monto)||0;
-  return cjSimbolo(moneda) + ' ' + (moneda === 'PYG' ? fmtNum(v) : v.toLocaleString('es-PY',{minimumFractionDigits:2, maximumFractionDigits:2}));
+  return cjSimbolo(moneda) + ' ' + (moneda === 'PYG' ? fmtNum(v) : v.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2}));
 }
 
 async function cjCargar(){
@@ -10477,7 +10478,7 @@ function cjPintarBilleteras(){
     + '<div class="cj-bill" style="border-style:dashed;border-color:var(--blue);">'
       + '<div class="cj-bill-n">\uD83D\uDCB0 Total general</div>'
       + '<div class="cj-bill-s" style="color:var(--cyan)">Gs ' + fmtNum(totalGs) + '</div>'
-      + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+fmtNum(tB)+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+fmtNum(tU)+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
+      + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+tB.toLocaleString('en-US')+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+tU.toLocaleString('en-US')+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
       + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
     + '</div>';
 }
@@ -10893,7 +10894,7 @@ async function fpSimple(){
   const G = V - C;
   const margen = C > 0 ? (G/C)*100 : 0;
   const sinCosto = facturados.filter(x=>!x.n.conCosto).length;
-  const enUsd = v => USD_GS ? ('USD ' + (v/(USD_GS+50)).toLocaleString('es-PY',{maximumFractionDigits:0})) : '';
+  const enUsd = v => USD_GS ? ('USD ' + (v/(USD_GS+50)).toLocaleString('en-US',{maximumFractionDigits:0})) : '';
 
   const k = (tit,val,sub,col)=>'<div class="card" style="padding:16px;"><div style="font-size:11.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">'+tit+'</div><div style="font-size:24px;font-weight:800;margin-top:7px;color:'+(col||'var(--t1)')+';">'+val+'</div>'+(sub?'<div style="font-size:11.5px;color:var(--t3);margin-top:4px;">'+sub+'</div>':'')+'</div>';
 
@@ -11091,7 +11092,7 @@ async function renderAnalisis(){
   const ganancia = ventaTotal - costoTotal;
   const margen = costoTotal > 0 ? (ganancia/costoTotal)*100 : 0;
   const sinCosto = aprobados.filter(x=>!x.n.conCosto).length;
-  const enUsd = v => USD_GS ? ('USD ' + (v/(USD_GS+50)).toLocaleString('es-PY',{maximumFractionDigits:0})) : '';
+  const enUsd = v => USD_GS ? ('USD ' + (v/(USD_GS+50)).toLocaleString('en-US',{maximumFractionDigits:0})) : '';
   const t = (tit,val,sub,col)=>'<div class="card" style="padding:15px;"><div style="font-size:11.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">'+tit+'</div><div style="font-size:21px;font-weight:800;margin-top:6px;color:'+(col||'var(--t1)')+';">'+val+'</div>'+(sub?'<div style="font-size:11.5px;color:var(--t3);margin-top:3px;">'+sub+'</div>':'')+'</div>';
 
   document.getElementById('an-resumen').innerHTML =
