@@ -1577,7 +1577,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .pv-tabla tr:hover td{background:rgba(255,255,255,.03);}
 
 /* === BANDEJA DE WHATSAPP === */
-#page-whatsapp{padding:0 !important;height:calc(100vh - 220px);min-height:520px;display:flex !important;flex-direction:row !important;gap:0 !important;}
+#page-whatsapp.active{padding:0 !important;height:calc(100vh - 220px);min-height:520px;display:flex !important;flex-direction:row !important;gap:0 !important;}
 .wa-shell{display:flex;width:100%;height:100%;background:#0b1220;border-radius:14px;overflow:hidden;border:1px solid var(--brd);}
 .wa-lista{width:340px;flex-shrink:0;border-right:1px solid var(--brd);display:flex;flex-direction:column;background:rgba(255,255,255,.02);}
 .wa-lista-h{padding:16px;border-bottom:1px solid var(--brd);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
@@ -1609,7 +1609,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .wa-back-mobile{display:none;}
 
 @media(max-width:760px){
-  #page-whatsapp{height:calc(100vh - 120px);}
+  #page-whatsapp.active{height:calc(100vh - 120px);}
   .wa-shell{border-radius:0;}
   .wa-lista{width:100%;border-right:none;}
   .wa-lista.oculto-mobile{display:none;}
