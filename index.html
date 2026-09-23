@@ -7227,8 +7227,19 @@ function drUbicar(){
   if(izq < 12) izq = 12;
   p.style.width = ancho + 'px';
   p.style.left = izq + 'px';
-  p.style.top = (r.bottom + 8) + 'px';
+  // Si el botón está pegado abajo (barra fija en celular), no hay lugar para abrir
+  // hacia abajo: medimos el alto real y, si no entra, lo abrimos hacia arriba.
+  p.style.visibility = 'hidden';
   p.classList.add('on');
+  const alto = p.offsetHeight;
+  p.style.visibility = '';
+  const espacioAbajo = window.innerHeight - r.bottom - 10;
+  const espacioArriba = r.top - 10;
+  if(espacioAbajo < alto && espacioArriba > espacioAbajo){
+    p.style.top = Math.max(8, r.top - alto - 8) + 'px';
+  } else {
+    p.style.top = (r.bottom + 8) + 'px';
+  }
 }
 
 function drPintar(){
@@ -7432,8 +7443,19 @@ function gbUbicar(){
   if(izq < 12) izq = 12;
   dd.style.width = ancho + 'px';
   dd.style.left  = izq + 'px';
-  dd.style.top   = (r.bottom + 6) + 'px';
+  // Si el campo está pegado abajo (barra fija en celular), no hay lugar para abrir
+  // hacia abajo: medimos el alto real y, si no entra, lo abrimos hacia arriba.
+  dd.style.visibility = 'hidden';
   dd.classList.add('on');
+  const alto = dd.offsetHeight;
+  dd.style.visibility = '';
+  const espacioAbajo = window.innerHeight - r.bottom - 10;
+  const espacioArriba = r.top - 10;
+  if(espacioAbajo < alto && espacioArriba > espacioAbajo){
+    dd.style.top = Math.max(8, r.top - alto - 6) + 'px';
+  } else {
+    dd.style.top = (r.bottom + 6) + 'px';
+  }
 }
 
 function gbAbrir(i){
