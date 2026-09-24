@@ -2295,7 +2295,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--t3);">Mes:</span>
-        <select class="inp" id="fp-mes" onchange="fpSimple()" style="width:auto;min-width:170px;"></select>
+        <select class="inp" id="fp-mes" onchange="fpCambiarMes()" style="width:auto;min-width:170px;"></select>
         <button type="button" class="bs-chip" onclick="fpMesRelativo(-1)">‹ Anterior</button>
         <button type="button" class="bs-chip" onclick="fpMesRelativo(1)">Siguiente ›</button>
       </div>
@@ -9557,6 +9557,7 @@ const MS_FASES = [
       'Entrada / Salida / Transferencia: los campos Pedido y Cliente autocompletan contra pedidos y clientes reales y quedan vinculados (order_id, cliente_id), siguen siendo opcionales',
       'Corregido: a Beatriz (finanzas) no le aparecía el botón “Registrar entrada” en Caja — un CSS de solo-lectura lo ocultaba por error, ya lo ve igual que Salida y Transferencia',
       'Formato de miles por moneda: Guaraníes siempre con punto (1.000.000), Dólares y Reales siempre con coma (1,000,000) — en Caja, billeteras y búsqueda de precios',
+      'Pedidos → tarjeta "Ganancia": si hay pedidos facturados sin costo cargado, ahora es clicable y abre la lista de esos pedidos puntuales para completarles el costo',
       'Pendiente: cargar costo en #P050 y #P043, ambos de Francis'
     ]},
     {i:'\uD83D\uDCE6', n:'Inventario', e:'activo', p:80, d:[
@@ -10901,6 +10902,22 @@ function fpMontos(o){
   return n;
 }
 
+let FP_SOLO_SIN_COSTO = false;
+
+function fpCambiarMes(){
+  FP_SOLO_SIN_COSTO = false;
+  fpSimple();
+}
+
+function fpToggleSinCosto(){
+  FP_SOLO_SIN_COSTO = !FP_SOLO_SIN_COSTO;
+  fpSimple();
+  if(FP_SOLO_SIN_COSTO){
+    const el = document.getElementById('fp-lista');
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
 async function fpSimple(){
   if(!AN_HITOS.length) await anCargarHitos();
   fpLlenarMeses();
@@ -10918,12 +10935,12 @@ async function fpSimple(){
   const sinCosto = facturados.filter(x=>!x.n.conCosto).length;
   const enUsd = v => USD_GS ? ('USD ' + (v/(USD_GS+50)).toLocaleString('en-US',{maximumFractionDigits:0})) : '';
 
-  const k = (tit,val,sub,col)=>'<div class="card" style="padding:16px;"><div style="font-size:11.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">'+tit+'</div><div style="font-size:24px;font-weight:800;margin-top:7px;color:'+(col||'var(--t1)')+';">'+val+'</div>'+(sub?'<div style="font-size:11.5px;color:var(--t3);margin-top:4px;">'+sub+'</div>':'')+'</div>';
+  const k = (tit,val,sub,col,onclick)=>'<div class="card" style="padding:16px;'+(onclick?'cursor:pointer;':'')+'"'+(onclick?' onclick="'+onclick+'"':'')+'><div style="font-size:11.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;">'+tit+'</div><div style="font-size:24px;font-weight:800;margin-top:7px;color:'+(col||'var(--t1)')+';">'+val+'</div>'+(sub?'<div style="font-size:11.5px;color:var(--t3);margin-top:4px;">'+sub+'</div>':'')+'</div>';
 
   document.getElementById('fp-kpis').innerHTML =
       k('\u2705 Facturado', 'Gs ' + fmtNum(Math.round(V)), facturados.length + (facturados.length===1?' pedido':' pedidos') + (enUsd(V)?' \u00b7 '+enUsd(V):''), 'var(--green)')
     + k('\uD83D\uDED2 Costo', 'Gs ' + fmtNum(Math.round(C)), enUsd(C), 'var(--amber)')
-    + k('\uD83D\uDCC8 Ganancia', 'Gs ' + fmtNum(Math.round(G)), 'margen ' + margen.toFixed(0) + '%' + (sinCosto ? ' \u00b7 \u26A0\uFE0F ' + sinCosto + ' sin costo cargado' : ''), margen >= 40 ? 'var(--green)' : 'var(--amber)');
+    + k('\uD83D\uDCC8 Ganancia', 'Gs ' + fmtNum(Math.round(G)), 'margen ' + margen.toFixed(0) + '%' + (sinCosto ? ' \u00b7 \u26A0\uFE0F ' + sinCosto + ' sin costo \u2014 clic para verlos' : ''), margen >= 40 ? 'var(--green)' : 'var(--amber)', sinCosto ? 'fpToggleSinCosto()' : null);
 
   // Cobros sobre lo facturado en el periodo
   const COB = facturados.reduce((s,x)=>s+Math.min(x.n.cobrado, x.n.venta),0);
@@ -10933,15 +10950,20 @@ async function fpSimple(){
       k('\uD83D\uDCB5 Cobrado', 'Gs ' + fmtNum(Math.round(COB)), V ? Math.round(COB/V*100) + '% de lo facturado' : '', 'var(--cyan)')
     + k('\u23F3 Por cobrar', 'Gs ' + fmtNum(Math.round(PEND)), conSaldo + (conSaldo===1?' pedido con saldo':' pedidos con saldo'), PEND > 0 ? 'var(--red)' : 'var(--t3)');
 
-  // Lista
+  // Lista \u2014 si viene del clic en "Ganancia", filtra a los que faltan costo
   const lista = document.getElementById('fp-lista');
-  document.getElementById('fp-lista-n').textContent = facturados.length ? 'ordenados por monto' : '';
-  if(!facturados.length){
-    lista.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:13px;padding:24px;">Ning\u00fan pedido facturado en este mes.</div>';
+  const mostrar = FP_SOLO_SIN_COSTO ? facturados.filter(x=>!x.n.conCosto) : facturados;
+  document.getElementById('fp-lista-n').innerHTML = FP_SOLO_SIN_COSTO
+    ? '<span style="color:var(--amber);cursor:pointer;" onclick="fpToggleSinCosto()">\u26A0\uFE0F solo sin costo cargado \u00b7 ver todos</span>'
+    : (facturados.length ? 'ordenados por monto' : '');
+  if(!mostrar.length){
+    lista.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:13px;padding:24px;">'
+      + (FP_SOLO_SIN_COSTO ? 'Ning\u00fan pedido facturado sin costo en este mes.' : 'Ning\u00fan pedido facturado en este mes.')
+      + '</div>';
     return;
   }
   const est = {aprobado:'Aprobado', comprado:'Comprado', 'listo-envio':'Listo p/ env\u00edo', entregado:'Entregado'};
-  lista.innerHTML = facturados.sort((a,b)=>b.n.venta-a.n.venta).map(x=>
+  lista.innerHTML = mostrar.sort((a,b)=>b.n.venta-a.n.venta).map(x=>
     '<div class="an-fila" style="cursor:pointer;" onclick="openOrder(' + x.o.id + ')">'
     + '<div class="an-nom" style="flex:1;">' + (x.o.numero_pedido || ('#'+x.o.id)) + ' \u00b7 ' + (x.o.cliente_nombre || 'sin cliente')
       + '<div class="an-sub">' + [x.o.marca, x.o.modelo, x.o.anio].filter(Boolean).join(' ')
