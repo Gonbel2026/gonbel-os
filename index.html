@@ -1619,6 +1619,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 @media(max-width:760px){
   #page-whatsapp.active{height:calc(100vh - 120px);}
   body:has(.ah-nav.abajo) #page-whatsapp.active{height:calc(100vh - 120px - 62px - env(safe-area-inset-bottom));}
+  body:has(#page-whatsapp.active){position:fixed;inset:0;width:100%;overflow:hidden;}
   .wa-shell{border-radius:0;}
   .wa-lista{width:100%;border-right:none;}
   .wa-lista.oculto-mobile{display:none;}
@@ -17180,7 +17181,7 @@ async function waAbrir(hiloId){
     + '<div class="wa-chat-input">'
       + '<input type="file" id="wa-file-input" accept="image/*,video/*,audio/*,.pdf" style="display:none;" onchange="waArchivoElegido(this,'+hiloId+')">'
       + '<button type="button" class="wa-attach-btn" title="Adjuntar foto, video o archivo" onclick="document.getElementById(\'wa-file-input\').click()">📎</button>'
-      + '<textarea id="wa-input-txt" rows="1" placeholder="Escribí un mensaje... (Enter para enviar, Shift+Enter para bajar de linea)" onkeydown="waTeclaInput(event,'+hiloId+')" oninput="waAjustarAlto(this)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:16px;padding:10px 16px;color:var(--t1);font-size:13.5px;outline:none;resize:none;max-height:110px;font-family:inherit;line-height:1.4;"></textarea>'
+      + '<textarea id="wa-input-txt" rows="1" placeholder="Escribir mensaje" onkeydown="waTeclaInput(event,'+hiloId+')" oninput="waAjustarAlto(this)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:16px;padding:10px 16px;color:var(--t1);font-size:13.5px;outline:none;resize:none;max-height:110px;font-family:inherit;line-height:1.4;"></textarea>'
       + '<button class="btn btn-primary" onclick="waEnviar('+hiloId+')">Enviar</button>'
     + '</div>';
 
