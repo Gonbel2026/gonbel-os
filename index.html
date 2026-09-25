@@ -1618,11 +1618,13 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 
 @media(max-width:760px){
   #page-whatsapp.active{height:calc(100vh - 120px);}
+  body:has(.ah-nav.abajo) #page-whatsapp.active{height:calc(100vh - 120px - 62px - env(safe-area-inset-bottom));}
   .wa-shell{border-radius:0;}
   .wa-lista{width:100%;border-right:none;}
   .wa-lista.oculto-mobile{display:none;}
   .wa-chat{display:none;}
   .wa-chat.activo-mobile{display:flex;position:absolute;inset:0;background:#0a0f1a;z-index:5;}
+  body:has(.ah-nav.abajo) .wa-chat.activo-mobile{bottom:calc(62px + env(safe-area-inset-bottom));}
   .wa-back-mobile{display:flex;background:none;border:none;color:var(--t1);font-size:20px;cursor:pointer;padding:0 4px;}
   .wa-msg{max-width:80%;}
 }
