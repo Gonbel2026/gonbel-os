@@ -1607,6 +1607,14 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 .wa-toggle-ia.pausada{background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.3);color:var(--amber);}
 .wa-toggle-ia.activa{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.28);color:var(--green);}
 .wa-back-mobile{display:none;}
+.wa-attach-btn{flex-shrink:0;width:38px;height:38px;border-radius:50%;border:1px solid var(--brd);background:rgba(255,255,255,.05);color:var(--t1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.wa-attach-btn:hover{background:rgba(255,255,255,.1);}
+.wa-adjunto-subiendo{padding:8px 18px;font-size:12px;color:var(--t3);}
+.wa-media-img{display:block;max-width:260px;max-height:320px;border-radius:10px;cursor:pointer;margin-bottom:4px;}
+.wa-media-video{display:block;max-width:280px;max-height:320px;border-radius:10px;margin-bottom:4px;}
+.wa-media-audio{display:block;width:240px;margin-bottom:4px;}
+.wa-media-doc{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--t1);text-decoration:none;font-size:12.5px;margin-bottom:4px;}
+.wa-msg.con-media{padding:6px;}
 
 @media(max-width:760px){
   #page-whatsapp.active{height:calc(100vh - 120px);}
@@ -9659,9 +9667,12 @@ const MS_FASES = [
       'Instagram como registro de entregas',
       'Bloqueado por la verificaci\u00f3n de Meta con el RUC'
     ]},
-    {i:'\uD83E\uDD16', n:'WhatsApp con IA', e:'futuro', p:0, d:[
-      'Atender, cotizar y escalar solo',
-      'Necesita WhatsApp Business API'
+    {i:'\uD83E\uDD16', n:'WhatsApp con IA', e:'parcial', p:55, d:[
+      'Pantalla de WhatsApp dentro del sistema: lista de conversaciones, chat, contador de no le\u00EDdos, pausar/reactivar IA por conversaci\u00F3n, actualizaci\u00F3n cada 8 segundos',
+      'Motor de IA (wa-webhook): responde saludo y stock real, pausa sola ante reclamo o pedido de descuento, fuera de horario (7 a 18) avisa y junta datos del veh\u00EDculo para el d\u00EDa siguiente',
+      'Env\u00EDo de fotos, videos, audios y documentos \u2014 se puede adjuntar desde el chat y tambi\u00E9n se reciben y se ven los que manda el cliente (quedan guardados en el sistema)',
+      'Conectado por ahora al n\u00FAmero de PRUEBA de Meta, no al 0974 780 008 real \u2014 solo puede hablar con n\u00FAmeros que Lucas cargue como "verificados" en el panel de Meta',
+      'Pendiente: confirmar que el Webhook est\u00E9 suscripto en el panel de Meta (probar con un mensaje real desde un n\u00FAmero verificado) y decidir el n\u00FAmero definitivo para pasar a producci\u00F3n'
     ]},
     {i:'\uD83C\uDFF7\uFE0F', n:'Etiquetas y log\u00edstica', e:'futuro', p:0, d:[
       'Etiqueta por paquete ligada al pedido',
@@ -17163,7 +17174,10 @@ async function waAbrir(hiloId){
       + '</div>'
     + '</div>'
     + '<div class="wa-chat-body" id="wa-chat-body"><div style="text-align:center;color:var(--t3);font-size:12px;">Cargando...</div></div>'
+    + '<div id="wa-adjunto-prev"></div>'
     + '<div class="wa-chat-input">'
+      + '<input type="file" id="wa-file-input" accept="image/*,video/*,audio/*,.pdf" style="display:none;" onchange="waArchivoElegido(this,'+hiloId+')">'
+      + '<button type="button" class="wa-attach-btn" title="Adjuntar foto, video o archivo" onclick="document.getElementById(\'wa-file-input\').click()">📎</button>'
       + '<textarea id="wa-input-txt" rows="1" placeholder="Escribí un mensaje... (Enter para enviar, Shift+Enter para bajar de linea)" onkeydown="waTeclaInput(event,'+hiloId+')" oninput="waAjustarAlto(this)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:16px;padding:10px 16px;color:var(--t1);font-size:13.5px;outline:none;resize:none;max-height:110px;font-family:inherit;line-height:1.4;"></textarea>'
       + '<button class="btn btn-primary" onclick="waEnviar('+hiloId+')">Enviar</button>'
     + '</div>';
@@ -17186,6 +17200,27 @@ async function waCargarMensajes(hiloId){
   waPintarMensajes(hiloId);
 }
 
+function waCuerpoMensaje(m){
+  var texto = m.texto ? '<div>'+esc(m.texto).replace(/\n/g,'<br>')+'</div>' : '';
+  if(m.tipo === 'imagen' && m.media_url){
+    return '<img src="'+m.media_url+'" class="wa-media-img" onclick="waVerImagen(\''+m.media_url+'\')" loading="lazy">' + texto;
+  }
+  if(m.tipo === 'video' && m.media_url){
+    return '<video src="'+m.media_url+'" class="wa-media-video" controls preload="metadata"></video>' + texto;
+  }
+  if(m.tipo === 'audio' && m.media_url){
+    return '<audio src="'+m.media_url+'" class="wa-media-audio" controls></audio>' + texto;
+  }
+  if(m.tipo === 'documento' && m.media_url){
+    return '<a href="'+m.media_url+'" target="_blank" class="wa-media-doc">📄 '+esc(m.media_nombre||'Documento')+'</a>' + texto;
+  }
+  return texto || '<i style="opacity:.6;">[mensaje sin contenido]</i>';
+}
+
+function waVerImagen(url){
+  window.open(url, '_blank');
+}
+
 function waPintarMensajes(hiloId){
   var body = document.getElementById('wa-chat-body'); if(!body) return;
   var msgs = waMsgsCache[hiloId] || [];
@@ -17197,7 +17232,7 @@ function waPintarMensajes(hiloId){
     var esIa = m.autor === 'ia';
     var hora = new Date(m.creado_en).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
     var autorTag = m.direccion==='saliente' ? (esIa?'IA':(m.autor||'').toUpperCase())+' · ' : '';
-    return '<div class="wa-msg '+m.direccion+(esIa?' ia':'')+'">'+(m.texto||'')
+    return '<div class="wa-msg '+m.direccion+(esIa?' ia':'')+(m.tipo&&m.tipo!=='texto'?' con-media':'')+'">'+waCuerpoMensaje(m)
       +'<div class="wa-msg-meta">'+autorTag+hora+'</div></div>';
   }).join('');
   body.scrollTop = body.scrollHeight;
@@ -17233,6 +17268,61 @@ async function waEnviar(hiloId){
     if(h){ h.ia_pausada = true; h.pausada_por = currentUser?currentUser.role:'lucas'; }
     waAbrir(hiloId);
   } catch(e){ showToast('No se pudo enviar','error'); }
+}
+
+const WA_MEDIA_BUCKET = 'wa-media';
+
+async function waArchivoElegido(input, hiloId){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+
+  const prev = document.getElementById('wa-adjunto-prev');
+  if(prev) prev.innerHTML = '<div class="wa-adjunto-subiendo">⏳ Subiendo '+(file.type.startsWith('image/')?'foto':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'archivo')+'…</div>';
+
+  try {
+    const esImagen = file.type.startsWith('image/');
+    const esVideo = file.type.startsWith('video/');
+    const esAudio = file.type.startsWith('audio/');
+    const tipo = esImagen ? 'imagen' : esVideo ? 'video' : esAudio ? 'audio' : 'documento';
+
+    let blob = file, contentType = file.type || 'application/octet-stream';
+    if(esImagen){
+      try { blob = await foComprimir(file, 1600, 0.85); contentType = 'image/jpeg'; }
+      catch(e){ /* si falla la compresión, se sube el original tal cual */ blob = file; }
+    }
+
+    const nombreLimpio = foLimpiarNombre(file.name) + (esImagen ? '.jpg' : (file.name.match(/\.[^.]+$/)||[''])[0]);
+    const path = hiloId + '/' + Date.now() + '_' + nombreLimpio;
+
+    const up = await fetch(SB_URL + '/storage/v1/object/' + WA_MEDIA_BUCKET + '/' + path, {
+      method: 'POST',
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': contentType},
+      body: blob
+    });
+    if(!up.ok){ const det = await up.text().catch(()=>''); throw new Error('Storage ' + up.status + ' ' + det.slice(0,120)); }
+
+    const media_url = SB_URL + '/storage/v1/object/public/' + WA_MEDIA_BUCKET + '/' + path;
+    const captionInput = document.getElementById('wa-input-txt');
+    const caption = (captionInput && captionInput.value.trim()) || '';
+    if(captionInput){ captionInput.value = ''; captionInput.style.height = 'auto'; }
+
+    if(prev) prev.innerHTML = '';
+
+    await sbFetch('/functions/v1/wa-enviar','POST',{
+      hilo_id: hiloId, texto: caption || null, tipo: tipo,
+      media_url: media_url, media_mime: contentType, media_nombre: file.name,
+      autor: currentUser ? currentUser.role : 'lucas'
+    });
+    await waCargarMensajes(hiloId);
+    await waCargar(true);
+    var h = waHilos.find(function(x){return x.id===hiloId;});
+    if(h){ h.ia_pausada = true; h.pausada_por = currentUser?currentUser.role:'lucas'; }
+    waAbrir(hiloId);
+  } catch(e){
+    if(prev) prev.innerHTML = '';
+    showToast('No se pudo adjuntar: ' + (e.message||e), 'error');
+  }
 }
 
 async function waToggleIA(hiloId){
