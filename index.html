@@ -1619,7 +1619,10 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 @media(max-width:760px){
   #page-whatsapp.active{height:calc(100vh - 120px);}
   body:has(.ah-nav.abajo) #page-whatsapp.active{height:calc(100vh - 120px - 62px - env(safe-area-inset-bottom));}
-  body:has(#page-whatsapp.active){position:fixed;inset:0;width:100%;overflow:hidden;}
+  html:has(#page-whatsapp.active){height:100%;overflow:hidden;}
+  body:has(#page-whatsapp.active){position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;}
+  body:has(#page-whatsapp.active) .wa-lista-body,
+  body:has(#page-whatsapp.active) .wa-chat-body{overscroll-behavior:contain;}
   .wa-shell{border-radius:0;}
   .wa-lista{width:100%;border-right:none;}
   .wa-lista.oculto-mobile{display:none;}
