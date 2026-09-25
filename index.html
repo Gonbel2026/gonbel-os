@@ -17195,6 +17195,27 @@ function waVolverLista(){
   document.getElementById('wa-lista').classList.remove('oculto-mobile');
 }
 
+// Deslizar desde el borde izquierdo hacia la derecha = volver a la lista
+// (como el gesto de "atrás" de Safari en iOS), solo cuando el chat mobile está abierto.
+(function(){
+  var sx = 0, sy = 0, activo = false;
+  document.addEventListener('touchstart', function(e){
+    var t = e.touches[0];
+    if(!t || t.clientX > 28) { activo = false; return; }
+    var chat = document.getElementById('wa-chat');
+    if(!chat || !chat.classList.contains('activo-mobile')) { activo = false; return; }
+    sx = t.clientX; sy = t.clientY; activo = true;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(!activo) return;
+    activo = false;
+    var t = e.changedTouches[0];
+    if(!t) return;
+    var dx = t.clientX - sx, dy = t.clientY - sy;
+    if(dx > 65 && Math.abs(dy) < 60) waVolverLista();
+  }, {passive:true});
+})();
+
 async function waCargarMensajes(hiloId){
   var msgs = [];
   try { msgs = await sbFetch('/rest/v1/wa_msgs?hilo_id=eq.'+hiloId+'&order=creado_en.asc&limit=200') || []; } catch(e){}
