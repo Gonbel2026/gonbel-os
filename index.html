@@ -1636,6 +1636,10 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   body.wa-full-mobile #page-whatsapp.active{height:100vh !important;height:100dvh !important;}
   body.wa-full-mobile .wa-lista-body,
   body.wa-full-mobile .wa-chat-body{overscroll-behavior:contain;}
+  /* La ventana ocupa la pantalla real: el header respeta el notch/reloj arriba,
+     y la barra de escribir respeta la barra de gestos/home indicator abajo. */
+  body.wa-full-mobile .wa-chat-h{padding-top:calc(14px + env(safe-area-inset-top));}
+  body.wa-full-mobile .wa-chat-input{padding-bottom:calc(13px + env(safe-area-inset-bottom));}
 }
 </style>
 </head>
