@@ -1619,10 +1619,6 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 @media(max-width:760px){
   #page-whatsapp.active{height:calc(100vh - 120px);}
   body:has(.ah-nav.abajo) #page-whatsapp.active{height:calc(100vh - 120px - 62px - env(safe-area-inset-bottom));}
-  html:has(#page-whatsapp.active){height:100%;overflow:hidden;}
-  body:has(#page-whatsapp.active){position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;}
-  body:has(#page-whatsapp.active) .wa-lista-body,
-  body:has(#page-whatsapp.active) .wa-chat-body{overscroll-behavior:contain;}
   .wa-shell{border-radius:0;}
   .wa-lista{width:100%;border-right:none;}
   .wa-lista.oculto-mobile{display:none;}
@@ -1630,6 +1626,16 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   .wa-chat.activo-mobile{display:flex;position:absolute;inset:0;background:#0a0f1a;z-index:5;}
   .wa-back-mobile{display:flex;background:none;border:none;color:var(--t1);font-size:20px;cursor:pointer;padding:0 4px;}
   .wa-msg{max-width:80%;}
+
+  /* Conversación abierta = pantalla completa real: se oculta el header de la app
+     y el menú inferior por completo, sin dejarles espacio reservado. Vuelven a
+     aparecer apenas se sale de la conversación (flecha o swipe). */
+  body.wa-full-mobile{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;}
+  body.wa-full-mobile .apphead{display:none !important;}
+  body.wa-full-mobile .ah-nav.abajo{display:none !important;}
+  body.wa-full-mobile #page-whatsapp.active{height:100vh !important;height:100dvh !important;}
+  body.wa-full-mobile .wa-lista-body,
+  body.wa-full-mobile .wa-chat-body{overscroll-behavior:contain;}
 }
 </style>
 </head>
@@ -17190,6 +17196,7 @@ async function waAbrir(hiloId){
 
   chat.classList.add('activo-mobile');
   document.getElementById('wa-lista').classList.add('oculto-mobile');
+  document.body.classList.add('wa-full-mobile');
 
   await waCargarMensajes(hiloId);
 }
@@ -17197,6 +17204,7 @@ async function waAbrir(hiloId){
 function waVolverLista(){
   document.getElementById('wa-chat').classList.remove('activo-mobile');
   document.getElementById('wa-lista').classList.remove('oculto-mobile');
+  document.body.classList.remove('wa-full-mobile');
 }
 
 // Deslizar desde el borde izquierdo hacia la derecha = volver a la lista
