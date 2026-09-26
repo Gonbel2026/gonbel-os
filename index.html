@@ -1640,6 +1640,9 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
      y la barra de escribir respeta la barra de gestos/home indicator abajo. */
   body.wa-full-mobile .wa-chat-h{padding-top:calc(14px + env(safe-area-inset-top));}
   body.wa-full-mobile .wa-chat-input{padding-bottom:calc(13px + env(safe-area-inset-bottom));}
+  /* El botón flotante de dictado (🎤) es de otras páginas: en el chat de WhatsApp
+     a pantalla completa no debe flotar encima del campo de escribir. */
+  body.wa-full-mobile #cr-fab{display:none !important;}
 }
 </style>
 </head>
