@@ -8325,6 +8325,17 @@ async function verHistorialPagos(){
   } catch(e){ showToast('Error al cargar historial','error'); }
 }
 
+// Un pedido "tiene proveedor atribuido" cuando al menos una de sus piezas tiene
+// el campo Proveedor cargado (no el placeholder, un valor real escrito/elegido).
+// Sin piezas cargadas también cuenta como "sin proveedor".
+function _pedidoSinProveedor(order){
+  try{
+    var items = order.piezas_items ? JSON.parse(order.piezas_items) : [];
+    if(!items.length) return true;
+    return !items.some(function(it){ return it.pr && String(it.pr).trim(); });
+  }catch(e){ return true; }
+}
+
 async function drop(e, colId){
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
@@ -8348,15 +8359,30 @@ async function drop(e, colId){
     }
   }
 
-  // Puerta ENTREGADO: costo + venta + pago
+  // Puerta ENTREGADO: costo + venta + pago + proveedor
   if(colId === 'entregado'){
     var _faltan=[];
     if(!parseFloat(order.precio_venta)) _faltan.push('precio de venta');
     if(!parseFloat(order.precio_costo)) _faltan.push('costo');
     if(!parseFloat(order.valor_pagado)) _faltan.push('pago registrado');
+    if(_pedidoSinProveedor(order)) _faltan.push('proveedor de la(s) pieza(s)');
     if(_faltan.length){
       order.estado=estadoAnterior; renderKanban(); dragId=null;
       invModal('Datos incompletos','<div class="pg-err" style="padding:14px;font-size:13px;">Para marcar como Entregado falta: <b>'+_faltan.join(', ')+'</b>.<br><br>Completá los datos y volvé a moverlo.</div>',null);
+      return;
+    }
+  }
+
+  // Puerta AVANCE desde Comprado: no se puede seguir de largo (a Listo para envío)
+  // sin costo, precio de venta y proveedor atribuido. Así siempre queda todo cargado.
+  if(colId === 'listo-envio'){
+    var _faltanLE=[];
+    if(!parseFloat(order.precio_costo)) _faltanLE.push('costo');
+    if(!parseFloat(order.precio_venta)) _faltanLE.push('precio de venta');
+    if(_pedidoSinProveedor(order)) _faltanLE.push('proveedor de la(s) pieza(s)');
+    if(_faltanLE.length){
+      order.estado=estadoAnterior; renderKanban(); dragId=null;
+      invModal('Datos incompletos','<div class="pg-err" style="padding:14px;font-size:13px;">Para pasar de Comprado/En Camino hacia adelante falta: <b>'+_faltanLE.join(', ')+'</b>.<br><br>Completá los datos y volvé a moverlo.</div>',null);
       return;
     }
   }
