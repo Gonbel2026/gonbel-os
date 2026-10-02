@@ -5063,7 +5063,8 @@ function bpConvertirAGs(valor, moneda){
 function bpVentaFinal(it){
   if(it.ventaManual) return Math.ceil(it.ventaManual/10000)*10000;
   if(it.cb && it.mg) return Math.ceil(it.cb * (1 + it.mg/100) / 10000) * 10000;
-  if(it.cb) return Math.ceil(it.cb/10000)*10000;
+  // Sin margen elegido y sin venta manual: NUNCA se asume el costo como precio de venta.
+  // El precio de venta lo pone Lucas siempre a mano (o eligiendo un margen) — nunca el sistema.
   return null;
 }
 
@@ -6435,7 +6436,7 @@ function bpConfirmarSinMargen(){
   const sinMargen = bpPiezasSinMargen();
   if(!sinMargen.length) return true;
   const lista = sinMargen.map(d=>'• '+d).join('\n');
-  return confirm('Estas piezas no tienen un margen elegido — se va a usar el Valor cargado como precio final:\n\n'+lista+'\n\n¿Continuar igual?');
+  return confirm('Estas piezas tienen costo cargado pero todavía no tienen precio de venta (ni margen ni valor manual) — van a quedar FUERA del presupuesto que se copia/envía:\n\n'+lista+'\n\n¿Continuar igual?');
 }
 
 // Piezas con costo cargado pero sin margen NI venta manual — sin esos dos datos no hay forma de saber el precio final
@@ -6446,11 +6447,9 @@ function bpPiezasSinMargen(){
 function saveBigEdit(){
   const wasPiezas = bigEditTarget === 'f-piezas';
   if(wasPiezas){
-    const sinMargen = bpPiezasSinMargen();
-    if(sinMargen.length){
-      const lista = sinMargen.map(d=>'• '+d).join('\n');
-      if(!confirm('Estas piezas no tienen un margen elegido — se van a guardar con el Valor que escribiste como precio de venta directo:\n\n'+lista+'\n\n¿Guardar igual?')) return;
-    }
+    // Guardar siempre deja pasar, esté completo o no — es un presupuesto en preparación,
+    // no un pedido terminado. Las piezas sin margen ni venta manual simplemente quedan sin
+    // precio de venta (nunca se asume el costo como precio); se completan más tarde.
     // Vuelca lo armado (nombre + costo + venta manual + calidad + moneda + fecha + proveedor) en las
     // piezas reales del pedido. Costo y Venta manual son dos datos independientes — si hay Venta
     // manual cargada, esa siempre gana como precio final, sin importar si también hay margen elegido.
