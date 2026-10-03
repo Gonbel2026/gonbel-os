@@ -375,6 +375,16 @@ body.role-operador #stat-ingresos{display:none!important;}
 .bp-progreso-barra{height:7px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden;}
 .bp-progreso-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));width:0%;transition:width .3s;}
 .bp-searchrow{width:100%;display:flex;align-items:center;gap:10px;margin-top:7px;flex-wrap:wrap;}
+.bp-hist{width:100%;margin-top:8px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.22);border-radius:10px;padding:8px 11px;}
+.bp-hist-tt{font-size:11px;font-weight:700;color:var(--amber);margin-bottom:5px;}
+.bp-hist-tt small{font-weight:500;color:var(--t4);}
+.bp-hist-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:11.5px;padding:4px 0;border-top:1px solid rgba(255,255,255,.05);}
+.bp-hist-row:first-of-type{border-top:none;}
+.bp-hist-fecha{color:var(--t3);min-width:72px;}
+.bp-hist-pz{flex:1;min-width:160px;color:var(--t1);}
+.bp-hist-pz small{color:var(--t3);}
+.bp-hist-val{color:var(--t2);}
+.bp-hist-val b{color:var(--green);}
 .bp-search-btn{background:rgba(0,198,255,.14);border:1px solid rgba(0,198,255,.35);border-radius:9px;color:var(--cyan);font-size:11.5px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:'Inter',sans-serif;}
 .bp-search-btn:hover{background:rgba(0,198,255,.24);}
 .bp-search-btn:disabled{opacity:.6;cursor:default;}
@@ -1697,6 +1707,11 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <span class="divisa-lbl">USD/BRL</span>
       <span class="divisa-val" id="div-usd-brl">—</span>
     </div>
+    <div class="divisa-sep"></div>
+    <div class="divisa-item" id="div-bcp-item" title="Cotización referencial oficial del Banco Central del Paraguay — la que se usa para facturar">
+      <span class="divisa-lbl">BCP oficial</span>
+      <span class="divisa-val" id="div-bcp-usd" style="color:var(--green);">—</span>
+    </div>
     <span id="divisa-refresh" style="font-size:11px;color:var(--t3);margin-left:4px;">↻</span>
   </div>
   <div class="ah-right">
@@ -1708,6 +1723,10 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
     <div class="ah-sync" id="ml-chip" onclick="mlClick()" style="cursor:pointer;" title="Mercado Livre — clic para sincronizar">
       <span class="ml-dot off" id="ml-dot"></span>
       <span id="ml-estado-txt">Mercado Livre</span>
+    </div>
+    <div class="ah-sync" id="bk-chip" onclick="bkDetalle()" style="cursor:pointer;" title="Copia de seguridad diaria de toda la base (02:00 Paraguay)">
+      <span class="ml-dot off" id="bk-dot"></span>
+      <span id="bk-txt">Backup</span>
     </div>
     <div class="ah-user">
       <div class="ah-av" id="ah-avatar">LG</div>
@@ -2515,6 +2534,10 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
           <div class="cfg-ico">🕓</div><h3>Historial de modificaciones</h3>
           <p>Todo lo que se toca en el sistema, con quién lo hizo y cuándo.</p>
         </div>
+        <div class="cfg-card" onclick="cfgIr('waia')">
+          <div class="cfg-ico">🤖</div><h3>Asistente de WhatsApp</h3>
+          <p>Qué hace la IA sola: pedir foto de la pieza, transcribir audios.</p>
+        </div>
         <div class="cfg-card" onclick="cfgIr('mant')">
           <div class="cfg-ico">🔧</div><h3>Mantenimiento</h3>
           <p>Sincronizar, respaldar y limpiar.</p>
@@ -2643,15 +2666,36 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
 
     <!-- ACCESOS -->
     <!-- MANTENIMIENTO -->
+    <div class="cfg-pane" id="cfgp-waia">
+      <button class="cfg-volver" onclick="cfgIr('menu')">← Configuración</button>
+      <div class="cfg-sec">
+        <div class="cfg-t">🤖 Asistente de WhatsApp</div>
+        <div class="cfg-d">La IA nunca cotiza ni pone precios: solo junta año, modelo y chasis y pasa la charla a una persona. Estas opciones cambian lo que pide y cómo entiende al cliente.</div>
+        <label style="display:flex;gap:11px;align-items:flex-start;padding:10px 0;cursor:pointer;">
+          <input type="checkbox" id="waia-foto" style="margin-top:3px;width:18px;height:18px;">
+          <span><b style="color:var(--t1);">Pedir foto de la pieza cuando es una sola</b><br><span style="font-size:12.5px;color:var(--t3);">Al completar los datos, si el cliente pidió una sola pieza, le pide (sin obligar) una foto de la pieza o del número grabado si es usada.</span></span>
+        </label>
+        <label style="display:flex;gap:11px;align-items:flex-start;padding:10px 0;cursor:pointer;">
+          <input type="checkbox" id="waia-audio" style="margin-top:3px;width:18px;height:18px;">
+          <span><b style="color:var(--t1);">Transcribir notas de voz</b><br><span style="font-size:12.5px;color:var(--t3);">Pasa los audios a texto, los muestra debajo del audio y la IA los entiende como si el cliente hubiera escrito. <span id="waia-audio-estado"></span></span></span>
+        </label>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding-bottom:30px;">
+        <button type="button" class="btn btn-primary" onclick="guardarWaIA()" style="padding:13px 26px;">Guardar</button>
+      </div>
+    </div>
+
     <div class="cfg-pane" id="cfgp-mant">
       <button class="cfg-volver" onclick="cfgIr('menu')">← Configuración</button>
       <div class="cfg-sec">
         <div class="cfg-t">🔧 Mantenimiento</div>
         <div class="cfg-d">Herramientas de sincronización y respaldo.</div>
+        <div id="bk-panel" style="background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--t2);">Cargando estado del backup…</div>
         <div style="display:flex;gap:9px;flex-wrap:wrap;">
           <button type="button" class="btn btn-ghost" onclick="mlSync(true)">🔄 Sincronizar Mercado Livre</button>
           <button type="button" class="btn btn-ghost" onclick="loadDivisas(true)">💱 Actualizar cotizaciones</button>
           <button type="button" class="btn btn-ghost" onclick="descargarRespaldo()">💾 Descargar respaldo</button>
+          <button type="button" class="btn btn-ghost" onclick="bkAhora()" id="bk-ahora">🛟 Hacer backup ahora</button>
           <button type="button" class="btn btn-ghost" onclick="limpiarAlertas()">🧹 Limpiar alertas vistas</button>
         </div>
       </div>
@@ -3358,6 +3402,9 @@ async function initDB(){
   arrancarAutoRefresco();
   try{ mlEstado(); }catch(e){}
   try{ cargarConfig(); }catch(e){}
+  try{ bkCargar(); }catch(e){}
+  try{ cargarBCP(); }catch(e){}
+  try{ aprCargar(); }catch(e){}
 }
 
 function showSetupMessage(){
@@ -3388,8 +3435,9 @@ let sugData = [];
 async function cargarAlertas(){
   try {
     const todas = await sbFetch('/rest/v1/ml_alertas?vista=eq.false&order=created_at.desc&limit=40') || [];
-    const a = todas.filter(x=>x.tipo !== 'demora');
-    const dem = todas.filter(x=>x.tipo === 'demora');
+    // Demoras de envío y plazos de reclamo van juntos en el panel de "envíos con problemas"
+    const a = todas.filter(x=>x.tipo !== 'demora' && x.tipo !== 'reclamo');
+    const dem = todas.filter(x=>x.tipo === 'demora' || x.tipo === 'reclamo');
     const dbox = document.getElementById('dem-box');
     if(dbox){
       if(dem.length){
@@ -3397,8 +3445,8 @@ async function cargarAlertas(){
           const f = new Date(x.created_at);
           return `<div class="dem-row">
             <div>
-              <div style="font-size:14px;font-weight:700;color:#fff;">${x.pieza}</div>
-              <div style="font-size:12px;color:var(--red);margin-top:3px;">Pedido ${x.pedido_numero||''} · ${x.estado||''}</div>
+              <div style="font-size:14px;font-weight:700;color:#fff;">${x.tipo==='reclamo'?'⚖️ ':''}${x.pieza}</div>
+              <div style="font-size:12px;color:${x.tipo==='reclamo'?'var(--amber)':'var(--red)'};margin-top:3px;">Pedido ${x.pedido_numero||''} · ${x.estado||''}</div>
             </div>
             <span style="font-size:11px;color:var(--t3);white-space:nowrap;">${f.toLocaleDateString('es-PY',{day:'2-digit',month:'short'})}</span>
           </div>`;
@@ -5358,9 +5406,14 @@ async function bpBuscarEnEbay(i, abrirPanel){
   else delete it.sinTraducirEn;
 
   try {
-    const r = await fetch(SB_URL + '/functions/v1/ebay-buscar?limit=8&q=' + encodeURIComponent(termino));
+    // Con año + marca + modelo, eBay además dice si cada publicación es compatible con el vehículo
+    const qVeh = (anio && marcaVeh && modelo)
+      ? '&anio=' + encodeURIComponent(anio.slice(0,4)) + '&marca=' + encodeURIComponent(marcaVeh) + '&modelo=' + encodeURIComponent(modelo)
+      : '';
+    const r = await fetch(SB_URL + '/functions/v1/ebay-buscar?limit=8&q=' + encodeURIComponent(termino) + qVeh);
     const j = await r.json();
     it.buscando = false;
+    it.ebayCompat = j.compatibilidad || null;
     if(!j.ok){
       it.busquedaError = j.error || 'eBay no respondi\u00f3';
       bpRenderLista();
@@ -5386,9 +5439,13 @@ async function bpBuscarEnEbay(i, abrirPanel){
         precio_usd: x.precio,
         flete_usd: x.flete,
         total_usd: x.total,
-        vendedor: x.vendedor
+        vendedor: x.vendedor,
+        item_id: x.item_id || x.id || null,
+        compat: x.compat || null
       };
     });
+    await aprCargar();
+    it.resultadosBusqueda = aprOrdenar(it.resultadosBusqueda);
     it.terminoBuscado = termino;   // queda a la vista: si traduce mal, se corrige
     registrarBusquedaEbay({
       original: [it.d, it.refinado].filter(Boolean).join(' '),
@@ -5500,7 +5557,8 @@ async function bpBuscarPieza(i, abrirPanel, refrescar){
       return false;
     }
     const filt = mlFiltrarResultados(bloque.resultados || [], [it.d, it.refinado].filter(Boolean).join(' '));
-    it.resultadosBusqueda = filt.buenos;
+    await aprCargar();
+    it.resultadosBusqueda = aprOrdenar(filt.buenos);
     it.descartadosRelevancia = filt.fuera.length;
     if(filt.fuera.length) console.log('Apartados por no ser la pieza:', filt.fuera);
     it.terminoBuscado = bloque.termino_buscado || it.terminoBuscado || null;
@@ -5976,9 +6034,65 @@ async function bpRefQuitar(refId){
     showToast('Referencia quitada','success');
   } catch(e){ showToast('No se pudo quitar','error'); }
 }
+// ══════ APRENDIZAJE: ordenar resultados con lo que ya se sabe ══════
+// Tres fuentes reales, sin adivinar nada:
+//  1) Vendedores a los que ya se les compró (tabla proveedores, importada de las compras reales de ML).
+//  2) Publicaciones que se eligieron antes ("✓ Elegir este").
+//  3) Publicaciones descartadas con motivo ("✕") — bajan al final y muestran por qué.
+// Solo cambia el ORDEN y agrega una etiqueta; nunca saca resultados ni confirma compatibilidad.
+let APRENDIZAJE = null;
+async function aprCargar(forzar){
+  if(APRENDIZAJE && !forzar) return APRENDIZAJE;
+  const ap = { vendedores: new Map(), elegidos: new Map(), descartes: new Map() };
+  try {
+    const prov = await sbFetch('/rest/v1/proveedores?select=nombre,compras,favorito,entregas_tarde&limit=1000') || [];
+    prov.forEach(p=>{ if(p.nombre) ap.vendedores.set(p.nombre.trim().toUpperCase(), p); });
+  } catch(e){}
+  try {
+    const fb = await sbFetch('/rest/v1/busqueda_feedback?select=item_id,accion,motivo,termino&item_id=not.is.null&order=id.desc&limit=2000') || [];
+    fb.forEach(f=>{
+      if(f.accion === 'elegido') ap.elegidos.set(f.item_id, (ap.elegidos.get(f.item_id)||0) + 1);
+      else if(f.accion === 'descartado' && !ap.descartes.has(f.item_id)) ap.descartes.set(f.item_id, f.motivo || 'descartado');
+    });
+  } catch(e){}
+  APRENDIZAJE = ap;
+  return ap;
+}
+function aprOrdenar(lista){
+  const ap = APRENDIZAJE;
+  if(!ap || !Array.isArray(lista) || !lista.length) return lista;
+  const conPuntaje = lista.map((r, idx)=>{
+    const marcas = [];
+    let p = -idx;                                   // sin datos, queda el orden original
+    const id = r.item_id || null;
+    const vend = (r.vendedor || r.seller || '').trim().toUpperCase();
+    if(id && ap.elegidos.has(id)){ p += 1000; marcas.push({t:'✓ Lo elegiste antes', c:'var(--green)'}); }
+    const pv = vend && ap.vendedores.get(vend);
+    if(pv){
+      const n = pv.compras || 1;
+      p += 150 * Math.min(n, 4) + (pv.favorito ? 200 : 0) - (pv.entregas_tarde ? 100 : 0);
+      marcas.push({t:'⭐ Ya le compraste'+(n>1?' '+n+' veces':'')+(pv.favorito?' · favorito':''), c:'var(--amber)'});
+    }
+    if(id && ap.descartes.has(id)){ p -= 5000; marcas.push({t:'✕ Descartado antes: '+ap.descartes.get(id), c:'var(--red)'}); }
+    // Compatibilidad declarada en eBay (dato del vendedor, no confirma OEM)
+    if(r.compat === 'COMPATIBLE'){ p += 400; marcas.push({t:'🚗 eBay: compatible con el vehículo (dato del vendedor)', c:'var(--green)'}); }
+    else if(r.compat === 'NOT_COMPATIBLE'){ p -= 800; marcas.push({t:'🚫 eBay: NO compatible con el vehículo (dato del vendedor)', c:'var(--red)'}); }
+    else if(r.compat === 'UNDETERMINED'){ marcas.push({t:'eBay: sin dato de compatibilidad', c:'var(--t4)'}); }
+    r._apr = marcas.length ? marcas : null;
+    return {r, p};
+  });
+  conPuntaje.sort((a,b)=> b.p - a.p);
+  return conPuntaje.map(x=>x.r);
+}
+
 // Registro de decisiones — lo que enseña de verdad: qué se eligió, qué se descartó y por qué
 async function bpFeedback(i, accion, r, posicion, motivo){
   const it = bpStaging[i]; if(!it) return;
+  // Se aplica en el momento: la próxima búsqueda ya usa esta decisión
+  if(APRENDIZAJE && r && r.item_id){
+    if(accion === 'elegido') APRENDIZAJE.elegidos.set(r.item_id, (APRENDIZAJE.elegidos.get(r.item_id)||0) + 1);
+    if(accion === 'descartado') APRENDIZAJE.descartes.set(r.item_id, motivo || 'descartado');
+  }
   const v = bpAfVehiculo();
   try {
     await sbFetch('/rest/v1/busqueda_feedback','POST',{
@@ -6225,6 +6339,7 @@ function bpRenderLista(){
         <input type="text" class="bp-fecha" style="flex:1;min-width:200px;" placeholder="Ej: 8K0941043, sacado de Partslink24…" value="${(it.oem||'').replace(/"/g,'&quot;')}" onchange="bpOemItem(${i},this.value)">
         ${it.oem?`<span class="bp-fecha-txt" style="color:var(--cyan);">se usa este código al buscar →</span>`:''}
       </div>
+      ${bpHistorialHtml(it)}
       <div class="bp-searchrow">
         <button type="button" class="bs-chip" style="margin-right:6px;" title="${(it.bs||'ml')==='ebay'?'Se busca en eBay (flete a Miami)':'Se busca en Mercado Livre (flete a Foz)'} — tocá para cambiar" onclick="bpStaging[${i}].bs=((bpStaging[${i}].bs||'ml')==='ml'?'ebay':'ml');bpRenderLista()">${(it.bs||'ml')==='ebay'?'🇺🇸':'🇧🇷'}</button>
         <button type="button" class="bp-search-btn" onclick="bpBuscarPieza(${i})" ${it.buscando?'disabled':''}>
@@ -6264,6 +6379,87 @@ function bpRenderLista(){
   }).join('');
 }
 
+// ══════ HISTORIAL DE PRECIOS PROPIO ══════
+// Busca la misma pieza en pedidos anteriores (costo real y venta real que se cargaron a mano)
+// y muestra los más parecidos: primero los del mismo modelo, después los de la misma marca.
+// Es solo una referencia de precio: NO confirma compatibilidad ni número OEM.
+const HP_VACIAS = new Set(['de','del','la','el','los','las','para','con','sin','y','o','a','en','un','una','pza','pieza','piezas','x','pcs','pc','1','2']);
+// Sinónimos que en los pedidos se escriben de varias formas
+const HP_SINON = {parachoque:'paragolpes',parachoques:'paragolpes',paragolpe:'paragolpes',pg:'paragolpes',bumper:'paragolpes',
+  farol:'faro',faros:'faro',optica:'faro',retrovisor:'espejo',espejos:'espejo',
+  delantera:'delantero',del:'delantero',trasera:'trasero',tras:'trasero',
+  izquierdo:'lh',izquierda:'lh',izq:'lh',le:'lh',derecho:'rh',derecha:'rh',der:'rh',ld:'rh',
+  amortiguadores:'amortiguador',rejillas:'rejilla'};
+// Palabras que convierten la pieza en OTRA (un componente de la pieza): "tapa retrovisor" no es
+// el espejo, "soporte de paragolpes" no es el paragolpes. Si el pedido viejo tiene una de estas y
+// la pieza buscada no, no se toma como el mismo precio.
+const HP_COMPONENTE = new Set(['tapa','marco','soporte','moldura','junta','guia','sensor','motor','vidrio','luna','lampara','foco','focos','modulo','reactor','puntera','parrilla','cubierta','embellecedor','burlete','tornillo','clip','clips','grampa','grampas','kit','reparacion','manija','perilla','luz','led','tapon','deflector','spoiler','rejilla','guias','senalero','giro','valijera','capot','porton','cerradura','bisagra']);
+function hpNorm(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/\(\s*\d+\s*pcs?\s*\)/g,' ').replace(/[^a-z0-9 ]/g,' ').split(/\s+/)
+    .map(w=>HP_SINON[w]||w)
+    .filter(w=>w.length>1 && !HP_VACIAS.has(w));
+}
+const hpLado = pal => pal.includes('lh') ? 'lh' : (pal.includes('rh') ? 'rh' : '');
+function bpHistorialPrecios(it, max){
+  const palTodas = hpNorm(it.d);
+  const lado = hpLado(palTodas);
+  // El lado no cuenta como palabra a coincidir: se usa aparte para no mezclar izquierdo con derecho
+  const pal = [...new Set(palTodas.filter(w=>w!=='lh' && w!=='rh'))];
+  const palSet = new Set(pal);
+  if(!pal.length || typeof orders === 'undefined') return [];
+  const vistos = new Set();
+  const marca = ((document.getElementById('f-marca')||{}).value||'').trim().toLowerCase();
+  const modelo = ((document.getElementById('f-modelo')||{}).value||'').trim().toLowerCase();
+  const propioId = currentOrder && currentOrder.id;
+  const hits = [];
+  orders.forEach(o=>{
+    if(!o || o.id === propioId || !o.piezas_items) return;
+    let items; try { items = JSON.parse(o.piezas_items); } catch(e){ return; }
+    if(!Array.isArray(items)) return;
+    items.forEach(x=>{
+      const costo = parseFloat(x.cb)||0, venta = parseFloat(x.p)||0;
+      if(!costo && !venta) return;
+      const otrasL = hpNorm(x.d);
+      const ladoX = hpLado(otrasL);
+      if(lado && ladoX && lado !== ladoX) return; // pidieron un lado y este pedido es del otro
+      const clave = o.id+'|'+(x.d||'').toLowerCase().trim();
+      if(vistos.has(clave)) return; vistos.add(clave);
+      const otras = new Set(otrasL);
+      // Un componente que la pieza buscada no nombra = es otra pieza
+      if([...otras].some(w=>HP_COMPONENTE.has(w) && !palSet.has(w))) return;
+      const comunes = pal.filter(w=>otras.has(w)).length;
+      const extras = [...otras].filter(w=>!palSet.has(w) && w!=='lh' && w!=='rh').length;
+      // Todas las palabras si la pieza tiene 1 o 2; al menos 2 y la mayoría si tiene más
+      const necesarias = pal.length <= 2 ? pal.length : Math.max(2, Math.ceil(pal.length*0.6));
+      if(comunes < necesarias) return;
+      const mismaMarca = marca && (o.marca||'').toLowerCase().trim() === marca;
+      const mismoModelo = mismaMarca && modelo && (o.modelo||'').toLowerCase().trim() === modelo;
+      hits.push({
+        puntaje: comunes*10 - extras*4 + (mismoModelo?50:0) + (mismaMarca?20:0),
+        fecha: o.created_at, num: o.numero_pedido || o.numero || ('#'+o.id), id: o.id,
+        cliente: o.cliente_nombre||'', veh: [o.marca,o.modelo,o['año']].filter(Boolean).join(' '),
+        pieza: x.d, costo, venta, proveedor: x.proveedorManual || x.pr || '', estado: o.estado,
+        mismoModelo, mismaMarca
+      });
+    });
+  });
+  hits.sort((a,b)=> b.puntaje - a.puntaje || new Date(b.fecha) - new Date(a.fecha));
+  return hits.slice(0, max||3);
+}
+function bpHistorialHtml(it){
+  const h = bpHistorialPrecios(it, 3);
+  if(!h.length) return '';
+  return `<div class="bp-hist">
+    <div class="bp-hist-tt">🕘 Antes se cotizó así <small>(referencia de precio — no confirma compatibilidad)</small></div>
+    ${h.map(x=>`<div class="bp-hist-row" title="${x.num} · ${(x.cliente||'').replace(/"/g,'&quot;')}">
+      <span class="bp-hist-fecha">${x.fecha?new Date(x.fecha).toLocaleDateString('es-PY'):''}</span>
+      <span class="bp-hist-pz">${(x.pieza||'').replace(/</g,'&lt;')}<small>${x.veh?' · '+x.veh.replace(/</g,'&lt;'):''}${x.mismoModelo?' · mismo modelo':(x.mismaMarca?' · misma marca':'')} · ${x.num}</small></span>
+      <span class="bp-hist-val">${x.costo?'Costo Gs '+fmtNum(x.costo):''}${x.costo&&x.venta?' · ':''}${x.venta?'<b>Venta Gs '+fmtNum(x.venta)+'</b>':''}${x.proveedor?' · '+x.proveedor.replace(/</g,'&lt;'):''}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
 function bpPintarResultados(i){
   const resultados = bpStaging[i].resultadosBusqueda || [];
   if(!resultados.length) return `<div class="bp-resultados"><div class="bp-res-vacio">No se encontraron opciones que coincidan con el vehículo/año. Probá cambiar el nombre de la pieza, afinar la búsqueda o buscar sin marca.</div>
@@ -6282,11 +6478,15 @@ function bpPintarResultados(i){
       </div>
       <button type="button" class="bp-res-x" onclick="bpRefQuitar(${ref.id})" title="Quitar esta referencia">✕</button>
     </div>` : ''}
+    ${(()=>{ const c = bpStaging[i].ebayCompat; if(!c || !c.chequeados) return '';
+      const todosNo = c.no_compatibles === c.chequeados;
+      return `<div style="font-size:11.5px;color:${todosNo?'var(--amber)':'var(--t3)'};margin-bottom:8px;">🚗 Compatibilidad eBay para ${c.vehiculo}: ${c.compatibles} compatible(s), ${c.no_compatibles} no compatible(s), ${c.sin_dato} sin dato — es lo que cargó cada vendedor, confirmá el OEM igual.${todosNo?' <b>Todos salieron no compatibles: puede que eBay no reconozca el modelo escrito así (por ejemplo "Serie 5" en vez de "5 Series").</b>':''}</div>`; })()}
     ${resultados.slice(0,5).map((r,ri)=>`
       <div class="bp-res-item" style="flex-wrap:wrap;">
         ${r.foto ? `<img src="${r.foto}" class="bp-res-foto" loading="lazy">` : '<div class="bp-res-foto" style="display:flex;align-items:center;justify-content:center;color:var(--t4);font-size:18px;">📦</div>'}
         <div class="bp-res-info">
           <div class="bp-res-tt">${r.titulo}</div>
+          ${r._apr ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 3px;">${r._apr.map(m=>`<span style="font-size:10.5px;font-weight:700;color:${m.c};background:rgba(255,255,255,.05);border-radius:6px;padding:2px 7px;">${m.t}</span>`).join('')}</div>` : ''}${r.vendedor ? `<div class="bp-res-cond">Vendedor: ${String(r.vendedor).replace(/</g,'&lt;')}</div>` : ''}
           ${r.fuente==='ebay'
             ? `<div class="bp-res-precio">USD ${Number(r.precio_usd||0).toFixed(2)}${r.flete_usd!=null?` + flete USD ${Number(r.flete_usd).toFixed(2)}`:' · flete a confirmar'} = <b>USD ${Number(r.total_usd||r.precio_usd||0).toFixed(2)}</b>${USD_GS?` · <span style="color:var(--cyan);">Gs ${fmtNum(Math.round((r.total_usd||r.precio_usd||0)*(USD_GS+50)))}</span>`:''}</div>`
             : `<div class="bp-res-precio">R$ ${Number(r.precio_brl||0).toFixed(2)}${r.flete_brl!=null?` + flete R$ ${Number(r.flete_brl).toFixed(2)}`:' · flete a confirmar'} = <b>R$ ${Number(r.total_brl||r.precio_brl||0).toFixed(2)}</b>`}
@@ -9549,7 +9749,8 @@ const MS_FASES = [
   {n:1, t:'N\u00facleo operativo', color:'#22d97a', mods:[
     {i:'\uD83C\uDFE0', n:'Gonbel OS', e:'activo', p:100, d:[
       'Un solo archivo HTML en GitHub Pages con Supabase de backend',
-      '36 tablas, ~1 MB, versi\u00f3n index_123'
+      '64 tablas, ~1,9 MB, 31 funciones en Supabase y 9 tareas autom\u00e1ticas (cron)',
+      'Se instala como app en el iPhone (pantalla de inicio)'
     ]},
     {i:'\uD83D\uDD10', n:'Acceso y permisos', e:'activo', p:100, d:[
       'Login real de Supabase Auth: se acab\u00f3 el PIN',
@@ -9560,17 +9761,22 @@ const MS_FASES = [
     {i:'\uD83D\uDEE1\uFE0F', n:'Seguridad RLS', e:'activo', p:95, d:[
       'RLS activo en las 35 tablas desde el 5 de septiembre',
       'Sin sesi\u00f3n iniciada, la clave p\u00fablica no da acceso a nada',
-      'Falta: backups autom\u00e1ticos propios'
+      'Backup diario autom\u00e1tico a las 02:00 Paraguay, se guardan 60 d\u00edas. Arreglado el 3/10/2026: fallaba por falta de memoria desde el 11/9 (el registro crudo de avisos de ML pesaba 25 MB); ahora pesa ~2 MB y tarda 3 s',
+      'Indicador \ud83d\udcbe Backup arriba en la barra (verde = al d\u00eda, rojo = m\u00e1s de 26 h sin backup) y bot\u00f3n \u201cHacer backup ahora\u201d en Configuraci\u00f3n \u2192 Mantenimiento',
+      'Pendiente de aprobar: conversaciones y mensajes de WhatsApp y pagos de pedidos todav\u00eda se pueden leer sin iniciar sesi\u00f3n (permiso p\u00fablico viejo)'
     ]},
     {i:'\uD83D\uDCCB', n:'Kanban y pedidos', e:'activo', p:100, d:[
       '10 columnas con arrastrar y soltar',
-      '316 pedidos cargados',
+      '447 pedidos cargados (360 en Presupuesto Enviado, 58 entregados)',
+      'Regla: no se pasa de Comprado/En Camino hacia adelante sin costo, precio de venta y proveedor en las piezas',
+      'Presupuesto en preparación: se guarda siempre aunque esté incompleto, y el sistema NUNCA usa el costo como precio de venta',
       'Modal con piezas, financiero y fotos',
       'Ganancia por pieza siempre visible: costo, venta y margen',
       '\u201CPedido totalmente pagado\u201D rellena solo el Valor Pagado con el total de venta y saca el pedido de pendientes de cobro'
     ]},
     {i:'\uD83D\uDC65', n:'Clientes', e:'activo', p:90, d:[
-      '21 clientes con historial',
+      '32 clientes con historial',
+      'Vehículos por cliente: la función existe pero no hay ninguno cargado',
       'Tipos: taller, chaper\u00eda, repuestero, cliente final'
     ]},
     {i:'\u2318', n:'Buscador global', e:'activo', p:100, d:[
@@ -9623,7 +9829,8 @@ const MS_FASES = [
       'Pendiente: variante Control de Pedidos multi-veh\u00EDculo (formato especial documentado, no implementado a\u00FAn)'
     ]},
     {i:'\uD83D\uDCB1', n:'Divisas', e:'activo', p:100, d:[
-      'USD/Gs y BRL/Gs desde open.er-api.com',
+      'Costos: precio de plaza de La Moneda Cambios (CDE); respaldo open.er-api.com',
+      'BCP oficial: cotizaci\u00f3n referencial del Banco Central guardada cada d\u00EDa a las 18:00 (reintento 20:30) en cotizaciones_bcp \u2014 se ve en la barra de divisas y es la referencia para facturar',
       'D\u00f3lar = cotizaci\u00f3n + 50 Gs, siempre',
       'Los costos se congelan el d\u00eda de la compra'
     ]},
@@ -9646,13 +9853,15 @@ const MS_FASES = [
       'Flete calculado al CEP 85868-030 de Foz',
       'Panel de Afinado con 9 controles por pieza'
     ]},
-    {i:'\uD83C\uDDFA\uD83C\uDDF8', n:'Buscador eBay', e:'activo', p:85, d:[
+    {i:'\uD83C\uDDFA\uD83C\uDDF8', n:'Buscador eBay', e:'activo', p:90, d:[
+      'Compatibilidad por veh\u00EDculo (3/10/2026): con a\u00f1o, marca y modelo, eBay dice si cada publicaci\u00F3n es compatible; las no compatibles bajan al final. Es dato del vendedor, no confirma OEM',
       'Diccionario espa\u00f1ol-ingl\u00e9s de 375 t\u00e9rminos',
       'Detecta el c\u00f3digo OEM escrito junto al nombre',
       'Distingue pieza completa de componente',
       'Flete calculado a Miami 33186'
     ]},
     {i:'\uD83D\uDD14', n:'Avisos de Mercado Livre', e:'activo', p:90, d:[
+      'Env\u00EDos trabados y plazo de reclamo (3/10/2026): las alertas nunca se guardaban por un error de tipo en la tabla; ya funcionan. Avisa cuando una compra pasa su fecha estimada y cuando faltan 15 d\u00EDas para el l\u00EDmite de 60 d\u00EDas de reclamo. Ignora pedidos ya entregados y entregas coordinadas con el vendedor',
       'Estuvieron en cero desde siempre: cruzaban mal por n\u00famero de compra',
       'ML agrupa por pack_id \u2014 44 de cada 50 compras ten\u00edan pack distinto',
       'Ahora trae mensajes y preguntas respondidas, con descarte por aviso'
@@ -9673,12 +9882,14 @@ const MS_FASES = [
       'Sobreviven a cerrar y reabrir el pedido',
       'Muestran la antig\u00fcedad: en \u00e1mbar si pasaron m\u00e1s de 7 d\u00edas'
     ]},
-    {i:'\uD83E\uDDE0', n:'Aprendizaje', e:'parcial', p:45, d:[
-      'Cada b\u00fasqueda de eBay queda registrada con su traducci\u00f3n',
-      'Las compras guardan t\u00edtulo y enlace reales',
-      'Falta: aplicar lo aprendido al orden de resultados'
+    {i:'\uD83E\uDDE0', n:'Aprendizaje', e:'parcial', p:60, d:[
+      'Ordena resultados de ML y eBay con lo aprendido (3/10/2026): primero lo que ya elegiste, despu\u00e9s vendedores a los que ya les compraste (54 proveedores), y lo descartado baja al final con el motivo',
+      'Cada resultado muestra su etiqueta: \u2713 lo elegiste antes, \u2b50 ya le compraste, \u2715 descartado antes',
+      'Estado real: 142 b\u00fasquedas guardadas pero solo 4 elecciones y 0 descartes \u2014 aprende de lo que se marca con \u201cElegir este\u201d y \u201c\u2715\u201d',
+      'Cada b\u00fasqueda de eBay queda registrada con su traducci\u00f3n'
     ]},
     {i:'\uD83D\uDCE7', n:'Correos de despacho', e:'activo', p:90, d:[
+      'Avisos de cr\u00E9dito del banco y de casillas de Miami: NO llegan al Gmail conectado (gonbelimports@gmail.com) \u2014 0 correos en 120 d\u00EDas. Para leerlos hay que reenviarlos o registrar ese correo en el banco y la casilla',
       'Gmail conectado, lee eBay y AliExpress solo',
       'Extrae trackings y los carga en compras_externas',
       'Corre cada 12 horas, a las 6 y a las 18 de Paraguay',
@@ -9698,7 +9909,8 @@ const MS_FASES = [
   ]},
 
   {n:4, t:'Crecimiento', color:'#a855f7', mods:[
-    {i:'\uD83D\uDCC8', n:'Base de precios', e:'parcial', p:50, d:[
+    {i:'\uD83D\uDCC8', n:'Base de precios', e:'parcial', p:65, d:[
+      'Historial de precios propio (3/10/2026): en el desglose, cada pieza muestra hasta 3 cotizaciones anteriores de la misma pieza con costo y venta reales, primero del mismo modelo. Distingue lado izquierdo/derecho y no mezcla componentes (tapa \u2260 espejo). Base: 665 piezas con costo cargado',
       'Lista viva para cotizar sin buscar cada vez',
       'Con selector Mercado Livre / eBay por pieza'
     ]},
@@ -9706,13 +9918,17 @@ const MS_FASES = [
       '54 proveedores con calificaci\u00f3n y entregas',
       'Falta: categorizar por tipo y vincular con piezas'
     ]},
-    {i:'\uD83D\uDCF2', n:'Marketing', e:'pendiente', p:10, d:[
-      'Instagram como registro de entregas',
-      'Bloqueado por la verificaci\u00f3n de Meta con el RUC'
+    {i:'\uD83D\uDCF2', n:'Marketing', e:'parcial', p:55, d:[
+      'Instagram + Facebook con cola de publicaci\u00f3n autom\u00E1tica cada 10 minutos (funci\u00f3n publicar-ig)',
+      '16 posts publicados, el \u00FAltimo el 24/9/2026',
+      'Token de la p\u00E1gina regenerado el 3/10/2026 (vale hasta el 2/12, se renueva solo). Ahora WhatsApp tiene su propio token y ya no pisa el de Instagram'
     ]},
     {i:'\uD83E\uDD16', n:'WhatsApp con IA', e:'parcial', p:70, d:[
       'Pantalla de WhatsApp dentro del sistema: lista de conversaciones, chat, contador de no le\u00EDdos, pausar/reactivar IA por conversaci\u00F3n, actualizaci\u00F3n cada 8 segundos',
-      'Motor de IA (wa-webhook): responde saludo y stock real, pausa sola ante reclamo o pedido de descuento, fuera de horario (7 a 18) avisa y junta datos del veh\u00EDculo para el d\u00EDa siguiente',
+      'Motor de IA (wa-webhook v4): NUNCA cotiza sola. Para pedidos de piezas solo junta a\u00F1o, modelo y chasis (pide lo que falta); una foto (ej. c\u00E9dula verde) cuenta como datos completos. Con todo completo, pausa la charla para que cotice Lucas o Joaqu\u00EDn. Pausa sola ante reclamo o descuento. Horario 7 a 18',
+      'Celular: el chat abre a pantalla completa (sin men\u00FA abajo), respeta el notch y la barra del iPhone, y se vuelve deslizando desde el borde izquierdo',
+      'CA\u00CDDO: el token temporal de Meta venci\u00F3 el 25/9/2026 \u2014 la IA recibe mensajes pero no puede responder ni bajar fotos hasta cargar un token permanente (usuario del sistema). Ahora se guarda en su propio campo (meta_config.wa_token)',
+      'v5 (3/10/2026): si el pedido es de UNA sola pieza, al completar los datos pide (opcional) foto de la pieza o del n\u00FAmero grabado. Notas de voz: se transcriben y la IA las entiende como texto \u2014 necesita clave de OpenAI; sin clave, el audio pasa a una persona (ya no cuenta como datos completos). Las dos opciones se prenden/apagan en Configuraci\u00F3n \u2192 Asistente de WhatsApp',
       'Env\u00EDo de fotos, videos, audios y documentos \u2014 se puede adjuntar desde el chat y tambi\u00E9n se reciben y se ven los que manda el cliente (quedan guardados en el sistema)',
       'Webhook verificado y probado de punta a punta (25/9/2026): un mensaje real desde WhatsApp lleg\u00F3, se cre\u00F3 la conversaci\u00F3n y la IA respondi\u00F3 sola \u2014 ya funciona en vivo',
       'Conectado por ahora al n\u00FAmero de PRUEBA de Meta, no al 0974 780 008 real \u2014 solo puede hablar con n\u00FAmeros que Lucas cargue como "verificados" en el panel de Meta',
@@ -9725,13 +9941,16 @@ const MS_FASES = [
     {i:'\uD83D\uDCA1', n:'Motor de cotizaci\u00f3n', e:'pendiente', p:20, d:[
       'El cuello de botella real del negocio',
       'M\u00e1s de 24 h para cotizar = 0% de cierre en 29 presupuestos',
-      'Son Gs 56.120.000 perdidos por lentitud'
+      'Son Gs 56.120.000 perdidos por lentitud',
+      'Últimos 30 días (al 2/10/2026): 144 pedidos nuevos, 122 siguen en Presupuesto Enviado, 20 ganados (~14%)'
     ]},
     {i:'\uD83D\uDD04', n:'Reactivaci\u00f3n de clientes', e:'pendiente', p:5, d:[
       '159 presupuestos sin respuesta esperando',
       '257 presupuestos enviados contra 42 entregados'
     ]},
-    {i:'\uD83D\uDED2', n:'Tienda online', e:'futuro', p:15, d:[
+    {i:'\uD83D\uDED2', n:'Tienda online', e:'parcial', p:25, d:[
+      'Ya existe la base: 14 productos cargados, 8 categor\u00EDas, 11 bloques del sitio, importaci\u00F3n desde eBay; 0 pedidos recibidos',
+      'El panel para cargar productos no est\u00E1 dentro de Gonbel OS (vive en el sitio de la tienda)',
       'Esperando que la base de precios madure',
       'Sin eso habr\u00eda que validar precio en cada venta'
     ]}
@@ -13474,7 +13693,84 @@ function cfgIr(pane){
   if(pane === 'negocio') pintarDirecciones();
   if(pane === 'archivo') buscarArchivo();
   if(pane === 'accesos') aplicarConfig();
+  if(pane === 'waia') pintarWaIA();
+  if(pane === 'mant') bkCargar();
   window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── Asistente de WhatsApp: opciones (config.wa_ia) ──
+function pintarWaIA(){
+  const ia = Object.assign({pedir_foto_pieza:true, transcribir_audios:true}, CFG.wa_ia||{});
+  const f = document.getElementById('waia-foto'), a = document.getElementById('waia-audio');
+  if(f) f.checked = !!ia.pedir_foto_pieza;
+  if(a) a.checked = !!ia.transcribir_audios;
+  const est = document.getElementById('waia-audio-estado');
+  if(est) est.innerHTML = '<b style="color:var(--amber);">Necesita una clave de OpenAI cargada en el sistema (cuesta centavos por minuto de audio). Sin la clave, los audios pasan directo a una persona.</b>';
+}
+async function guardarWaIA(){
+  const wa_ia = {
+    pedir_foto_pieza: !!document.getElementById('waia-foto')?.checked,
+    transcribir_audios: !!document.getElementById('waia-audio')?.checked
+  };
+  try {
+    await sbFetch('/rest/v1/config?id=eq.1','PATCH',{wa_ia, updated_at:new Date().toISOString()});
+    CFG.wa_ia = wa_ia;
+    showToast('✅ Asistente de WhatsApp guardado','success');
+  } catch(e){ showToast('No se pudo guardar','error'); }
+}
+
+// ── BACKUP DIARIO: estado visible ──
+// La función "backup" corre todos los días a las 02:00 Paraguay (pg_cron backup_diario) y anota
+// cada resultado en backups_log. Si pasan más de 26 horas sin un backup bueno, se marca en rojo.
+let BK_ULTIMO = null;
+async function bkCargar(){
+  try {
+    const r = await sbFetch('/rest/v1/backups_log?select=archivo,filas,tablas,bytes,ok,error,creado_en&order=creado_en.desc&limit=10') || [];
+    const ok = r.find(x=>x.ok);
+    const fallo = r[0] && !r[0].ok ? r[0] : null;
+    BK_ULTIMO = {ok, fallo, lista:r};
+    const horas = ok ? (Date.now() - new Date(ok.creado_en).getTime())/3600000 : 9999;
+    const alDia = horas <= 26;
+    const dot = document.getElementById('bk-dot'), txt = document.getElementById('bk-txt');
+    if(dot) dot.className = 'ml-dot ' + (alDia ? 'on' : 'off');
+    if(dot && !alDia) dot.style.background = 'var(--red)'; else if(dot) dot.style.background = '';
+    if(txt) txt.textContent = ok
+      ? (alDia ? 'Backup ' + bkCuando(ok.creado_en) : 'Backup atrasado')
+      : 'Sin backup';
+    const panel = document.getElementById('bk-panel');
+    if(panel){
+      panel.innerHTML = ok
+        ? `<div style="font-weight:700;color:${alDia?'var(--green)':'var(--red)'};margin-bottom:4px;">${alDia?'✓ Backup al día':'⚠ Backup atrasado'}</div>
+           Último backup bueno: <b>${new Date(ok.creado_en).toLocaleString('es-PY')}</b> · ${ok.tablas||'?'} tablas · ${fmtNum(ok.filas||0)} filas · ${((ok.bytes||0)/1048576).toFixed(2)} MB<br>
+           Se hace solo todos los días a las <b>02:00</b> y se guardan los últimos 60 días.
+           ${fallo?`<div style="color:var(--red);margin-top:6px;">Último intento falló (${new Date(fallo.creado_en).toLocaleString('es-PY')}): ${(fallo.error||'').replace(/</g,'&lt;').slice(0,160)}</div>`:''}`
+        : '<b style="color:var(--red);">No hay ningún backup registrado.</b> Tocá “Hacer backup ahora”.';
+    }
+  } catch(e){ /* sin sesión todavía */ }
+}
+function bkCuando(f){
+  const d = new Date(f), hoy = new Date();
+  const hh = d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+  if(d.toDateString() === hoy.toDateString()) return 'hoy ' + hh;
+  const ayer = new Date(Date.now()-86400000);
+  if(d.toDateString() === ayer.toDateString()) return 'ayer ' + hh;
+  return d.toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'}) + ' ' + hh;
+}
+function bkDetalle(){
+  if(!BK_ULTIMO || !BK_ULTIMO.ok){ showToast('No hay backup registrado todavía','error'); return; }
+  showToast('💾 Último backup: ' + new Date(BK_ULTIMO.ok.creado_en).toLocaleString('es-PY') + ' · ' + fmtNum(BK_ULTIMO.ok.filas||0) + ' filas · se hace solo a las 02:00','success');
+}
+async function bkAhora(){
+  const b = document.getElementById('bk-ahora');
+  if(b){ b.disabled = true; b.textContent = '⏳ Haciendo backup…'; }
+  try {
+    const r = await fetch(SB_URL + '/functions/v1/backup', {method:'POST'});
+    const j = await r.json();
+    if(j.ok) showToast('✅ Backup hecho: ' + j.tamano + ' · ' + fmtNum(j.filas) + ' filas','success');
+    else showToast('El backup falló: ' + (j.error||'error'),'error');
+  } catch(e){ showToast('No se pudo hacer el backup','error'); }
+  if(b){ b.disabled = false; b.textContent = '🛟 Hacer backup ahora'; }
+  bkCargar();
 }
 
 // ── Direcciones de envío ──
@@ -14971,9 +15267,27 @@ async function importarProveedores(){
 }
 
 // ── DIVISAS ──
+// BCP: cotización referencial OFICIAL del Banco Central (se guarda una vez por día en cotizaciones_bcp
+// por la función bcp-cotiz, 18:00 Paraguay). Es la referencia para FACTURAR. Los costos de compra
+// siguen usando el precio de plaza (La Moneda) porque es lo que realmente se paga al cambiar.
+let BCP_USD = 0, BCP_BRL = 0, BCP_FECHA = '';
+async function cargarBCP(){
+  try {
+    const r = await sbFetch('/rest/v1/cotizaciones_bcp?select=fecha,usd_gs,brl_gs&order=fecha.desc&limit=1');
+    if(r && r[0]){
+      BCP_USD = Number(r[0].usd_gs)||0; BCP_BRL = Number(r[0].brl_gs)||0; BCP_FECHA = r[0].fecha;
+      const el = document.getElementById('div-bcp-usd');
+      if(el) el.textContent = Math.round(BCP_USD).toLocaleString('es-PY');
+      const it = document.getElementById('div-bcp-item');
+      if(it) it.title = 'BCP oficial al ' + new Date(BCP_FECHA+'T12:00:00').toLocaleDateString('es-PY') + ' · Dólar Gs ' + BCP_USD.toLocaleString('es-PY') + ' · Real Gs ' + BCP_BRL.toLocaleString('es-PY') + ' — referencia para facturar';
+    }
+  } catch(e){ /* sin sesión todavía o tabla vacía: queda el guion */ }
+}
+
 async function loadDivisas(manual=false){
   const refresh = document.getElementById('divisa-refresh');
   if(refresh) refresh.textContent = '⏳';
+  cargarBCP();
   try {
     // Fuente 1: La Moneda Cambios (Ciudad del Este) — precio real de plaza
     try {
@@ -14991,6 +15305,7 @@ async function loadDivisas(manual=false){
         const bar = document.getElementById('divisas-bar');
         if(bar) bar.title = 'La Moneda Cambios · Casa Matriz · precio de venta · clic para actualizar';
         if(manual) showToast('Cotizaciones de La Moneda actualizadas','success');
+        if(refresh) refresh.textContent = '↻';
         return;
       }
     } catch(e){ /* si falla, usar la fuente internacional */ }
@@ -17276,7 +17591,10 @@ function waCuerpoMensaje(m){
     return '<video src="'+m.media_url+'" class="wa-media-video" controls preload="metadata"></video>' + texto;
   }
   if(m.tipo === 'audio' && m.media_url){
-    return '<audio src="'+m.media_url+'" class="wa-media-audio" controls></audio>' + texto;
+    const transc = m.transcripcion
+      ? '<div style="font-size:12.5px;line-height:1.45;margin-top:5px;padding:6px 9px;border-radius:8px;background:rgba(255,255,255,.06);"><span style="font-size:10px;font-weight:700;opacity:.6;display:block;margin-bottom:2px;">📝 TRANSCRIPCIÓN AUTOMÁTICA</span>'+esc(m.transcripcion)+'</div>'
+      : '';
+    return '<audio src="'+m.media_url+'" class="wa-media-audio" controls></audio>' + transc + texto;
   }
   if(m.tipo === 'documento' && m.media_url){
     return '<a href="'+m.media_url+'" target="_blank" class="wa-media-doc">📄 '+esc(m.media_nombre||'Documento')+'</a>' + texto;
