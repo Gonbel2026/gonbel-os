@@ -1655,6 +1655,9 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   body.wa-full-mobile #cr-fab{display:none !important;}
 }
 
+.pz-pide-costo{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--amber);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);border-radius:8px;padding:3px 4px 3px 9px;margin-left:8px;transition:box-shadow .2s;}
+.pz-pide-costo input{width:110px;height:28px;border-radius:6px;border:1px solid rgba(245,166,35,.5);background:rgba(0,0,0,.2);color:var(--t1);padding:0 8px;font-size:13px;outline:none;}
+.pz-pide-flash{box-shadow:0 0 0 3px rgba(245,166,35,.55);}
 /* Fila de pieza — 2 líneas ordenadas (oct 2026) */
 .pz-l1{display:grid;grid-template-columns:minmax(0,1fr) 150px 112px 160px;gap:8px;align-items:end;}
 .pz-f{display:flex;flex-direction:column;gap:4px;min-width:0;}
@@ -1681,6 +1684,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   .pz-f-desc,.pz-f-precio{grid-column:1 / -1;}
   .pz-f input{font-size:16px;}
   .pz-acc{margin-left:0;}
+  .pz-pide-costo input{font-size:16px;}
 }
 </style>
 </head>
@@ -4605,6 +4609,25 @@ function pintarResumenPieza(i){
   }
 }
 
+// Costo cargado a mano desde la fila de la pieza (cuando hay venta pero falta costo).
+// Es el único camino manual; el sistema nunca deduce el costo del precio de venta.
+function pzPedirCosto(i){
+  const box=document.getElementById('pz-pc-'+i);
+  const inp=box && box.querySelector('input');
+  if(inp){ inp.focus(); box.classList.add('pz-pide-flash'); setTimeout(()=>box.classList.remove('pz-pide-flash'),900); }
+}
+function pzGuardarCosto(i,el){
+  const v=parseFloat((el.value||'').replace(/[^0-9]/g,''))||0;
+  if(!v) return;
+  const it=piezasItems[i]; if(!it) return;
+  it.cb=v; it.modo='costo';
+  const tasa=cotizacionBRL();
+  const total=piezasItems.reduce((s,x)=>s+costoItemGs(x,tasa)*(parseInt(x.q,10)||1),0);
+  const actual=numVal('f-costo');
+  if(total && (!actual || actual===costoAutoUltimo)){ setMoney('f-costo',total); costoAutoUltimo=total; try{calcMargen();}catch(e){} }
+  renderPiezasItems(); calcPiezasTotal();
+  showToast('Costo cargado: Gs '+fmtNum(v),'success');
+}
 // Menú de cantidad (flechita ▾): elegir 1–10 o escribir a mano en el campo
 function pzQtyMenu(i,btn){
   const ya=document.querySelector('.pz-qty-menu');
@@ -4677,7 +4700,7 @@ function renderPiezasItems(){
           const costo = costoItemGs(it, cotizacionBRL());
           const venta = parseFloat(it.p) || 0;
           if(!costo && !venta) return '';
-          if(!costo) return `<span class="pz-gan"><span class="g-v">Venta Gs ${fmtNum(venta)}</span><span class="g-s">sin costo cargado</span></span>`;
+          if(!costo) return `<span class="pz-gan"><span class="g-v">Venta Gs ${fmtNum(venta)}</span></span><span class="pz-pide-costo" id="pz-pc-${i}">⚠️ Falta el costo <input type="text" inputmode="numeric" placeholder="Costo Gs" onkeydown="if(event.key==='Enter')this.blur()" onblur="pzGuardarCosto(${i},this)"></span>`;
           if(!venta) return `<span class="pz-gan"><span class="g-c">Costo Gs ${fmtNum(costo)}</span><span class="g-s">sin precio de venta</span></span>`;
           const gan = venta - costo;
           const pct = Math.round((gan / costo) * 100);
@@ -4828,8 +4851,9 @@ function autoImportar(){
 function aplicarMargen(i, pct){
   const it = piezasItems[i]; if(!it) return;
   // Base de cálculo: costo real de ML, o el costo base guardado, o el precio actual
-  let base = it.cb || it.cr || parseFloat(it.p) || 0;
-  if(!base){ showToast('Cargá primero el costo o el precio de la pieza','error'); return; }
+  // Base: SOLO costo real (ML/eBay vinculado o cargado a mano). Nunca el precio de venta.
+  let base = costoItemGs(it, cotizacionBRL()) || 0;
+  if(!base){ showToast('Esta pieza no tiene costo — cargá el costo primero','error'); pzPedirCosto(i); return; }
   it.cb = base;
   it.mg = pct;
   it.p = Math.ceil(base * (1 + pct/100) / 10000) * 10000;  // redondeado hacia arriba a la decena de mil
@@ -4838,14 +4862,15 @@ function aplicarMargen(i, pct){
 }
 function quitarMargen(i){
   const it = piezasItems[i]; if(!it) return;
-  if(it.cb) it.p = it.cb;
+  it.p = 0;   // sin margen no hay precio de venta: lo pone Lucas, nunca el sistema
   it.mg = null;
+  calcPiezasTotal();
   renderPiezasItems();
 }
 function margenTodas(pct){
   let n = 0;
   piezasItems.forEach((it,i)=>{
-    const base = it.cb || it.cr || parseFloat(it.p) || 0;
+    const base = costoItemGs(it, cotizacionBRL()) || 0;   // nunca el precio de venta
     if(!base) return;
     it.cb = base; it.mg = pct;
     it.p = Math.ceil(base * (1 + pct/100) / 10000) * 10000;
@@ -5090,7 +5115,7 @@ function openBigEdit(targetId, title){
   if(fc) fc.style.display = esPiezas ? 'inline-flex' : 'none';
   if(fw) fw.style.display = esPiezas ? 'inline-flex' : 'none';
   if(esPiezas){
-    bpStaging = piezasItems.map(x=>({d:x.d||'', cb: x.cb || x.cr || parseFloat(x.p)||0, mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || null, monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}));
+    bpStaging = piezasItems.map(x=>({d:x.d||'', cb: x.cb || x.cr || 0, mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || ((!x.mg && parseFloat(x.p)>0) ? parseFloat(x.p) : null), monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}));
     bpRenderLista();
   }
   document.getElementById('bigedit-overlay').classList.add('open');
@@ -8603,7 +8628,7 @@ async function drop(e, colId){
   // Puerta COMPRADO: todas las piezas deben tener costo
   if(colId === 'comprado'){
     var _it2=[]; try{_it2=order.piezas_items?JSON.parse(order.piezas_items):[];}catch(e){}
-    var _sinC=_it2.filter(function(it){return !(parseFloat(it.cb)>0||parseFloat(it.p)>0);});
+    var _sinC=_it2.filter(function(it){return !(parseFloat(it.cr)>0||parseFloat(it.cbrl)>0||parseFloat(it.cb)>0);});
     if(_sinC.length>0||!parseFloat(order.precio_costo)){
       order.estado=estadoAnterior; renderKanban(); dragId=null;
       var _msg=_sinC.length>0?(_sinC.length+' pieza'+(_sinC.length===1?'':'s')+' sin costo. Completá los costos antes de pasar a Comprado.'):'Falta el costo total del pedido.';
