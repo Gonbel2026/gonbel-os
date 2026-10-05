@@ -1654,6 +1654,34 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
      a pantalla completa no debe flotar encima del campo de escribir. */
   body.wa-full-mobile #cr-fab{display:none !important;}
 }
+
+/* Fila de pieza — 2 líneas ordenadas (oct 2026) */
+.pz-l1{display:grid;grid-template-columns:minmax(0,1fr) 150px 112px 160px;gap:8px;align-items:end;}
+.pz-f{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.pz-f>span{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding-left:2px;}
+.pz-f input{background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:10px;color:var(--t1);font-size:14px;padding:10px 12px;outline:none;font-family:'Inter',sans-serif;width:100%;height:42px;box-sizing:border-box;}
+.pz-f input:focus{border-color:rgba(59,142,255,.5);}
+.pz-qty{position:relative;display:flex;}
+.pz-qty input{border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;font-weight:700;}
+.pz-qty-arr{flex:0 0 34px;height:42px;border:1px solid var(--brd);border-left:none;border-radius:0 10px 10px 0;background:rgba(255,255,255,.08);color:var(--t1);cursor:pointer;font-size:13px;}
+.pz-qty-arr:hover{background:rgba(59,142,255,.25);}
+.pz-qty-menu{position:absolute;top:46px;right:0;z-index:50;background:var(--bg2,#1b2433);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:5px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;box-shadow:0 10px 28px rgba(0,0,0,.45);min-width:180px;}
+.pz-qty-menu button{height:32px;border-radius:7px;border:1px solid transparent;background:rgba(255,255,255,.06);color:var(--t1);font-weight:700;cursor:pointer;font-size:13px;}
+.pz-qty-menu button:hover{background:rgba(59,142,255,.3);}
+.pz-qty-menu button.on{background:rgba(59,142,255,.45);border-color:rgba(59,142,255,.8);}
+.pz-l2{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.08);}
+.pz-estados{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pz-l2-tit{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px;}
+.pz-estados .pz-st{width:auto;height:32px;padding:0 11px;gap:5px;font-size:12px;font-weight:600;border-width:1px;border-radius:8px;white-space:nowrap;}
+.pz-acc{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.pz-acc .pz-bs{height:32px;padding:0 10px;font-size:12px;font-weight:600;color:var(--t1);border-radius:8px;}
+.pz-acc .pz-btn{width:34px;height:32px;font-size:13px;border-radius:8px;}
+@media(max-width:760px){
+  .pz-l1{grid-template-columns:1fr 1fr;}
+  .pz-f-desc,.pz-f-precio{grid-column:1 / -1;}
+  .pz-f input{font-size:16px;}
+  .pz-acc{margin-left:0;}
+}
 </style>
 </head>
 <body>
@@ -4577,24 +4605,50 @@ function pintarResumenPieza(i){
   }
 }
 
+// Menú de cantidad (flechita ▾): elegir 1–10 o escribir a mano en el campo
+function pzQtyMenu(i,btn){
+  const ya=document.querySelector('.pz-qty-menu');
+  if(ya){ const mismo=ya.dataset.i==String(i); ya.remove(); if(mismo) return; }
+  const box=btn.parentElement;
+  const m=document.createElement('div');
+  m.className='pz-qty-menu'; m.dataset.i=i;
+  const act=parseInt(piezasItems[i].q,10)||1;
+  m.innerHTML=[1,2,3,4,5,6,7,8,9,10].map(n=>'<button type="button" class="'+(n===act?'on':'')+'" data-n="'+n+'">'+n+'</button>').join('');
+  m.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const n=parseInt(b.dataset.n,10);
+    piezasItems[i].q=n;
+    const inp=document.getElementById('pz-q-'+i); if(inp) inp.value=n;
+    calcPiezasTotal(); pintarResumenPieza(i); m.remove();
+  });
+  box.appendChild(m);
+  setTimeout(()=>document.addEventListener('click',function cerrar(e){ if(!m.contains(e.target)&&e.target!==btn){ m.remove(); } document.removeEventListener('click',cerrar); }),0);
+}
 function renderPiezasItems(){
   const cont = document.getElementById('piezas-items');
   if(!cont) return;
   cont.innerHTML = piezasItems.map((it,i)=>`
     <div class="pz-card">
-      <div class="pz-row" style="margin-bottom:0;">
-        <input type="text" placeholder="Descripción de la pieza" value="${(it.d||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].d=this.value">
-        <input type="text" list="dl-condicion" class="pz-cant" style="width:132px;" title="Condición de la pieza (para el presupuesto)" placeholder="Condición" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value">
-        <input type="number" min="1" step="1" class="pz-cant" title="Cantidad" placeholder="1" value="${it.q && it.q > 1 ? it.q : ''}" oninput="piezasItems[${i}].q=Math.max(1,parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})">
-        <input type="text" inputmode="numeric" placeholder="Precio Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()">
-        <button type="button" class="pz-chk ${it.c?'ok':''}" title="${it.c?'Comprada':'Marcar como comprada'}" onclick="piezasItems[${i}].c=!piezasItems[${i}].c;renderPiezasItems()">${it.c?'✓':''}</button>
-        <button type="button" class="pz-casa-btn ${it.ll?'on':''}" title="${it.ll?'Ya está en la casa de Foz':'Marcar como llegada a la casa de Foz'}" onclick="piezasItems[${i}].ll=!piezasItems[${i}].ll;if(piezasItems[${i}].ll){piezasItems[${i}].c=true;piezasItems[${i}].ret=false;piezasItems[${i}].fe=new Date().toISOString();}renderPiezasItems()">🏠</button>
-        <button type="button" class="pz-ret-btn ${it.ret?'on':''}" title="${it.ret?'Disponible para retirar en un punto de Foz':'Marcar como disponible para retirar en Foz (punto de ML, no la casa)'}" onclick="piezasItems[${i}].ret=!piezasItems[${i}].ret;if(piezasItems[${i}].ret){piezasItems[${i}].c=true;piezasItems[${i}].ll=false;piezasItems[${i}].fret=new Date().toISOString();}renderPiezasItems()">🏪</button>
-        <button type="button" class="pz-loc ${it.loc?'on':''}" title="${it.loc?'Ya está en el local':'Marcar como llegada al local'}" onclick="piezasItems[${i}].loc=!piezasItems[${i}].loc;if(piezasItems[${i}].loc){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].ret=false;piezasItems[${i}].fl=new Date().toISOString();}renderPiezasItems()">📍</button>
-        <button type="button" class="pz-env ${it.env?'on':''}" title="${it.env?'Ya enviada al cliente':'Marcar como enviada al cliente'}" onclick="piezasItems[${i}].env=!piezasItems[${i}].env;if(piezasItems[${i}].env){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].loc=true;piezasItems[${i}].ret=false;piezasItems[${i}].fen=new Date().toISOString();}renderPiezasItems();autoEntregarSiUnicaPieza(${i})">🚚</button>
-        <button type="button" class="pz-bs" title="${(it.bs||'ml')==='ebay'?'Se busca en eBay (flete a Miami) — tocá para cambiar a Mercado Livre':'Se busca en Mercado Livre (flete a Foz) — tocá para cambiar a eBay'}" onclick="piezasItems[${i}].bs=((piezasItems[${i}].bs||'ml')==='ml'?'ebay':'ml');renderPiezasItems()">${(it.bs||'ml')==='ebay'?'🇺🇸':'🇧🇷'}</button>
-        <button type="button" class="pz-btn ${it.dev?'on':''}" style="${it.dev?'background:rgba(239,68,68,.18);color:var(--red);':''}" title="Devolucion" onclick="pzAbrirDevolucion(${i})">🔄</button>
-        <button type="button" class="pz-btn" title="Quitar" onclick="delPiezaRow(${i})">✕</button>
+      <div class="pz-l1">
+        <label class="pz-f pz-f-desc"><span>Pieza</span><input type="text" placeholder="Descripción de la pieza" value="${(it.d||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].d=this.value"></label>
+        <label class="pz-f pz-f-cond"><span>Condición</span><input type="text" list="dl-condicion" title="Condición de la pieza (para el presupuesto)" placeholder="Nuevo / Usado…" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value"></label>
+        <div class="pz-f pz-f-cant"><span>Cantidad</span><div class="pz-qty"><input type="text" inputmode="numeric" id="pz-q-${i}" title="Cantidad — escribí o elegí con la flechita" value="${parseInt(it.q,10)>1?parseInt(it.q,10):1}" onfocus="this.select()" oninput="this.value=this.value.replace(/[^0-9]/g,'');piezasItems[${i}].q=Math.max(1,parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})" onblur="if(!this.value||this.value==='0')this.value=1"><button type="button" class="pz-qty-arr" title="Elegir cantidad" onclick="pzQtyMenu(${i},this)">▾</button></div></div>
+        <label class="pz-f pz-f-precio"><span>Precio venta c/u</span><input type="text" inputmode="numeric" placeholder="Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()"></label>
+      </div>
+      <div class="pz-l2">
+        <div class="pz-estados">
+          <span class="pz-l2-tit">Estado</span>
+          <button type="button" class="pz-st pz-chk ${it.c?'ok':''}" title="${it.c?'Comprada':'Marcar como comprada'}" onclick="piezasItems[${i}].c=!piezasItems[${i}].c;renderPiezasItems()">${it.c?'✓':'○'} Comprada</button>
+          <button type="button" class="pz-st pz-casa-btn ${it.ll?'on':''}" title="${it.ll?'Ya está en la casa de Foz':'Marcar como llegada a la casa de Foz'}" onclick="piezasItems[${i}].ll=!piezasItems[${i}].ll;if(piezasItems[${i}].ll){piezasItems[${i}].c=true;piezasItems[${i}].ret=false;piezasItems[${i}].fe=new Date().toISOString();}renderPiezasItems()">🏠 Casa Foz</button>
+          <button type="button" class="pz-st pz-ret-btn ${it.ret?'on':''}" title="${it.ret?'Disponible para retirar en un punto de Foz':'Marcar como disponible para retirar en Foz (punto de ML, no la casa)'}" onclick="piezasItems[${i}].ret=!piezasItems[${i}].ret;if(piezasItems[${i}].ret){piezasItems[${i}].c=true;piezasItems[${i}].ll=false;piezasItems[${i}].fret=new Date().toISOString();}renderPiezasItems()">🏪 Retirar Foz</button>
+          <button type="button" class="pz-st pz-loc ${it.loc?'on':''}" title="${it.loc?'Ya está en el local':'Marcar como llegada al local'}" onclick="piezasItems[${i}].loc=!piezasItems[${i}].loc;if(piezasItems[${i}].loc){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].ret=false;piezasItems[${i}].fl=new Date().toISOString();}renderPiezasItems()">📍 En el local</button>
+          <button type="button" class="pz-st pz-env ${it.env?'on':''}" title="${it.env?'Ya enviada al cliente':'Marcar como enviada al cliente'}" onclick="piezasItems[${i}].env=!piezasItems[${i}].env;if(piezasItems[${i}].env){piezasItems[${i}].c=true;piezasItems[${i}].ll=true;piezasItems[${i}].loc=true;piezasItems[${i}].ret=false;piezasItems[${i}].fen=new Date().toISOString();}renderPiezasItems();autoEntregarSiUnicaPieza(${i})">🚚 Enviada</button>
+        </div>
+        <div class="pz-acc">
+          <button type="button" class="pz-bs" title="${(it.bs||'ml')==='ebay'?'Se busca en eBay (flete a Miami) — tocá para cambiar a Mercado Livre':'Se busca en Mercado Livre (flete a Foz) — tocá para cambiar a eBay'}" onclick="piezasItems[${i}].bs=((piezasItems[${i}].bs||'ml')==='ml'?'ebay':'ml');renderPiezasItems()">${(it.bs||'ml')==='ebay'?'🇺🇸 eBay':'🇧🇷 ML'}</button>
+          <button type="button" class="pz-btn ${it.dev?'on':''}" style="${it.dev?'background:rgba(239,68,68,.18);color:var(--red);':''}" title="Devolucion" onclick="pzAbrirDevolucion(${i})">🔄</button>
+          <button type="button" class="pz-btn" title="Quitar" onclick="delPiezaRow(${i})">✕</button>
+        </div>
       </div>
       <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' × Gs '+Number(it.p).toLocaleString('de-DE')+' = <b style="color:var(--t1)">Gs '+Number(it.q*it.p).toLocaleString('de-DE')+'</b>'):''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;">
