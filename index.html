@@ -3337,7 +3337,7 @@ function applyAuth(){
   document.body.classList.add('role-' + rol);
 
   if(rol !== 'admin'){
-    document.querySelectorAll('[data-page="config"]').forEach(el=>el.style.display='none');
+    document.querySelectorAll('[data-page="config"],[data-page="mapasistema"],[data-page="conexiones"]').forEach(el=>el.style.display='none');
   }
   if(rol === 'operador'){
     // Joaquin no ve nada del dinero de la empresa
@@ -3362,7 +3362,6 @@ function applyAuth(){
     if(tarjeta) tarjeta.style.display = 'none';
     const fila = document.getElementById('stats-row');
     if(fila) fila.style.gridTemplateColumns = 'repeat(3,1fr)';
-    const lbl = document.querySelector('#cc-acobrar + .stat-lbl'); if(lbl) lbl.textContent = 'Pedidos con saldo';
   }
   if(rol === 'finanzas'){
     // Beatriz controla, no modifica: los botones de alta y edicion se ocultan
@@ -7208,7 +7207,7 @@ function openClientFicha(id){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.06em;">SALDO PENDIENTE</div>
-          <div class="ventas-no" style="font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;color:var(--amber);line-height:1.1;margin-top:3px;">Gs ${fmtNum(pend)}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;color:var(--amber);line-height:1.1;margin-top:3px;">Gs ${fmtNum(pend)}</div>
           <div style="font-size:12px;color:var(--t2);margin-top:3px;">en ${conDeuda.length} pedido${conDeuda.length===1?'':'s'}</div>
         </div>
         <button type="button" class="btn btn-ghost" onclick="cfSetFiltro('debe')" style="height:36px;">Ver solo los que deben</button>
@@ -7228,7 +7227,7 @@ function openClientFicha(id){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
       <div class="dash-pill" style="cursor:default"><div class="dash-pill-n">${peds.length}</div><div class="dash-pill-l">Pedidos</div></div>
       <div class="dash-pill ventas-no" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--green)">Gs ${fmtNum(total)}</div><div class="dash-pill-l">Facturado</div></div>
-      <div class="dash-pill ventas-no" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--amber)">Gs ${fmtNum(pend)}</div><div class="dash-pill-l">Pendiente de cobro</div></div>
+      <div class="dash-pill" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--amber)">Gs ${fmtNum(pend)}</div><div class="dash-pill-l">Pendiente de cobro</div></div>
     </div>
     <div class="vh-wrap">
       <div class="vh-head">
@@ -9808,6 +9807,7 @@ document.addEventListener('click', e=>{
 
 // ── PAGE NAV ──
 function showPage(id, el){
+  if((id==='mapasistema'||id==='conexiones'||id==='config') && currentUser && currentUser.role!=='admin'){ showToast('Esa secci\u00f3n es solo del administrador','error'); return; }
   if(id==='catalogo') setTimeout(()=>{ try{ cargarCatalogo(); }catch(e){} }, 50);
   if(id==='mapa') setTimeout(()=>{ try{ pintarMapa(); }catch(e){} }, 60);
   if(id==='proveedores') setTimeout(()=>{ try{ cargarProveedores(); }catch(e){} }, 50);
@@ -11792,7 +11792,7 @@ function renderControl(){
   if(elListos) elListos.textContent = listos;
   const elEntregados = document.getElementById('cc-entregados');
   if(elEntregados) elEntregados.textContent = entregados;
-  document.getElementById('cc-acobrar').textContent = (currentUser && currentUser.role==='ventas') ? (pendientes.length + (pendientes.length===1?' pedido':' pedidos')) : 'Gs '+fmtNum(totalACobrar);
+  document.getElementById('cc-acobrar').textContent = 'Gs '+fmtNum(totalACobrar);
   ccGuardado = {pendientes, totalACobrar};
 
   mlEstado();
