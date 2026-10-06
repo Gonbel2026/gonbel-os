@@ -935,7 +935,8 @@ body.solo-lectura .btn-primary[onclick*="cjNuevoMov"]{display:flex !important;}
 .foz-m{font-size:12.5px;color:var(--t3);margin-top:3px;}
 .foz-chip{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:7px;white-space:nowrap;background:rgba(34,217,122,.18);color:var(--green);}
 
-body.role-operador .solo-admin{display:none !important;}
+body.role-operador .solo-admin,body.role-ventas .solo-admin{display:none !important;}
+body.role-ventas .ventas-no,body.role-ventas #cr-fab,body.role-ventas [data-page="config"],body.role-ventas [data-page="financiero"],body.role-ventas #stat-ingresos{display:none !important;}
 .ml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
 .ml-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
 .ml-dot.off{background:var(--t4);}
@@ -3207,7 +3208,8 @@ document.getElementById('login-logo').src = LOGO;
 const CUENTAS = [
   {email:'gonbel-imp@hotmail.com', name:'Lucas Gonz\u00e1lez',   role:'admin',    initials:'LG'},
   {email:'beatriz@gonbel.local',   name:'Beatriz',              role:'finanzas', initials:'BC'},
-  {email:'joaquin@gonbel.local',   name:'Joaqu\u00edn Gonz\u00e1lez', role:'operador', initials:'JG'}
+  {email:'joaquin@gonbel.local',   name:'Joaqu\u00edn Gonz\u00e1lez', role:'operador', initials:'JG'},
+  {email:'alexis@gonbel.local',    name:'Alexis',               role:'ventas',   initials:'AL'}
 ];
 let currentUser = null;
 let SESION = null;
@@ -3327,11 +3329,11 @@ function applyAuth(){
   document.getElementById('login-error').style.display='none';
   const av = document.getElementById('ah-avatar'); if(av) av.textContent = currentUser.initials;
   const nm = document.getElementById('ah-nombre'); if(nm) nm.textContent = currentUser.name;
-  const rl = document.getElementById('ah-rol'); if(rl) rl.textContent = currentUser.role==='admin'?'Administrador':'Operador';
+  const rl = document.getElementById('ah-rol'); if(rl) rl.textContent = currentUser.role==='admin'?'Administrador':(currentUser.role==='ventas'?'Ventas':'Operador');
   // Tres roles con alcances distintos. El corte real esta en la base (RLS);
   // esto solo evita mostrar menus que igual no traerian datos.
   const rol = currentUser.role;
-  document.body.classList.remove('role-operador','role-finanzas','role-admin');
+  document.body.classList.remove('role-operador','role-finanzas','role-admin','role-ventas');
   document.body.classList.add('role-' + rol);
 
   if(rol !== 'admin'){
@@ -3348,6 +3350,19 @@ function applyAuth(){
     if(tarjeta) tarjeta.style.display = 'none';
     const fila = document.getElementById('stats-row');
     if(fila) fila.style.gridTemplateColumns = 'repeat(3,1fr)';
+  }
+  if(rol === 'ventas'){
+    // Alexis: todo el trabajo de pedidos, sin Financiero ni Configuración y sin totales de plata.
+    // Los valores de cada pedido (venta, pagado, saldo) los ve normal.
+    document.querySelectorAll('[data-page="financiero"]').forEach(el=>el.style.display='none');
+    const fab = document.getElementById('cr-fab');
+    if(fab) fab.style.display = 'none';
+    const ing = document.getElementById('stat-ingresos');
+    const tarjeta = ing && ing.closest('.stat');
+    if(tarjeta) tarjeta.style.display = 'none';
+    const fila = document.getElementById('stats-row');
+    if(fila) fila.style.gridTemplateColumns = 'repeat(3,1fr)';
+    const lbl = document.querySelector('#cc-acobrar + .stat-lbl'); if(lbl) lbl.textContent = 'Pedidos con saldo';
   }
   if(rol === 'finanzas'){
     // Beatriz controla, no modifica: los botones de alta y edicion se ocultan
@@ -7193,7 +7208,7 @@ function openClientFicha(id){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.06em;">SALDO PENDIENTE</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;color:var(--amber);line-height:1.1;margin-top:3px;">Gs ${fmtNum(pend)}</div>
+          <div class="ventas-no" style="font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800;color:var(--amber);line-height:1.1;margin-top:3px;">Gs ${fmtNum(pend)}</div>
           <div style="font-size:12px;color:var(--t2);margin-top:3px;">en ${conDeuda.length} pedido${conDeuda.length===1?'':'s'}</div>
         </div>
         <button type="button" class="btn btn-ghost" onclick="cfSetFiltro('debe')" style="height:36px;">Ver solo los que deben</button>
@@ -7212,8 +7227,8 @@ function openClientFicha(id){
     </div>`}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
       <div class="dash-pill" style="cursor:default"><div class="dash-pill-n">${peds.length}</div><div class="dash-pill-l">Pedidos</div></div>
-      <div class="dash-pill" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--green)">Gs ${fmtNum(total)}</div><div class="dash-pill-l">Facturado</div></div>
-      <div class="dash-pill" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--amber)">Gs ${fmtNum(pend)}</div><div class="dash-pill-l">Pendiente de cobro</div></div>
+      <div class="dash-pill ventas-no" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--green)">Gs ${fmtNum(total)}</div><div class="dash-pill-l">Facturado</div></div>
+      <div class="dash-pill ventas-no" style="cursor:default"><div class="dash-pill-n" style="font-size:19px;color:var(--amber)">Gs ${fmtNum(pend)}</div><div class="dash-pill-l">Pendiente de cobro</div></div>
     </div>
     <div class="vh-wrap">
       <div class="vh-head">
@@ -9270,7 +9285,7 @@ function fechaCobroTxt(o){
 }
 
 function verIngresosTablero(){
-  if(currentUser && currentUser.role === 'operador'){ return; }
+  if(currentUser && (currentUser.role === 'operador' || currentUser.role === 'ventas')){ return; }
   const ing = calcularIngresos();
   document.getElementById('cf-head').innerHTML = `
     <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;">💰 Ingresos</div>
@@ -9487,7 +9502,7 @@ function renderClientes(filtro){
       ${c.ruc?`<div style="font-size:12px;color:var(--cyan);margin-top:6px;font-family:'Space Grotesk',sans-serif;font-weight:600;">🪪 RUC: ${c.ruc}</div>`:''}
       <div class="client-stats" style="margin-top:8px;">
         <div class="client-stat"><strong>${pedidos}</strong> pedidos</div>
-        ${total?`<div class="client-stat"><strong>Gs ${fmtNum(total)}</strong> total</div>`:''}
+        ${total?`<div class="client-stat ventas-no"><strong>Gs ${fmtNum(total)}</strong> total</div>`:''}
         ${c.tel?`<div class="client-stat">📱 ${c.tel}</div>`:''}
       </div>
     </div>`;
@@ -11336,7 +11351,7 @@ let FIN_TAB = 'pedidos';
 let AN_PERIODO = 'mes';
 
 function abrirFinanzas(tab, el){
-  if(currentUser && currentUser.role === 'operador'){
+  if(currentUser && (currentUser.role === 'operador' || currentUser.role === 'ventas')){
     showToast('Esa secci\u00f3n no est\u00e1 disponible para tu usuario','error');
     return;
   }
@@ -11777,7 +11792,7 @@ function renderControl(){
   if(elListos) elListos.textContent = listos;
   const elEntregados = document.getElementById('cc-entregados');
   if(elEntregados) elEntregados.textContent = entregados;
-  document.getElementById('cc-acobrar').textContent = 'Gs '+fmtNum(totalACobrar);
+  document.getElementById('cc-acobrar').textContent = (currentUser && currentUser.role==='ventas') ? (pendientes.length + (pendientes.length===1?' pedido':' pedidos')) : 'Gs '+fmtNum(totalACobrar);
   ccGuardado = {pendientes, totalACobrar};
 
   mlEstado();
