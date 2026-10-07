@@ -2865,6 +2865,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
           <option value="entrante">📥 Pedidos Entrantes</option>
           <option value="busqueda-joaco">🔍 En Búsqueda — Joaquín</option>
           <option value="busqueda-lucas">🔍 En Búsqueda — Lucas</option>
+          <option value="busqueda-alexis">🔍 En Búsqueda — Alexis</option>
           <option value="presupuesto-prep">📋 Presupuesto en Preparación</option>
           <option value="presupuesto-enviado">📤 Presupuesto Enviado</option>
           <option value="aprobado">✅ Aprobado — A Comprar</option>
@@ -3419,6 +3420,7 @@ const COLUMNS = [
   {id:'entrante',    emoji:'📥', name:'Pedidos Entrantes',        color:'c-entrante'},
   {id:'busqueda-joaco', emoji:'🔍', name:'En Búsqueda — Joaquín',color:'c-busqueda'},
   {id:'busqueda-lucas', emoji:'🔍', name:'En Búsqueda — Lucas',  color:'c-busqueda'},
+  {id:'busqueda-alexis', emoji:'🔍', name:'En Búsqueda — Alexis', color:'c-busqueda'},
   {id:'presupuesto-prep',emoji:'📋',name:'Presupuesto en Preparación',color:'c-presupuesto'},
   {id:'presupuesto-enviado',emoji:'📤',name:'Presupuesto Enviado',color:'c-presupuesto'},
   {id:'aprobado',    emoji:'✅', name:'Aprobado — A Comprar',     color:'c-aprobado'},
@@ -7833,7 +7835,7 @@ function saldoPedido(o){
 const CF_GRUPOS = [
   {id:'debe',     n:'💰 Con saldo',  e:null, soloDeuda:true},
   {id:'todos',    n:'Todos',        e:null},
-  {id:'presu',    n:'Presupuestos', e:['entrante','busqueda-joaco','busqueda-lucas','presupuesto-prep','presupuesto-enviado']},
+  {id:'presu',    n:'Presupuestos', e:['entrante','busqueda-joaco','busqueda-lucas','busqueda-alexis','presupuesto-prep','presupuesto-enviado']},
   {id:'aprobado', n:'Aprobados',    e:['aprobado']},
   {id:'camino',   n:'En camino',    e:['comprado','listo-envio']},
   {id:'entregado',n:'Entregados',   e:['entregado']},
@@ -8369,6 +8371,7 @@ const ESTADO_BADGE = {
   entrante: {t:'ENTRANTE', c:'var(--blue)', bg:'rgba(59,142,255,.15)'},
   'busqueda-joaco': {t:'EN BÚSQUEDA', c:'var(--amber)', bg:'rgba(245,166,35,.15)'},
   'busqueda-lucas': {t:'EN BÚSQUEDA', c:'var(--amber)', bg:'rgba(245,166,35,.15)'},
+  'busqueda-alexis': {t:'EN BÚSQUEDA', c:'var(--amber)', bg:'rgba(245,166,35,.15)'},
   'presupuesto-prep': {t:'PRESUPUESTO', c:'var(--purple)', bg:'rgba(167,139,250,.15)'},
   'presupuesto-enviado': {t:'ENVIADO', c:'var(--purple)', bg:'rgba(167,139,250,.15)'},
   aprobado: {t:'APROBADO', c:'var(--green)', bg:'rgba(34,217,122,.15)'},
@@ -8496,7 +8499,7 @@ function renderCard(o, colorClass){
 }
 
 // Etapas donde el cliente está esperando que le respondamos: acá el reloj corre en contra.
-const ESTADOS_ESPERANDO = ['entrante','busqueda-joaco','busqueda-lucas','presupuesto-prep'];
+const ESTADOS_ESPERANDO = ['entrante','busqueda-joaco','busqueda-lucas','busqueda-alexis','presupuesto-prep'];
 // Devuelve el tiempo que lleva esperando un pedido, con color según qué tan grave es.
 function horasEsperando(o){
   if(!ESTADOS_ESPERANDO.includes(o.estado)) return null;
