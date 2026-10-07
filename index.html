@@ -18053,6 +18053,18 @@ async function pgGuardarPost(fechaISO, estado){
   return fila;
 }
 
+// Fecha/hora LOCAL para el campo datetime-local (toISOString() da UTC y corría el horario 3 h)
+function ctLocalInput(iso){
+  const d = new Date(iso), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+// Si la hora elegida ya pasó, el publicador lo sube en los próximos 10 min: se avisa antes de guardar
+function ctConfirmarHoraPasada(d){
+  if(d.getTime() > Date.now() + 120000) return true;
+  const hora = d.toLocaleString('es-PY', {weekday:'long', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false});
+  return confirm('La hora elegida (' + hora + ' hs) YA PASÓ.\n\nSi guardás así, el post se publica en Instagram y Facebook en los próximos 10 minutos.\n\n¿Publicar igual? (Cancelar para corregir la hora)');
+}
+
 async function pgPublicar(){
   const b = document.getElementById('pg-b-pub');
   const programar = document.getElementById('pg-prog-wrap').style.display !== 'none';
@@ -18061,7 +18073,9 @@ async function pgPublicar(){
     if(programar){
       const v = document.getElementById('pg-fecha').value;
       if(!v) throw new Error('Elegí fecha y hora');
-      const iso = new Date(v).toISOString();
+      const dProg = new Date(v);
+      if(!ctConfirmarHoraPasada(dProg)) return;
+      const iso = dProg.toISOString();
       pgEstado('Subiendo imagen…');
       const fila = await pgGuardarPost(iso, 'aprobado');
       pgEstado('<div class="pg-ok">📅 Programado para ' + new Date(iso).toLocaleString('es-PY') + ' (post #' + fila.id + ')</div>');
@@ -18401,7 +18415,7 @@ function ctVerPost(id){
   const html = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:13px;">'
       + fotos.map(u => '<img src="' + u + '" style="height:190px;border-radius:11px;flex-shrink:0;">').join('') + '</div>'
     + '<div><label class="lbl">Caption</label><textarea class="inp" id="ctv-cap" style="min-height:150px;">' + esc(p.caption) + '</textarea></div>'
-    + '<div style="margin-top:11px;"><label class="lbl">Fecha y hora</label><input class="inp" type="datetime-local" id="ctv-fecha" value="' + (p.fecha_programada ? new Date(p.fecha_programada).toISOString().slice(0,16) : '') + '"></div>'
+    + '<div style="margin-top:11px;"><label class="lbl">Fecha y hora</label><input class="inp" type="datetime-local" id="ctv-fecha" value="' + (p.fecha_programada ? ctLocalInput(p.fecha_programada) : '') + '"></div>'
     + '<label class="pg-fb" style="margin-top:11px;"><input type="checkbox" id="ctv-fb" ' + (p.publicar_fb !== false ? 'checked' : '') + '><span>\uD83C\uDF10 Tambi\u00e9n en Facebook</span></label>'
     + (p.error_msg ? '<div class="pg-err" style="margin-top:11px;">' + esc(p.error_msg) + '</div>' : '')
     + '<div style="display:flex;gap:8px;margin-top:15px;flex-wrap:wrap;">'
@@ -18412,6 +18426,7 @@ function ctVerPost(id){
   invModal('Post ' + (p.numero || ('#' + p.id)), html, async ()=>{
     const cap = document.getElementById('ctv-cap').value;
     const f = document.getElementById('ctv-fecha').value;
+    if(f && p.estado !== 'publicado' && !ctConfirmarHoraPasada(new Date(f))) return false;
     try {
       await sbFetch('/rest/v1/contenido_posts?id=eq.' + p.id, 'PATCH', {
         caption: cap,
