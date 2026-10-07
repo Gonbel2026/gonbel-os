@@ -2274,7 +2274,7 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
               <textarea id="pg-caption"></textarea>
               <div class="pg-hint">Gancho + cuerpo + cierre + palabras clave. Se arma solo del pedido; editalo si algo no cuadra.</div>
             </div>
-            <div class="field" id="pg-prog-wrap" style="display:none;"><label>Programar para</label><input type="datetime-local" id="pg-fecha"></div>
+            <div class="field" id="pg-prog-wrap" style="display:none;"><label>Programar para</label><input type="datetime-local" id="pg-fecha"><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="btn" onclick="ctHoraRapida('pg-fecha',12)">Hoy 12:00 (mediodía)</button><button type="button" class="btn" onclick="ctHoraRapida('pg-fecha',18)">Hoy 18:00</button></div></div>
             <div class="pg-acc">
               <button type="button" class="btn btn-ghost" id="pg-b-regen" onclick="pgRegenerar()">🔄 Regenerar</button>
               <button type="button" class="btn btn-ghost" onclick="pgDescargar()">⬇️ Descargar</button>
@@ -18054,6 +18054,7 @@ async function pgGuardarPost(fechaISO, estado){
 }
 
 // Fecha/hora LOCAL para el campo datetime-local (toISOString() da UTC y corría el horario 3 h)
+function ctHoraRapida(id,h){ const el=document.getElementById(id); if(!el) return; const d=new Date(); d.setHours(h,0,0,0); el.value=ctLocalInput(d.toISOString()); if(d.getTime()<=Date.now()){ try{showToast('⚠️ Hoy '+h+':00 ya pasó. Si guardás así se publica en minutos.');}catch(e){} } }
 function ctLocalInput(iso){
   const d = new Date(iso), p = n => String(n).padStart(2, '0');
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
@@ -18415,7 +18416,7 @@ function ctVerPost(id){
   const html = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:13px;">'
       + fotos.map(u => '<img src="' + u + '" style="height:190px;border-radius:11px;flex-shrink:0;">').join('') + '</div>'
     + '<div><label class="lbl">Caption</label><textarea class="inp" id="ctv-cap" style="min-height:150px;">' + esc(p.caption) + '</textarea></div>'
-    + '<div style="margin-top:11px;"><label class="lbl">Fecha y hora</label><input class="inp" type="datetime-local" id="ctv-fecha" value="' + (p.fecha_programada ? ctLocalInput(p.fecha_programada) : '') + '"></div>'
+    + '<div style="margin-top:11px;"><label class="lbl">Fecha y hora</label><input class="inp" type="datetime-local" id="ctv-fecha" value="' + (p.fecha_programada ? ctLocalInput(p.fecha_programada) : '') + '"><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="btn" onclick="ctHoraRapida(\'ctv-fecha\',12)">Hoy 12:00 (mediodía)</button><button type="button" class="btn" onclick="ctHoraRapida(\'ctv-fecha\',18)">Hoy 18:00</button></div></div>'
     + '<label class="pg-fb" style="margin-top:11px;"><input type="checkbox" id="ctv-fb" ' + (p.publicar_fb !== false ? 'checked' : '') + '><span>\uD83C\uDF10 Tambi\u00e9n en Facebook</span></label>'
     + (p.error_msg ? '<div class="pg-err" style="margin-top:11px;">' + esc(p.error_msg) + '</div>' : '')
     + '<div style="display:flex;gap:8px;margin-top:15px;flex-wrap:wrap;">'
