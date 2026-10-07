@@ -16574,15 +16574,24 @@ function pgTextosDesde(o, f){
 
 // ══════ MOTOR DE CAPTIONS ══════
 // Gancho (rota sin repetir los últimos 10) + cuerpo fijo + cierre (rota) + palabras clave.
+// Cada gancho es el arranque COMPLETO del texto: ya trae la pieza y el vehículo UNA sola vez.
+// Placeholders: {Pieza} (con mayúscula) · {pieza} · {cond} · {veh} (vehículo + año) · {vehiculo} (sin año)
 const PG_GANCHOS = [
-  'Llegó y ya está en manos del cliente.',
-  '{pieza} para {vehiculo}. Pedido cerrado.',
-  'Otro {vehiculo} vuelve a la calle.',
-  'Esta la buscaban hace rato.',
-  'Si tu proveedor te dice que no existe, preguntanos.',
-  'Lo que no se consigue acá, lo traemos.',
-  '{pieza} original. No genérica.',
-  'Pedido, importado, entregado.'
+  '{Pieza} {cond} para {veh}.\nLo que no se consigue acá, lo traemos.',
+  '{Pieza} {cond} para {veh}.\nPedido, importado, entregado.',
+  'Si tu proveedor te dice que no existe, preguntanos.\n{Pieza} {cond} para {veh}.',
+  'Otro {vehiculo} vuelve a la calle.\n{Pieza} {cond} para {veh}.',
+  'Esta la buscaban hace rato.\n{Pieza} {cond} para {veh}.',
+  '¿Tu {vehiculo} está parado por una pieza?\n{Pieza} {cond} para {veh}. Nosotros nos encargamos.',
+  'Del taller al cliente, sin vueltas.\n{Pieza} {cond} para {veh}.',
+  'Para que tu {vehiculo} siga rodando.\n{Pieza} {cond} para {veh}.',
+  'Importar no tiene por qué ser complicado.\n{Pieza} {cond} para {veh}. Nosotros nos encargamos.',
+  '{Pieza} {cond} para {veh}.\nTrabajamos con talleres, chaperías y repuesteros.',
+  'Una preocupación menos para tu {vehiculo}.\n{Pieza} {cond} para {veh}.',
+  'Directo de importación a tu taller.\n{Pieza} {cond} para {veh}.',
+  'Cada pedido tiene su pieza. Esta vez: {pieza} {cond} para {veh}.',
+  'Llegó: {pieza} {cond} para {veh}.',
+  '¿Buscás {pieza} para tu {vehiculo}?\nCondición: {cond}.'
 ];
 const PG_CIERRES = [
   'Mandanos el modelo de tu vehículo por WhatsApp y te cotizamos.',
@@ -16591,19 +16600,36 @@ const PG_CIERRES = [
 ];
 let pgGanchoIdx = -1, pgCierreIdx = -1;
 
-function pgCap(s){ s = String(s || '').trim().toLowerCase(); return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+// Siglas y modelos que no se deben pasar a minúscula: ABS, BMW, Q3, X5, GT86…
+const PG_SIGLAS = ['abs','ecu','led','gps','bmw','vw','gmc','ram','tdi','tsi','hdi','dpf','egr','maf','esp','suv','hid','drl','oem','ac','mg','byd','jac','gwm','dfsk'];
+function pgTok(w){
+  const l = w.toLowerCase();
+  if(PG_SIGLAS.includes(l)) return l.toUpperCase();
+  if(/\d/.test(l) && /[a-z]/.test(l) && !/^\d+(?:cm|mm|ml|l|v)?$/.test(l)) return l.toUpperCase();   // Q3, X5, GT86, 320I
+  return l;
+}
+// "FARO DELANTERO DERECHO" → "Faro delantero derecho" (conserva siglas y modelos)
+function pgCap(s){ s = String(s || '').trim().replace(/\S+/g, pgTok); return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+// "audi q3" → "Audi Q3"
+function pgTitulo(s){ return String(s || '').trim().replace(/\S+/g, w => { const t = pgTok(w); return t === t.toUpperCase() ? t : t[0].toUpperCase() + t.slice(1); }); }
+
+const PG_RE_COND = /nuev|usad|original|alternativ|gen[uú]in|reacondic|remanufac|reman\b/i;
+// Del campo "marca · condición" solo se toma la condición, TAL CUAL se escribió.
+// La marca nunca va al texto ("Marca X" no aparece).
+function pgCondDelCampo(txt){
+  return String(txt || '').split(/[·|•]/).map(x => x.trim()).filter(x => x && PG_RE_COND.test(x)).join(' ').toLowerCase();
+}
 
 // Lo que se escribió en los campos de la imagen manda sobre lo calculado del pedido
 function pgVarsActuales(){
   const t = pgTextosDesde(pgPedido, pgFoto);
   const pieza = document.getElementById('pg-pieza').value.trim() || t.pieza;
-  const mc = document.getElementById('pg-marca').value.split('·').map(x => x.trim());
   const vehAnio = document.getElementById('pg-vehiculo').value.trim();
   const m = vehAnio.match(/^(.*?)\s*((?:19|20)\d\d)?$/);
+  const cond = pgCondDelCampo(document.getElementById('pg-marca').value) || String(t.condicion || '').toLowerCase();
   return {
-    pieza: pgCap(pieza), vehiculo: pgCap(m && m[1] ? m[1] : t.vehiculo).replace(/\b\w/g, c => c.toUpperCase()),
-    anio: (m && m[2]) || t.anio, marcaPieza: mc[0] && mc[0].length > 1 ? pgCap(mc[0]) : t.marcaPieza,
-    condicion: (mc[1] || t.condicion || '').toLowerCase(), origen: t.origen, dias: t.dias
+    pieza: pgCap(pieza), vehiculo: pgTitulo(m && m[1] ? m[1] : t.vehiculo),
+    anio: (m && m[2]) || t.anio, condicion: cond, origen: t.origen, dias: t.dias
   };
 }
 
@@ -16615,13 +16641,18 @@ function pgElegirGancho(){
 }
 
 function pgArmarCaption(v, gi, ci){
-  const rel = s => s.replace('{pieza}', v.pieza || 'Repuesto').replace('{vehiculo}', v.vehiculo || 'tu vehículo');
-  const cuerpo = [`${v.pieza || 'Repuesto'} ${pgConcordar(v.condicion, v.pieza)} para ${v.vehiculo}${v.anio ? ' ' + v.anio : ''}.`.replace(/\s+/g, ' ')];
-  const l2 = [v.marcaPieza ? `Marca ${v.marcaPieza}.` : '', v.origen ? `Importado desde ${v.origen}.` : ''].filter(Boolean).join(' ');
-  if(l2) cuerpo.push(l2);
-  // Sin linea de palabras clave: era relleno que no aportaba y ensuciaba el texto
-  const firma = 'GONBEL IMPORTS | SINCE 2020\n0974780008 \uD83D\uDCF1\uD83D\uDD27';
-  return [rel(PG_GANCHOS[gi]), cuerpo.join('\n'), PG_CIERRES[ci], firma].join('\n\n');
+  const pieza = pgCap(v.pieza) || 'Repuesto';
+  const vehiculo = pgTitulo(v.vehiculo);
+  const veh = vehiculo ? vehiculo + (v.anio ? ' ' + v.anio : '') : 'tu vehículo';
+  const cond = pgConcordar(v.condicion, pieza);
+  // La pieza y el vehículo aparecen UNA sola vez: el gancho ya los trae, no hay línea de cuerpo repetida.
+  let apertura = PG_GANCHOS[gi]
+    .replace(/\{Pieza\}/g, pieza).replace(/\{pieza\}/g, pieza[0].toLowerCase() + pieza.slice(1))
+    .replace(/\{cond\}/g, cond).replace(/\{veh\}/g, veh).replace(/\{vehiculo\}/g, vehiculo || 'vehículo')
+    .replace(/[ \t]+/g, ' ').replace(/ ([.,:!?])/g, '$1').replace(/ \n/g, '\n');
+  if(v.origen) apertura += '\nImportado desde ' + v.origen + '.';
+  const firma = 'GONBEL IMPORTS | SINCE 2020\n0974780008 📱🔧';
+  return [apertura, PG_CIERRES[ci], firma].join('\n\n');
 }
 
 // Concuerda la condición con el género y número de la pieza: "amortiguadores nuevos originales", "bomba usada original"
@@ -18448,7 +18479,7 @@ async function ctCarrusel(orderId){
   const t = o.id ? pgTextosDesde(o, g.portada) : {pieza:g.portada.pieza||'', vehiculo:'', anio:'', marcaPieza:'', condicion:'', origen:''};
   const gi = pgElegirGancho(), ci = Math.floor(Math.random() * PG_CIERRES.length);
   const caption = pgArmarCaption({
-    pieza: pgCap(t.pieza), vehiculo: pgCap(t.vehiculo), anio: t.anio,
+    pieza: pgCap(t.pieza), vehiculo: pgTitulo(t.vehiculo), anio: t.anio,
     marcaPieza: t.marcaPieza, condicion: t.condicion, origen: t.origen
   }, gi, ci);
 
