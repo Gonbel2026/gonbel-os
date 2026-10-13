@@ -4802,6 +4802,22 @@ function extraerVehiculoDeTexto(lineas){
   return null;
 }
 
+// Empareja cada pieza nueva con su pieza anterior SIN mezclar las que tienen el mismo nombre:
+// primero por posición (si en esa posición hay una con el mismo nombre) y si no, por orden dentro del mismo nombre.
+// Cada pieza anterior se usa una sola vez, así "RETROVISOR LH" x2 sigue siendo dos piezas distintas.
+function emparejarPrevios(anteriores, nuevos){
+  const k = x => ((x && x.d) || '').toLowerCase().trim();
+  const usado = new Set(), res = new Array(nuevos.length).fill(null);
+  nuevos.forEach((n,i)=>{
+    if(anteriores[i] && k(anteriores[i]) === k(n)){ usado.add(i); res[i] = anteriores[i]; }
+  });
+  nuevos.forEach((n,i)=>{
+    if(res[i]) return;
+    const j = anteriores.findIndex((a,idx)=>!usado.has(idx) && k(a) === k(n));
+    if(j >= 0){ usado.add(j); res[i] = anteriores[j]; }
+  });
+  return res;
+}
 function parsearPiezas(txt){
   const lineas = (txt||'').split('\n').map(x=>x.trim()).filter(x=>x.length);
   const out = [];
@@ -4850,9 +4866,8 @@ function importarPiezas(manual){
     if(!confirm('Ya hay '+piezasItems.length+' pieza(s) cargada(s). ¿Reemplazarlas por las '+nuevos.length+' de la lista de arriba?')) return;
   }
   // conservar los ✓ de piezas con el mismo nombre
-  const previos = {};
-  piezasItems.forEach(x=>{ previos[(x.d||'').toLowerCase().trim()] = x.c; });
-  nuevos.forEach(x=>{ if(previos[(x.d||'').toLowerCase().trim()]) x.c = true; });
+  const _ant = emparejarPrevios(piezasItems, nuevos);
+  nuevos.forEach((x,i)=>{ if(_ant[i] && _ant[i].c) x.c = true; });
   piezasItems = nuevos;
   renderPiezasItems();
   if(manual) showToast('⚡ '+nuevos.length+' pieza(s) cargadas','success');
@@ -5152,10 +5167,9 @@ function bpActualizar(){
     crSyncDesdeAbajo();
   }
   const nuevos = parsearPiezas(lineas.join('\n'));
-  const previos = {};
-  bpStaging.forEach(x=>{ previos[(x.d||'').toLowerCase().trim()] = x; });
-  bpStaging = nuevos.map(x=>{
-    const prev = previos[(x.d||'').toLowerCase().trim()];
+  const _ant = emparejarPrevios(bpStaging, nuevos);
+  bpStaging = nuevos.map((x,_i)=>{
+    const prev = _ant[_i];
     // Solo pisa el valor de abajo si el número de arriba REALMENTE cambió desde la última vez
     // (así no borra una edición manual de abajo cada vez que tipeás cualquier otra cosa arriba).
     const parseoAnterior = prev?.ultimoParseo ?? null;
@@ -6748,12 +6762,11 @@ function saveBigEdit(){
     // Vuelca lo armado (nombre + costo + venta manual + calidad + moneda + fecha + proveedor) en las
     // piezas reales del pedido. Costo y Venta manual son dos datos independientes — si hay Venta
     // manual cargada, esa siempre gana como precio final, sin importar si también hay margen elegido.
-    const previos = {};
-    piezasItems.forEach(x=>{ previos[(x.d||'').toLowerCase().trim()] = x; });
+    const _stag = bpStaging.filter(x=>(x.d||'').trim());
+    const _ant = emparejarPrevios(piezasItems, _stag);
     const proveedoresNuevos = []; // piezas con proveedor local recién cargado, para alimentar la base
-    piezasItems = bpStaging.filter(x=>(x.d||'').trim()).map(x=>{
-      const key = (x.d||'').toLowerCase().trim();
-      const prev = previos[key] || {};
+    piezasItems = _stag.map((x,_i)=>{
+      const prev = _ant[_i] || {};
       const mg = x.mg || prev.mg || null;
       const ventaManual = x.ventaManual ?? prev.ventaManual ?? null;
       const venta = bpVentaFinal(x) ?? prev.p ?? 0;
