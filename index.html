@@ -1701,6 +1701,16 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
 .sn-row .sn-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1);}
 .sn-row .sn-c{font-size:11px;color:var(--t3);flex-shrink:0;}
 .sn-vacio{font-size:12px;color:var(--t3);padding:6px 2px;}
+
+/* Datos para copiar: copiar renglón por renglón */
+.dr-lineas{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+.dr-lin{display:flex;align-items:center;gap:6px;font-size:12.5px;line-height:1.35;padding:3px 4px;border-radius:6px;}
+.dr-lin:hover{background:rgba(255,255,255,.05);}
+.dr-et{color:var(--t3);flex-shrink:0;}
+.dr-val{color:var(--t1);flex:1;min-width:0;word-break:break-word;}
+.dr-c1{flex-shrink:0;width:26px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--t2);cursor:pointer;font-size:13px;line-height:1;}
+.dr-c1:hover{background:rgba(0,198,255,.18);color:#fff;}
+.dr-c1.ok{background:rgba(34,197,94,.25);color:#fff;border-color:rgba(34,197,94,.5);}
 </style>
 </head>
 <body>
@@ -7621,7 +7631,7 @@ function drPintar(){
           <button type="button" class="dr-mini" onclick="drEditar(${d.id})" title="Editar">✏️</button>
           <button type="button" class="dr-copiar" id="dr-c-${d.id}" onclick="drCopiar(${d.id})">Copiar</button>
         </div>
-        <div class="dr-cont">${d.contenido}</div>
+        <div class="dr-lineas">${drLineasHtml(d)}</div>
       </div>`;
     });
   });
@@ -7688,6 +7698,38 @@ async function drBorrar(id){
   } catch(e){ showToast('No se pudo quitar','error'); }
 }
 
+// Cada renglón del dato se puede copiar por separado (para formularios que piden campo por campo).
+// Si el renglón es "Etiqueta: valor", el botón copia solo el valor.
+function drSepararLinea(l){
+  const m = String(l).match(/^\s*([^:]{1,30}):\s*(.+)$/);
+  return (m && !/^https?$/i.test(m[1].trim())) ? {et: m[1].trim(), val: m[2].trim()} : {et: '', val: String(l).trim()};
+}
+function drEsc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function drLineasHtml(d){
+  return String(d.contenido||'').split('\n').map((l,i)=>{
+    const x = drSepararLinea(l);
+    if(!x.val) return x.et ? `<div class="dr-lin"><span class="dr-et">${drEsc(x.et)}:</span></div>` : '';
+    return `<div class="dr-lin">${x.et?`<span class="dr-et">${drEsc(x.et)}:</span>`:''}<span class="dr-val">${drEsc(x.val)}</span><button type="button" class="dr-c1" id="dr-c1-${d.id}-${i}" title="Copiar solo esto" onclick="event.stopPropagation();drCopiarLinea(${d.id},${i})">⧉</button></div>`;
+  }).join('');
+}
+async function drCopiarTexto(t){
+  try { await navigator.clipboard.writeText(t); }
+  catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e2){}
+    ta.remove();
+  }
+}
+async function drCopiarLinea(id, i){
+  drRedibujando = true;
+  const d = datosRapidos.find(x=>x.id===id); if(!d) return;
+  const l = String(d.contenido||'').split('\n')[i]; if(l == null) return;
+  await drCopiarTexto(drSepararLinea(l).val);
+  const b = document.getElementById('dr-c1-'+id+'-'+i);
+  if(b){ b.textContent = '✓'; b.classList.add('ok'); setTimeout(()=>{ b.textContent='⧉'; b.classList.remove('ok'); }, 1300); }
+}
 async function drCopiar(id){
   const d = datosRapidos.find(x=>x.id===id);
   if(!d) return;
