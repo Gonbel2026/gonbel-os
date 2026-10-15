@@ -12198,14 +12198,14 @@ async function buscarMensajesML(manual){
     // Ahora se muestran TODOS los mensajes sin leer, y el cruce con el pedido se hace acá, del lado
     // del sistema, probando por número de compra y por pack.
     mmDatos = (j.mensajes || []).map(m=>{
-      if(m.reconocido) return m;
+      if(m.reconocido) return Object.assign({}, m, {pieza: m.pieza || m.titulo});
       const pack = String(m.pack_id||'');
       const compra = (mlComprasCrudas||[]).find(c=> String(c.pack_id)===pack || String(c.order_id)===pack);
       const pz = compra ? piezaDeCompra(compra) : null;
       return Object.assign({}, m, {
         pedido_numero: pz && pz._orden ? (pz._orden.numero_pedido || pz._orden.numero) : m.pedido_numero,
         cliente: pz && pz._orden ? pz._orden.cliente_nombre : m.cliente,
-        pieza: (pz && pz.d) || (compra && compra.titulo) || m.pieza,
+        pieza: (pz && pz.d) || (compra && compra.titulo) || m.pieza || m.titulo,
         _id: pz && pz._orden ? pz._orden.id : null
       });
     });
@@ -12218,9 +12218,10 @@ async function buscarMensajesML(manual){
     banner.style.display = 'block';
     document.getElementById('ml-msg-lista').innerHTML = mmDatos.map(m=>`
       <div class="ml-msg-row" onclick="abrirHiloML('${m.pack_id}','${m.seller_id||''}','${(m.pieza||'').replace(/'/g,"\\'")}','${(m.pedido_numero||'').replace(/'/g,"\\'")}','${(m.cliente||'').replace(/'/g,"\\'")}')">
-        <div>
+        ${m.thumb ? `<img src="${m.thumb}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#fff;">` : ''}
+        <div style="min-width:0;flex:1;">
           <div class="ml-msg-p">${m.pedido_numero ? m.pedido_numero+' — ' : ''}${m.pieza||'Conversación de Mercado Livre'}</div>
-          <div class="ml-msg-m">${m.cliente || (m.pedido_numero ? '' : 'Sin pedido vinculado todavía')}</div>
+          <div class="ml-msg-m">${m.cliente || (m.pedido_numero ? '' : 'Sin pedido vinculado')} · Compra #${m.pack_id}</div>
         </div>
         <span class="ml-msg-badge">${m.no_leidos} sin leer</span>
         <button type="button" onclick="event.stopPropagation();mlDescartarMsg('${m.pack_id}',${m.no_leidos},this)" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;" title="Descartar">&times;</button>
@@ -12256,30 +12257,55 @@ async function limpiarHistorialMensajesML(){
   } catch(e){ showToast('Error de conexión','error'); }
 }
 
+// Cada vez que se abre una conversación (desde el aviso, la campanita o la lista) se vuelve a
+// pedir al servidor el estado ACTUAL del hilo, y mientras está abierta se refresca sola cada 20 s.
+// Así aparece lo que haya respondido otro (por ej. Joaquín) aunque el aviso sea de horas antes.
+let mmTimer = null;
 async function abrirHiloML(packId, sellerId, pieza, pedidoNum, cliente){
   mmDestino = {pack: packId, seller: sellerId};
-  document.getElementById('mm-titulo').textContent = pedidoNum ? (pedidoNum + ' — ' + (pieza||'')) : ('Compra sin vincular · #'+packId);
-  document.getElementById('mm-sub').textContent = cliente || (pedidoNum ? '' : 'No se pudo asociar a un pedido del sistema');
+  const info = (mmDatos||[]).find(x=>String(x.pack_id)===String(packId)) || {};
+  const titulo = pieza || info.titulo || '';
+  document.getElementById('mm-titulo').textContent = pedidoNum ? (pedidoNum + ' — ' + titulo) : (titulo || ('Compra sin vincular · #'+packId));
+  document.getElementById('mm-sub').textContent = (cliente || (pedidoNum ? '' : 'Sin pedido vinculado')) + (cliente || !pedidoNum ? ' · ' : '') + 'Compra #' + packId;
+  mmPonerFoto(info.thumb);
   document.getElementById('mm-texto').value = '';
   mmContar();
   document.getElementById('mm-body').innerHTML = '<div style="text-align:center;color:var(--t3);font-size:13px;padding:20px;">Cargando mensajes…</div>';
   document.getElementById('mm-overlay').classList.add('open');
+  await mmRecargar(false);
+  if(mmTimer) clearInterval(mmTimer);
+  mmTimer = setInterval(()=>{ if(mmDestino && mmDestino.pack && document.getElementById('mm-overlay').classList.contains('open')) mmRecargar(false); }, 20000);
+}
+function mmPonerFoto(url){
+  const im = document.getElementById('mm-thumb'); if(!im) return;
+  if(url){ im.src = url; im.style.display = 'block'; } else { im.removeAttribute('src'); im.style.display = 'none'; }
+}
+async function mmRecargar(aviso){
+  if(!mmDestino || !mmDestino.pack) return;
+  const {pack, seller} = mmDestino;
+  const body = document.getElementById('mm-body');
+  const alFondo = body.scrollHeight - body.scrollTop - body.clientHeight < 40;
   try {
-    const r = await fetch(ML_MSG + '?accion=leer&pack=' + encodeURIComponent(packId) + '&seller=' + encodeURIComponent(sellerId));
+    const r = await fetch(ML_MSG + '?accion=leer&pack=' + encodeURIComponent(pack) + '&seller=' + encodeURIComponent(seller) + '&_=' + Date.now(), {cache:'no-store'});
     const j = await r.json();
+    if(!mmDestino || mmDestino.pack !== pack) return; // se cerró o se abrió otra mientras cargaba
     if(!j.ok){
-      document.getElementById('mm-body').innerHTML = `<div style="text-align:center;color:var(--amber);font-size:13px;padding:20px;">${j.error||'No se pudo cargar la conversación'}</div>`;
+      body.innerHTML = `<div style="text-align:center;color:var(--amber);font-size:13px;padding:20px;">${j.error||'No se pudo cargar la conversación'}</div>`;
       return;
     }
+    const tit = document.getElementById('mm-titulo');
+    if(j.titulo && /^Compra sin vincular/.test(tit.textContent)) tit.textContent = j.titulo;
+    if(j.thumb) mmPonerFoto(j.thumb);
     const msgs = j.mensajes || [];
-    document.getElementById('mm-body').innerHTML = msgs.length
+    body.innerHTML = msgs.length
       ? msgs.map(m=>`<div class="mm-msg ${m.propio?'propio':'ajeno'}">${(m.texto||'').replace(/</g,'&lt;')}
           <div class="mm-msg-f">${m.fecha?new Date(m.fecha).toLocaleString('es-PY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
         </div>`).join('')
       : '<div style="text-align:center;color:var(--t3);font-size:13px;padding:20px;">Sin mensajes todavía.</div>';
-    document.getElementById('mm-body').scrollTop = document.getElementById('mm-body').scrollHeight;
+    if(alFondo || !aviso) body.scrollTop = body.scrollHeight;
+    if(aviso) showToast('Conversación actualizada','success');
   } catch(e){
-    document.getElementById('mm-body').innerHTML = '<div style="text-align:center;color:var(--red);font-size:13px;padding:20px;">Error al cargar.</div>';
+    if(aviso || !body.querySelector('.mm-msg')) body.innerHTML = '<div style="text-align:center;color:var(--red);font-size:13px;padding:20px;">Error al cargar.</div>';
   }
 }
 
@@ -12303,17 +12329,20 @@ async function enviarMensajeML(){
     const j = await r.json();
     if(!j.ok){ showToast(j.error || 'No se pudo enviar','error'); return; }
     showToast('📤 Mensaje enviado al vendedor','success');
-    cerrarModalMensaje();
+    // Si es una conversación de compra, queda abierta y se recarga para ver el mensaje enviado
+    if(mmDestino && mmDestino.pack){ document.getElementById('mm-texto').value=''; mmContar(); mmRecargar(false); }
+    else cerrarModalMensaje();
     buscarMensajesML(false);
   buscarPreguntasML(false);
   } catch(e){ showToast('Error de conexión al enviar','error'); }
 }
 
-function cerrarModalMensaje(){ document.getElementById('mm-overlay').classList.remove('open'); mmDestino = null; }
+function cerrarModalMensaje(){ document.getElementById('mm-overlay').classList.remove('open'); mmDestino = null; if(mmTimer){ clearInterval(mmTimer); mmTimer = null; } mmPonerFoto(null); }
 
 // Pedir cotizacion de flete a un vendedor con el que hay "entrega a coordinar"
 async function pedirCotizacionFlete(nc, pieza){
   mmDestino = {nc};
+  mmPonerFoto(null);
   document.getElementById('mm-titulo').textContent = 'Pedir cotización de flete';
   document.getElementById('mm-sub').textContent = pieza || '';
   document.getElementById('mm-body').innerHTML = '<div style="text-align:center;color:var(--t3);font-size:13px;padding:20px;">Cargando conversación…</div>';
@@ -18927,10 +18956,14 @@ loadDivisas();
 <div id="mm-overlay" class="mm-overlay" onclick="if(event.target===this) cerrarModalMensaje()">
   <div class="mm-box">
     <div class="mm-head">
-      <div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff;" id="mm-titulo">Conversación</div>
-        <div style="font-size:12px;color:var(--t3);margin-top:3px;" id="mm-sub"></div>
+      <div style="display:flex;gap:12px;align-items:center;min-width:0;flex:1;">
+        <img id="mm-thumb" alt="" style="display:none;width:48px;height:48px;object-fit:cover;border-radius:10px;flex-shrink:0;background:#fff;">
+        <div style="min-width:0;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff;" id="mm-titulo">Conversación</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:3px;" id="mm-sub"></div>
+        </div>
       </div>
+      <button type="button" class="pz-btn" onclick="mmRecargar(true)" title="Actualizar la conversación" style="width:32px;height:32px;margin-right:6px;">↻</button>
       <button type="button" class="pz-btn" onclick="cerrarModalMensaje()" style="width:32px;height:32px;">✕</button>
     </div>
     <div class="mm-body" id="mm-body"><div style="text-align:center;color:var(--t3);font-size:13px;padding:20px;">Cargando…</div></div>
