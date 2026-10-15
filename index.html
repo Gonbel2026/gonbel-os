@@ -1687,6 +1687,20 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
   .pz-acc{margin-left:0;}
   .pz-pide-costo input{font-size:16px;}
 }
+
+/* Tablero: para Joaquín y Alexis el recuadro de ingresos se reemplaza por los avisos en vivo */
+.stat-notif{display:none;padding:12px 14px !important;}
+body.role-operador #stat-ing-tile, body.role-ventas #stat-ing-tile{display:none !important;}
+body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
+.sn-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#cfe0ff;margin-bottom:6px;}
+.sn-head b{background:var(--red);color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;padding:0 6px;}
+.sn-head b.cero{background:rgba(255,255,255,.12);color:var(--t3);}
+.sn-lista{max-height:92px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.sn-row{display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:4px 6px;border-radius:8px;background:rgba(255,255,255,.04);}
+.sn-row:hover{background:rgba(255,255,255,.1);}
+.sn-row .sn-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1);}
+.sn-row .sn-c{font-size:11px;color:var(--t3);flex-shrink:0;}
+.sn-vacio{font-size:12px;color:var(--t3);padding:6px 2px;}
 </style>
 </head>
 <body>
@@ -1810,7 +1824,11 @@ body:has(.ah-nav.abajo) #cr-fab{bottom:calc(74px + env(safe-area-inset-bottom));
       <div class="stat s-blue"><span class="stat-icon">📥</span><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-amber"><span class="stat-icon">🛒</span><div class="stat-val" id="stat-camino">—</div><div class="stat-lbl">En camino</div></div>
       <div class="stat s-green"><span class="stat-icon">✅</span><div class="stat-val" id="stat-entregados">—</div><div class="stat-lbl">Entregados</div></div>
-      <div class="stat s-purple cc-clic" style="position:relative;" onclick="verIngresosTablero()"><span class="stat-icon">💰</span><button type="button" class="stat-ojo" id="stat-ojo" title="Ocultar el monto" onclick="event.stopPropagation();toggleOcultarPlata()">👁️</button><div class="stat-val" id="stat-ingresos">—</div><div class="stat-lbl">Ingresos (cobrado)</div></div>
+      <div class="stat s-purple cc-clic" id="stat-ing-tile" style="position:relative;" onclick="verIngresosTablero()"><span class="stat-icon">💰</span><button type="button" class="stat-ojo" id="stat-ojo" title="Ocultar el monto" onclick="event.stopPropagation();toggleOcultarPlata()">👁️</button><div class="stat-val" id="stat-ingresos">—</div><div class="stat-lbl">Ingresos (cobrado)</div></div>
+      <div class="stat s-purple stat-notif" id="stat-notif">
+        <div class="sn-head"><span>🔔 Avisos en vivo</span><b id="sn-n">0</b></div>
+        <div class="sn-lista" id="sn-lista"><div class="sn-vacio">Cargando…</div></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:9px;">
       <button type="button" class="btn btn-ghost" style="padding:7px 13px;font-size:12.5px;" onclick="plegarTodas(true)">▲ Plegar todas</button>
@@ -3587,6 +3605,7 @@ async function mlSync(manual){
 // Refresco automático: datos cada 60s, Mercado Livre cada 10 min
 let autoRefTimer = null, mlTimer = null;
 function arrancarAutoRefresco(){
+  arrancarAvisosEnVivo();
   if(autoRefTimer) return;
   autoRefTimer = setInterval(()=>{
     if(document.hidden) return;                       // no gastar si la pestaña está oculta
@@ -13098,6 +13117,7 @@ function actualizarCampanita(){
   if(nEl) nEl.textContent = total;
   if(btn) btn.classList.toggle('tiene', total > 0);
 
+  pintarAvisosTablero(items, total);
   const lista = document.getElementById('cc-notif-lista');
   if(!lista) return;
   lista.innerHTML = items.length ? items.map((x,i)=>`
@@ -13113,6 +13133,25 @@ function actualizarCampanita(){
         ? `<button type="button" class="cc-notif-x" title="Ya lo resolví, sacar de la lista" onclick="event.stopPropagation();descartarAviso('${x.quitar}')">✕</button>`
         : (x.desc?`<button type="button" class="cc-notif-x" title="Marcar como visto" onclick="event.stopPropagation();_notifDesc(${i})">✕</button>`:'')}
     </div>`).join('') : '<div class="cc-notif-vacio">✅ Todo al día, sin pendientes.</div>';
+}
+function pintarAvisosTablero(items, total){
+  const nEl = document.getElementById('sn-n'), box = document.getElementById('sn-lista');
+  if(!nEl || !box) return;
+  nEl.textContent = total; nEl.classList.toggle('cero', !total);
+  box.innerHTML = items.length
+    ? items.map((x,i)=>`<div class="sn-row" onclick="_notifIr(${i})" title="${String(x.s||'').replace(/"/g,'&quot;')}"><span>${x.ic}</span><span class="sn-t">${x.t}</span><span class="sn-c">${x.n}</span></div>`).join('')
+    : '<div class="sn-vacio">✅ Todo al día</div>';
+}
+// Avisos casi en vivo: cada 20 s se vuelve a consultar Mercado Livre (mensajes y respuestas a preguntas)
+// mientras la pestaña está visible, así Joaquín y Alexis ven en el Tablero cuando alguien escribe.
+let avisosVivoTimer = null;
+function arrancarAvisosEnVivo(){
+  if(avisosVivoTimer) return;
+  avisosVivoTimer = setInterval(()=>{
+    if(document.hidden) return;
+    try{ buscarMensajesML(false); }catch(e){}
+    try{ buscarPreguntasML(false); }catch(e){}
+  }, 20000);
 }
 function _notifIr(i){
   const it = window._notifItems && window._notifItems[i];
