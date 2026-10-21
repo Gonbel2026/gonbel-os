@@ -2855,10 +2855,10 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         </div>
         <span class="cr-sep">—</span>
         <div class="cr-campo" style="flex:.85;">
-          <input id="cr-marca" class="cr-in" placeholder="Marca… (si no está, escribila)" list="dl-marcas" autocomplete="off" onkeydown="crKeydown(event,'marca')" onblur="crSyncCampo('marca')">
+          <input id="cr-marca" class="cr-in" placeholder="Marca… (si no está, escribila)" data-sug="dl-marcas" autocomplete="off" onkeydown="crKeydown(event,'marca')" onblur="crSyncCampo('marca')">
         </div>
         <div class="cr-campo" style="flex:.85;">
-          <input id="cr-modelo" class="cr-in" placeholder="Modelo…" list="dl-modelos" autocomplete="off" onkeydown="crKeydown(event,'modelo')" onfocus="crLlenarModelos()" onblur="crSyncCampo('modelo')">
+          <input id="cr-modelo" class="cr-in" placeholder="Modelo… (si no está, escribilo)" data-sug="dl-modelos" autocomplete="off" onkeydown="crKeydown(event,'modelo')" onfocus="crLlenarModelos()" onblur="crSyncCampo('modelo')">
         </div>
         <div class="cr-campo" style="flex:.5;">
           <input id="cr-año" class="cr-in" placeholder="Año…" autocomplete="off" onkeydown="crKeydown(event,'año')" onblur="crSyncCampo('año')">
@@ -2945,8 +2945,8 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="modal-sec-title">🚗 Datos del Vehículo</div>
       <div id="vp-picker" class="vp-wrap" style="display:none;"></div>
       <div class="form-grid cols3">
-        <div class="field"><label>Marca</label><input id="f-marca" list="dl-marcas" placeholder="Toyota, Ford… o escribila si no está" onchange="this.value=vehMarcaCanon(this.value);crSyncDesdeAbajo();crLlenarModelos()"></div>
-        <div class="field"><label>Modelo</label><input id="f-modelo" list="dl-modelos" placeholder="Hilux, Ranger..." onchange="crSyncDesdeAbajo()"></div>
+        <div class="field"><label>Marca</label><input id="f-marca" data-sug="dl-marcas" autocomplete="off" placeholder="Toyota, Ford… o escribila si no está" onchange="this.value=vehMarcaCanon(this.value);crSyncDesdeAbajo();crLlenarModelos()"></div>
+        <div class="field"><label>Modelo</label><input id="f-modelo" data-sug="dl-modelos" autocomplete="off" placeholder="Hilux, Ranger..." onchange="crSyncDesdeAbajo()"></div>
         <div class="field"><label>Año</label><input id="f-año" placeholder="2019" onchange="crSyncDesdeAbajo()"></div>
         <div class="field full">
           <label>VIN / Chasis <span id="vin-count" class="vin-count" style="color:var(--t3);"></span></label>
@@ -8993,6 +8993,24 @@ document.addEventListener('change', e=>{
   if(cargandoPedido) return;
   if(e.target && CAMPOS_AUTOSAVE.has(e.target.id)) scheduleAutoSave(300);
 });
+// Barra rápida de arriba (Marca / Modelo / Año / Pieza): antes lo que se corregía ahí no se guardaba
+// en un pedido ya existente — solo pasaba al formulario de abajo al salir del campo y nunca disparaba
+// el autoguardado, así que al reabrir volvía el valor viejo (ej. "Ranger" en vez de "Raptor").
+// Ahora cada cambio se copia al campo real y se autoguarda; el historial de cambios queda registrado.
+document.addEventListener('input', e=>{
+  if(cargandoPedido || !e.target) return;
+  const id = e.target.id;
+  const map = {'cr-marca':'f-marca','cr-modelo':'f-modelo','cr-año':'f-año'};
+  if(map[id]){
+    const f = document.getElementById(map[id]);
+    if(f) f.value = e.target.value;
+    try{ crSync(); }catch(_){}
+    scheduleAutoSave(1200);
+  } else if(id === 'cr-pieza'){
+    try{ crSync(); }catch(_){}
+    scheduleAutoSave(1200);
+  }
+});
 // ══════ v42: PESTAÑAS DEL MODAL ══════
 let mTabActual = 'resumen';
 function esAdmin(){ return !!(currentUser && currentUser.role === 'admin'); }
@@ -9765,6 +9783,64 @@ function crLlenarModelos(){
   dl.innerHTML = base.concat(extra).map(m=>`<option value="${String(m).replace(/"/g,'&quot;')}">`).join('');
 }
 
+
+// ══════ Sugerencias de Marca/Modelo propias (reemplaza el <datalist> nativo) ══════
+// El datalist del navegador, en algunos equipos/celulares, no dejaba seguir escribiendo cuando
+// lo tipeado no coincidía con ninguna marca (ej. "Ducati"). Ahora las sugerencias son solo una
+// ayuda: lo que se escribe queda SIEMPRE tal cual, esté o no en la lista.
+(function(){
+  let box = null, inp = null, idx = -1, items = [];
+  function cerrar(){ if(box){ box.style.display='none'; } idx=-1; items=[]; }
+  function asegurarBox(){
+    if(box) return box;
+    box = document.createElement('div');
+    box.id = 'veh-sug';
+    box.style.cssText = 'position:fixed;z-index:100000;display:none;max-height:240px;overflow:auto;background:var(--card,#fff);color:inherit;border:1px solid rgba(128,128,128,.35);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);font-size:14px';
+    document.body.appendChild(box);
+    return box;
+  }
+  function pintar(){
+    box.innerHTML = items.map((t,i)=>`<div data-i="${i}" style="padding:8px 12px;cursor:pointer;${i===idx?'background:rgba(37,99,235,.15)':''}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`).join('');
+  }
+  function elegir(i){
+    if(!inp || !items[i]) return;
+    inp.value = items[i];
+    cerrar();
+    inp.dispatchEvent(new Event('input',{bubbles:true}));
+    inp.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function mostrar(el){
+    const dlId = el.getAttribute('data-sug');
+    if(el.id.endsWith('modelo')) { try{ crLlenarModelos(); }catch(_){} } else { try{ crLlenarMarcas(); }catch(_){} }
+    const dl = document.getElementById(dlId);
+    const opciones = dl ? Array.from(dl.options).map(o=>o.value) : [];
+    const q = (typeof vehSinTildes==='function') ? vehSinTildes(el.value) : el.value.toLowerCase();
+    items = opciones.filter(o=>{ const k = (typeof vehSinTildes==='function') ? vehSinTildes(o) : o.toLowerCase(); return !q || k.includes(q); })
+                    .filter(o=>!q || ((typeof vehSinTildes==='function') ? vehSinTildes(o) : o.toLowerCase()) !== q)
+                    .slice(0,12);
+    inp = el; idx = -1;
+    if(!items.length){ cerrar(); return; }
+    asegurarBox(); pintar();
+    const r = el.getBoundingClientRect();
+    box.style.left = r.left+'px'; box.style.top = (r.bottom+2)+'px'; box.style.width = Math.max(r.width,180)+'px';
+    box.style.display = 'block';
+  }
+  document.addEventListener('focusin', e=>{ const el=e.target; if(el && el.getAttribute && el.getAttribute('data-sug')) mostrar(el); });
+  document.addEventListener('input', e=>{ const el=e.target; if(el && el.getAttribute && el.getAttribute('data-sug')) mostrar(el); });
+  document.addEventListener('focusout', e=>{ if(e.target===inp) setTimeout(()=>{ if(document.activeElement!==inp) cerrar(); },150); });
+  document.addEventListener('mousedown', e=>{ const d=e.target.closest && e.target.closest('#veh-sug [data-i]'); if(d){ e.preventDefault(); elegir(+d.dataset.i); } }, true);
+  document.addEventListener('touchstart', e=>{ const d=e.target.closest && e.target.closest('#veh-sug [data-i]'); if(d){ e.preventDefault(); elegir(+d.dataset.i); } }, {capture:true, passive:false});
+  document.addEventListener('scroll', e=>{ if(box && box.style.display==='block' && !(e.target && e.target.id==='veh-sug')) cerrar(); }, true);
+  // Teclado: ↓/↑ recorren, Enter elige la resaltada (si no hay ninguna resaltada, queda lo escrito), Esc cierra
+  document.addEventListener('keydown', e=>{
+    if(!box || box.style.display!=='block' || e.target!==inp) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); idx=Math.min(idx+1,items.length-1); pintar(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); idx=Math.max(idx-1,0); pintar(); }
+    else if(e.key==='Enter'){ if(idx>=0){ inp.value = items[idx]; } cerrar(); }
+    else if(e.key==='Escape' || e.key==='Tab'){ cerrar(); }
+  }, true);
+})();
+
 // ══════ v79: BARRA DE CARGA RÁPIDA (Cliente → Marca → Modelo → Pieza) ══════
 let crClienteSel = null;
 let crDDIdx = -1;
@@ -9900,6 +9976,20 @@ function crSyncCampo(campo){
   crEl.classList.toggle('ok', !!crEl.value.trim());
   if(campo === 'marca') crLlenarModelos();
   crSync();
+  if(!cargandoPedido) scheduleAutoSave(400);
+  // Marca o modelo que no está en el catálogo: se guarda igual, tal cual se escribió
+  try{
+    const v = crEl.value.trim();
+    if(v && !cargandoPedido){
+      if(campo === 'marca' && !Object.keys(VEHICULOS).some(m=>vehSinTildes(m)===vehSinTildes(v)))
+        showToast('✅ Marca "'+v+'" guardada tal cual (no está en el catálogo)','success');
+      else if(campo === 'modelo'){
+        const ma = vehMarcaCanon(document.getElementById('f-marca')?.value||'');
+        if(!(VEHICULOS[ma]||[]).some(m=>vehSinTildes(m)===vehSinTildes(v)))
+          showToast('✅ Modelo "'+v+'" guardado tal cual','success');
+      }
+    }
+  }catch(_){}
 }
 // Arma el título del pedido a partir de los tres campos, y viceversa al abrir un pedido existente
 function crSync(){
