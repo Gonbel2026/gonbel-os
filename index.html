@@ -9795,12 +9795,13 @@ function crLlenarModelos(){
     if(box) return box;
     box = document.createElement('div');
     box.id = 'veh-sug';
-    box.style.cssText = 'position:fixed;z-index:100000;display:none;max-height:240px;overflow:auto;background:var(--card,#fff);color:inherit;border:1px solid rgba(128,128,128,.35);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);font-size:14px';
+    box.style.cssText = 'position:fixed;z-index:100000;display:none;max-height:260px;overflow:auto;background:var(--bg3,#1d3757);color:var(--t1,#f5f9ff);border:1px solid var(--brda,rgba(255,255,255,.27));border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.6);font-size:14px';
     document.body.appendChild(box);
     return box;
   }
   function pintar(){
-    box.innerHTML = items.map((t,i)=>`<div data-i="${i}" style="padding:8px 12px;cursor:pointer;${i===idx?'background:rgba(37,99,235,.15)':''}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`).join('');
+    if(!document.getElementById('veh-sug-css')){ const st=document.createElement('style'); st.id='veh-sug-css'; st.textContent='#veh-sug [data-i]:hover{background:var(--blueg,rgba(59,142,255,.18))}'; document.head.appendChild(st); }
+    box.innerHTML = items.map((t,i)=>`<div data-i="${i}" style="padding:8px 12px;cursor:pointer;color:var(--t1,#f5f9ff);border-bottom:1px solid rgba(255,255,255,.06);${i===idx?'background:var(--blueg,rgba(59,142,255,.18))':''}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`).join('');
   }
   function elegir(i){
     if(!inp || !items[i]) return;
@@ -9817,7 +9818,8 @@ function crLlenarModelos(){
     const q = (typeof vehSinTildes==='function') ? vehSinTildes(el.value) : el.value.toLowerCase();
     items = opciones.filter(o=>{ const k = (typeof vehSinTildes==='function') ? vehSinTildes(o) : o.toLowerCase(); return !q || k.includes(q); })
                     .filter(o=>!q || ((typeof vehSinTildes==='function') ? vehSinTildes(o) : o.toLowerCase()) !== q)
-                    .slice(0,12);
+                    .sort((x,y)=>{ const n=t=>(typeof vehSinTildes==='function'?vehSinTildes(t):t.toLowerCase()); return (n(y).startsWith(q)?1:0)-(n(x).startsWith(q)?1:0); })
+                    .slice(0,15);
     inp = el; idx = -1;
     if(!items.length){ cerrar(); return; }
     asegurarBox(); pintar();
