@@ -5176,7 +5176,7 @@ function openBigEdit(targetId, title){
   if(fc) fc.style.display = esPiezas ? 'inline-flex' : 'none';
   if(fw) fw.style.display = esPiezas ? 'inline-flex' : 'none';
   if(esPiezas){
-    bpStaging = piezasItems.map(x=>({d:x.d||'', cb: x.cb || x.cr || 0, mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || ((!x.mg && parseFloat(x.p)>0) ? parseFloat(x.p) : null), monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}));
+    bpStaging = piezasItems.map(x=>({d:x.d||'', cb: x.cb || x.cr || 0, mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, sinMargen: !!x.sinMargen, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || ((!x.mg && !x.sinMargen && parseFloat(x.p)>0) ? parseFloat(x.p) : null), monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}));
     bpRenderLista();
   }
   document.getElementById('bigedit-overlay').classList.add('open');
@@ -5213,6 +5213,7 @@ function bpActualizar(){
       valOrig: cambioArriba ? (prev?.valOrig ?? null) : (prev?.valOrig ?? null),
       calidad: prev?.calidad || null,
       mg: prev?.mg || null,
+      sinMargen: prev?.sinMargen || false,
       modo: cambioArriba ? 'venta' : (prev?.modo || 'costo'),
       ultimoParseo: x.p || parseoAnterior || null,
       resultadosBusqueda: prev?.resultadosBusqueda || null,
@@ -5250,6 +5251,8 @@ function bpConvertirAGs(valor, moneda){
 function bpVentaFinal(it){
   if(it.ventaManual) return Math.ceil(it.ventaManual/10000)*10000;
   if(it.cb && it.mg) return Math.ceil(it.cb * (1 + it.mg/100) / 10000) * 10000;
+  // "Sin margen": se manda el costo tal cual, sin sumarle nada (Lucas después le pone el precio final a mano)
+  if(it.cb && it.sinMargen) return Math.round(it.cb);
   // Sin margen elegido y sin venta manual: NUNCA se asume el costo como precio de venta.
   // El precio de venta lo pone Lucas siempre a mano (o eligiendo un margen) — nunca el sistema.
   return null;
@@ -6454,10 +6457,11 @@ function bpRenderLista(){
         ? `<div class="bp-mgrow"><span class="bp-mg-lbl" style="color:var(--green);">🏷️ Venta manual fija</span><span class="bp-mg-venta">Gs ${fmtNum(it.ventaManual)}</span><button type="button" class="bp-mg-x" onclick="bpQuitarVentaManual(${i})" title="Volver a calcular con margen desde el costo">✕ Quitar</button></div>`
         : `<div class="bp-mgrow">
             <span class="bp-mg-lbl">Margen</span>
+            <button type="button" class="bp-mg-btn ${it.sinMargen?'on':''}" onclick="bpSinMargenItem(${i})" title="Mandar el costo tal cual, sin sumarle margen">Sin margen</button>
             ${BP_PORCENTAJES.map(p=>`<button type="button" class="bp-mg-btn ${it.mg===p?'on':''}" onclick="bpMargenItem(${i},${p})">${p}%</button>`).join('')}
             <input type="text" class="bp-mg-custom" placeholder="%" value="${it.mg && !BP_PORCENTAJES.includes(it.mg)?it.mg:''}" onkeydown="if(event.key==='Enter'){bpMargenItem(${i},parseFloat(this.value)||0);}">
-            ${it.mg?`<button type="button" class="bp-mg-x" onclick="bpMargenItem(${i},null)" title="Quitar margen">✕</button>`:''}
-            ${ventaFinal?`<span class="bp-mg-venta">→ Venta Gs ${fmtNum(ventaFinal)}${it.mg?'':' (sin margen — precio directo)'}</span>`:''}
+            ${(it.mg||it.sinMargen)?`<button type="button" class="bp-mg-x" onclick="bpMargenItem(${i},null)" title="Quitar margen">✕</button>`:''}
+            ${ventaFinal?`<span class="bp-mg-venta">→ Venta Gs ${fmtNum(ventaFinal)}${it.sinMargen?' (costo sin margen)':''}</span>`:''}
           </div>`}
       <div class="bp-fecharow">
         <span class="bp-mg-lbl">📅 Entrega</span>
@@ -6649,8 +6653,28 @@ function bpPintarResultados(i){
 function bpMargenItem(i, pct){
   const it = bpStaging[i]; if(!it) return;
   it.mg = (pct && pct > 0) ? pct : null;
+  it.sinMargen = false;
   bpRenderLista();
   bpVivo();
+}
+
+// "Sin margen" en UNA pieza: el presupuesto lleva el costo tal cual (toca de nuevo para quitarlo)
+function bpSinMargenItem(i){
+  const it = bpStaging[i]; if(!it) return;
+  it.sinMargen = !it.sinMargen;
+  if(it.sinMargen) it.mg = null;
+  bpRenderLista();
+  bpVivo();
+}
+// "Sin margen" para TODAS las piezas con costo
+function bpSinMargenTodas(){
+  const conCosto = bpStaging.filter(x=>x.cb > 0);
+  if(!conCosto.length){ showToast('Cargá el Valor (costo) de al menos una pieza','error'); return; }
+  bpStaging.forEach(x=>{ if(x.cb > 0 && !x.ventaManual){ x.sinMargen = true; x.mg = null; } });
+  document.querySelectorAll('.bp-pctbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('bp-pct-sin')?.classList.add('on');
+  bpRenderLista();
+  bpMostrarPresupuesto();
 }
 
 // Botones de arriba: aplican el mismo porcentaje a TODAS las piezas de una vez
@@ -6658,7 +6682,7 @@ function bpMargen(pct){
   if(!pct || pct <= 0){ showToast('Escribí un porcentaje válido','error'); return; }
   const conCosto = bpStaging.filter(x=>x.cb > 0);
   if(!conCosto.length){ showToast('Cargá el Valor (costo) de al menos una pieza','error'); return; }
-  bpStaging.forEach(x=>{ if(x.cb > 0) x.mg = pct; });
+  bpStaging.forEach(x=>{ if(x.cb > 0){ x.mg = pct; x.sinMargen = false; } });
   document.querySelectorAll('.bp-pctbtn').forEach(b=>b.classList.remove('on'));
   const btn = Array.from(document.querySelectorAll('.bp-pctbtn')).find(b=>b.textContent.trim()===pct+'%');
   if(btn) btn.classList.add('on');
@@ -6710,7 +6734,10 @@ function bpMostrarPresupuesto(){
   // recién al armar el texto se convierte a la moneda de salida elegida.
   const filas = bpStaging.filter(x=>bpVentaFinal(x) != null).map(x=>{
     const ventaGs = bpVentaFinal(x);
-    const venta = bpRedondearSalida(bpConvertirDeGs(ventaGs, mon), mon);
+    // "Sin margen": el costo va exacto, sin redondear para arriba
+    const venta = (x.sinMargen && !x.mg && !x.ventaManual)
+      ? (mon==='gs' ? Math.round(ventaGs) : Math.round(bpConvertirDeGs(ventaGs, mon)*100)/100)
+      : bpRedondearSalida(bpConvertirDeGs(ventaGs, mon), mon);
     return {d: x.d, venta, cal: x.calidad ? calMap[x.calidad] : null, fecha: x.fecha||null};
   });
   const total = filas.reduce((s,x)=>s+x.venta, 0);
@@ -6780,7 +6807,7 @@ function bpConfirmarSinMargen(){
 
 // Piezas con costo cargado pero sin margen NI venta manual — sin esos dos datos no hay forma de saber el precio final
 function bpPiezasSinMargen(){
-  return bpStaging.filter(x=>(x.d||'').trim() && x.cb > 0 && !x.mg && !x.ventaManual).map(x=>x.d);
+  return bpStaging.filter(x=>(x.d||'').trim() && x.cb > 0 && !x.mg && !x.sinMargen && !x.ventaManual).map(x=>x.d);
 }
 
 function saveBigEdit(){
@@ -6814,7 +6841,7 @@ function saveBigEdit(){
       // entrar al pedido siga todo ahí y no haya que buscar de nuevo.
       const elegido = x.elegido ?? prev.elegido ?? null;
       const resultadosBusqueda = x.resultadosBusqueda ?? prev.resultadosBusqueda ?? null;
-      return {...prev, d: x.d, cb: x.cb || prev.cb || 0, mg, modo: x.modo||'costo',
+      return {...prev, d: x.d, cb: x.cb || prev.cb || 0, mg, sinMargen: !!x.sinMargen && !mg, modo: x.modo||'costo',
         mon: x.mon||prev.mon||'gs', valOrig: x.valOrig ?? prev.valOrig ?? null,
         ventaManual, monVenta: x.monVenta||prev.monVenta||'gs', ventaOrig: x.ventaOrig ?? prev.ventaOrig ?? null,
         fechaEntrega: x.fecha || prev.fechaEntrega || null, p: venta, calidad: x.calidad || prev.calidad || null,
@@ -19023,6 +19050,7 @@ loadDivisas();
       <div id="bp-lista"></div>
       <div class="bp-margenbar">
         <span class="bp-mb">Margen para todas:</span>
+        <button type="button" class="bp-pctbtn" id="bp-pct-sin" onclick="bpSinMargenTodas()" title="Mandar el costo tal cual, sin sumarle margen">Sin margen</button>
         <button type="button" class="bp-pctbtn" onclick="bpMargen(20)">20%</button>
         <button type="button" class="bp-pctbtn" onclick="bpMargen(25)">25%</button>
         <button type="button" class="bp-pctbtn" onclick="bpMargen(30)">30%</button>
