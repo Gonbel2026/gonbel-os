@@ -4646,8 +4646,9 @@ function pintarResumenPieza(i){
   const q = parseInt(it.q,10) || 1;
   const p = parseFloat(it.p) || 0;
   if(q > 1 && p > 0){
+    // El precio es el total de la línea (la cantidad no lo multiplica)
     el.style.display = 'block';
-    el.innerHTML = q + ' \u00d7 Gs ' + fmtNum(p) + ' = <b style="color:var(--t1)">Gs ' + fmtNum(q*p) + '</b>';
+    el.innerHTML = q + ' unidades — total de la línea: <b style="color:var(--t1)">Gs ' + fmtNum(p) + '</b>';
   } else {
     el.style.display = 'none';
     el.innerHTML = '';
@@ -4667,7 +4668,7 @@ function pzGuardarCosto(i,el){
   const it=piezasItems[i]; if(!it) return;
   it.cb=v; it.modo='costo';
   const tasa=cotizacionBRL();
-  const total=piezasItems.reduce((s,x)=>s+costoItemGs(x,tasa)*(parseInt(x.q,10)||1),0);
+  const total=piezasItems.reduce((s,x)=>s+costoItemGs(x,tasa),0);
   const actual=numVal('f-costo');
   if(total && (!actual || actual===costoAutoUltimo)){ setMoney('f-costo',total); costoAutoUltimo=total; try{calcMargen();}catch(e){} }
   renderPiezasItems(); calcPiezasTotal();
@@ -4701,7 +4702,7 @@ function renderPiezasItems(){
         <label class="pz-f pz-f-desc"><span>Pieza</span><input type="text" placeholder="Descripción de la pieza" value="${(it.d||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].d=this.value"></label>
         <label class="pz-f pz-f-cond"><span>Condición</span><input type="text" list="dl-condicion" title="Condición de la pieza (para el presupuesto)" placeholder="Nuevo / Usado…" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value"></label>
         <div class="pz-f pz-f-cant"><span>Cantidad</span><div class="pz-qty"><input type="text" inputmode="numeric" id="pz-q-${i}" title="Cantidad — escribí o elegí con la flechita" value="${parseInt(it.q,10)>1?parseInt(it.q,10):1}" onfocus="this.select()" oninput="this.value=this.value.replace(/[^0-9]/g,'');piezasItems[${i}].q=Math.max(1,parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})" onblur="if(!this.value||this.value==='0')this.value=1"><button type="button" class="pz-qty-arr" title="Elegir cantidad" onclick="pzQtyMenu(${i},this)">▾</button></div></div>
-        <label class="pz-f pz-f-precio"><span>Precio venta c/u</span><input type="text" inputmode="numeric" placeholder="Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()"></label>
+        <label class="pz-f pz-f-precio"><span>Precio venta (total)</span><input type="text" inputmode="numeric" placeholder="Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()"></label>
       </div>
       <div class="pz-l2">
         <div class="pz-estados">
@@ -4718,7 +4719,7 @@ function renderPiezasItems(){
           <button type="button" class="pz-btn" title="Quitar" onclick="delPiezaRow(${i})">✕</button>
         </div>
       </div>
-      <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' × Gs '+Number(it.p).toLocaleString('de-DE')+' = <b style="color:var(--t1)">Gs '+Number(it.q*it.p).toLocaleString('de-DE')+'</b>'):''}</div>
+      <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' unidades — total de la línea: <b style="color:var(--t1)">Gs '+Number(it.p).toLocaleString('de-DE')+'</b>'):''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;">
         <button type="button" class="pz-btn" style="width:auto;padding:0 12px;font-size:11px;font-weight:600;" onclick="togglePzMas(${i})">
           ${it.pr||it.nc||it.tk ? '🛒 '+[it.pr,it.nc].filter(Boolean).join(' · ') : '＋ Datos de compra'} ▾
@@ -5063,14 +5064,14 @@ function calcPiezasTotal(){
   try{ pintarResumenModal(); }catch(e){}
   const box = document.getElementById('pz-total-box');
   // El precio cargado es por unidad: se multiplica por la cantidad
-  const total = piezasItems.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+  const total = piezasItems.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
   // Resumen comprado / pendiente
   const res = document.getElementById('pz-resumen');
   if(res){
     const pend = piezasItems.filter(x=>!x.c), comp = piezasItems.filter(x=>x.c);
     let html = '';
     if(pend.length){
-      const mp = pend.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+      const mp = pend.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
       html += `<div class="pz-pend">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:var(--amber);">🛒 Falta comprar (${pend.length})</span>
@@ -5084,7 +5085,7 @@ function calcPiezasTotal(){
       html += `<div class="pz-env-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:var(--cyan);">🚚 Ya enviadas al cliente (${enviadas.length})</span>
-          <span style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--cyan);">Gs ${fmtNum(enviadas.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0))}</span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--cyan);">Gs ${fmtNum(enviadas.reduce((s,x)=>s+(parseFloat(x.p)||0),0))}</span>
         </div>
         <div style="font-size:13px;color:var(--t2);line-height:1.8;">${enviadas.map(x=>'✓ '+(x.d||'Sin nombre')+((parseInt(x.q,10)||1)>1?' ×'+x.q:'')).join('<br>')}</div>
       </div>`;
@@ -5094,7 +5095,7 @@ function calcPiezasTotal(){
       html += `<div class="pz-local-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:var(--purple);">📍 En el local — falta enviar (${enLocal.length})</span>
-          <span style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--purple);">Gs ${fmtNum(enLocal.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0))}</span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--purple);">Gs ${fmtNum(enLocal.reduce((s,x)=>s+(parseFloat(x.p)||0),0))}</span>
         </div>
         <div style="font-size:13px;color:var(--t2);line-height:1.8;">${enLocal.map(x=>'✓ '+(x.d||'Sin nombre')+((parseInt(x.q,10)||1)>1?' ×'+x.q:'')).join('<br>')}</div>
       </div>`;
@@ -5116,7 +5117,7 @@ function calcPiezasTotal(){
         <div style="font-size:13px;color:var(--t2);line-height:1.8;">${lleg.map(x=>'✓ '+(x.d||'Sin nombre')+(x.ret?' <span style="color:var(--amber)">· para retirar</span>':'')).join('<br>')}</div></div>`;
     }
     if(false && comp.length){
-      const mc = comp.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+      const mc = comp.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
       html += `<div class="pz-ok-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:var(--green);">✅ Ya compradas (${comp.length})</span>
@@ -5283,6 +5284,7 @@ function bpToggleModoMenu(i){
 function bpElegirModo(i, modo){
   const it = bpStaging[i]; if(!it) return;
   it.modo = modo;
+  if(modo==='venta' && !it.ventaManual && bpVentaFinal(it)) it.monVenta = 'gs';
   bpRenderLista();
   bpVivo();
 }
@@ -6420,15 +6422,18 @@ function bpRenderLista(){
   box.innerHTML = bpStaging.map((it,i)=>{
     const modo = it.modo || 'costo'; // cuál de los dos casilleros se está mostrando/editando ahora
     // Cada modo tiene su propio valor guardado, independiente uno del otro
-    const monActivo = modo==='venta' ? (it.monVenta||'gs') : (it.mon||'gs');
-    const origActivo = modo==='venta' ? it.ventaOrig : it.valOrig;
-    const gsActivo = modo==='venta' ? it.ventaManual : it.cb;
-    const mostrar = origActivo!=null ? origActivo : gsActivo;
+    // Si no hay Venta manual pero hay costo + margen (o "sin margen"), la Venta calculada se muestra
+    // directo en el casillero Venta — no queda vacío. Si se escribe encima, pasa a ser Venta manual.
     const ventaFinal = bpVentaFinal(it);
+    const ventaCalc = (!it.ventaManual && ventaFinal) ? ventaFinal : null;
+    const monActivo = modo==='venta' ? (ventaCalc ? 'gs' : (it.monVenta||'gs')) : (it.mon||'gs');
+    const origActivo = modo==='venta' ? (ventaCalc ? null : it.ventaOrig) : it.valOrig;
+    const gsActivo = modo==='venta' ? (it.ventaManual || ventaCalc) : it.cb;
+    const mostrar = origActivo!=null ? origActivo : gsActivo;
     // El valor del OTRO casillero, para mostrarlo chiquito y no perder de vista ninguno de los dos
     const otroTxt = modo==='venta'
-      ? (it.cb ? `💰 Costo: Gs ${fmtNum(it.cb)}` : '')
-      : (it.ventaManual ? `🏷️ Venta: Gs ${fmtNum(it.ventaManual)}` : '');
+      ? (it.cb ? `💰 Costo: Gs ${fmtNum(it.cb)}${ventaCalc?(it.mg?' + '+it.mg+'%':' (sin margen)'):''}` : '')
+      : ((it.ventaManual||ventaCalc) ? `🏷️ Venta: Gs ${fmtNum(it.ventaManual||ventaCalc)}` : '');
     return `
     <div class="bp-row">
       <span class="bp-num">${i+1}</span>
@@ -6857,7 +6862,7 @@ function saveBigEdit(){
     // Esto es una accion manual explicita del usuario, no un calculo automatico desde
     // texto pegado -- la regla de 'costo solo automatico si viene de ML/eBay' sigue intacta,
     // esto solo sincroniza lo que el propio usuario acaba de tipear y confirmar.
-    const sumaCb = piezasItems.reduce((s,x)=>s+((parseFloat(x.cb)||0)*(parseInt(x.q,10)||1)),0);
+    const sumaCb = piezasItems.reduce((s,x)=>s+(parseFloat(x.cb)||0),0);
     if(sumaCb > 0){
       setMoney('f-costo', sumaCb);
       costoAutoUltimo = sumaCb;
@@ -9108,7 +9113,7 @@ function updateCardColor(){ toggleFinanciero(); }
 
 // ── CALC MARGEN ──
 function ventaTotalCalculada(){
-  const sv = piezasItems.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+  const sv = piezasItems.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
   return sv>0 ? sv : (numVal('f-venta')||0);
 }
 function pagadoCompletoToggle(){
@@ -9201,7 +9206,7 @@ async function autoSaveOrder(){
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
     precio_costo: numVal('f-costo'),
-    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0);return _sv>0?_sv:numVal('f-venta');})()
+    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+(parseFloat(x.p)||0);},0);return _sv>0?_sv:numVal('f-venta');})()
     +0,
     costo_envio: numVal('f-costo-envio'),
     peso_declarado: numVal('f-peso-decl')||null,
@@ -9277,7 +9282,7 @@ async function saveOrder(){
     piezas: document.getElementById('f-piezas').value,
     notas: document.getElementById('f-notas').value,
     precio_costo: numVal('f-costo'),
-    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1));},0);return _sv>0?_sv:numVal('f-venta');})()+0,
+    precio_venta: (function(){var _sv=piezasItems.reduce(function(s,x){return s+(parseFloat(x.p)||0);},0);return _sv>0?_sv:numVal('f-venta');})()+0,
     costo_envio: numVal('f-costo-envio'),
     valor_pagado: numVal('f-pagado'),
     piezas_items: piezasItems.length ? JSON.stringify(piezasItems) : null,
@@ -13608,7 +13613,7 @@ async function ejecutarGeneracionPresupuesto(formaPago, plazo){
   const vehiculo = [marca, modelo, anio].filter(Boolean).join(' ');
   const chasis = val('f-vin');
   const totalItems = items.reduce((s,x)=>s+(parseInt(x.q,10)||1),0);
-  const total = items.reduce((s,x)=>s+((parseFloat(x.p)||0)*(parseInt(x.q,10)||1)),0);
+  const total = items.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
   const hoy = new Date();
   const diasValidez = parseInt((document.getElementById('cfg-validez')||{}).value,10) || 5;
   const venc = new Date(hoy.getTime() + diasValidez*86400000);
@@ -13631,8 +13636,9 @@ async function ejecutarGeneracionPresupuesto(formaPago, plazo){
 
   const filasHtml = items.map((x,i)=>{
     const cant = parseInt(x.q,10)||1;
-    const unit = parseFloat(x.p)||0;
-    const sub = unit*cant;
+    // El precio cargado es el TOTAL de la línea (ej. kit de 4 = un solo precio); la cantidad es informativa
+    const sub = parseFloat(x.p)||0;
+    const unit = cant > 1 ? Math.round(sub/cant) : sub;
     const cond = (x.cond||'Nuevo').trim();
     const notaEntrega = x.entregaNota ? '<div style="font-size:10px;color:#1B6FC8;font-style:italic;margin-top:2px;">Entrega: '+x.entregaNota+'</div>' : '';
     return '<tr style="background:'+(i%2?'#F7FAFD':'#fff')+';border-bottom:1px solid #A8C8F0;">'
@@ -17745,7 +17751,7 @@ async function pvCargar(forzar){
       if(fecha && (!mapa[key].ultima||fecha>mapa[key].ultima)) mapa[key].ultima=fecha;
       if(!mapa[key].pedidos.includes(o.id)) mapa[key].pedidos.push(o.id);
       var cb=parseFloat(it.cb)||parseFloat(it.cr)||0;
-      if(cb>0) mapa[key].montos.push(cb*(parseInt(it.q,10)||1));
+      if(cb>0) mapa[key].montos.push(cb);
     });
   });
 
