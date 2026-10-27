@@ -1797,6 +1797,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
 
 <!-- NAVEGACIÓN -->
 <nav class="ah-nav">
+  <a class="sb-item" data-page="asistente" onclick="showPage('asistente',this)"><span class="si">🤖</span> Asistente <span class="badge" id="badge-asis" style="display:none">0</span></a>
   <a class="sb-item active" data-page="control" onclick="showPage('control',this)"><span class="si">🎛</span> Centro de Control</a>
   <a class="sb-item" data-page="kanban" onclick="showPage('kanban',this)"><span class="si">📋</span> Tablero <span class="badge" id="badge-kanban">0</span></a>
   <div class="sb-sep"></div>
@@ -1856,6 +1857,60 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
 
   <!-- PAGE: FINANCIERO -->
   <!-- PAGE: CENTRO DE CONTROL -->
+  <div class="page" id="page-asistente">
+    <style>
+    .as-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+    .as-bot{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#3b8eff,#00c6ff);display:grid;place-items:center;box-shadow:0 10px 30px rgba(59,142,255,.35);flex-shrink:0}
+    .as-h b{font-family:'Space Grotesk',sans-serif;font-size:22px;color:#fff;display:block}
+    .as-h small{color:var(--t3);font-size:13px}
+    .as-upd{margin-left:auto;display:flex;align-items:center;gap:10px}
+    .as-upd span{font-size:12px;color:var(--t3)}
+    .as-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+    .as-tile{position:relative;text-align:left;border:1px solid var(--brd);background:var(--bg2);border-radius:14px;padding:14px;cursor:pointer;transition:.15s;color:var(--t1)}
+    .as-tile:hover{border-color:var(--brda);transform:translateY(-1px)}
+    .as-tile.on{border-color:var(--blue);background:linear-gradient(135deg,rgba(59,142,255,.18),rgba(59,142,255,.05))}
+    .as-tile .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px;font-weight:800;margin-bottom:10px;font-family:'Space Grotesk',sans-serif}
+    .as-tile b{display:block;font-size:14.5px}
+    .as-tile small{display:block;color:var(--t3);font-size:12px;margin-top:2px}
+    .as-tile .n{position:absolute;top:12px;right:12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:800;padding:0 7px;background:var(--bg4);color:var(--t2)}
+    .as-tile .n.r{background:var(--red);color:#fff}.as-tile .n.a{background:var(--amber);color:#2a1a00}
+    .as-panel{border:1px solid var(--brd);background:var(--bg2);border-radius:16px;padding:16px}
+    .as-ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .as-ph b{font-family:'Space Grotesk',sans-serif;font-size:17px;color:#fff;margin-right:6px}
+    .as-tab{font-size:12.5px;padding:6px 12px;border-radius:9px;border:1px solid var(--brd);background:transparent;color:var(--t2);cursor:pointer}
+    .as-tab.on{background:var(--bg4);color:#fff;border-color:var(--brda)}
+    .as-ph .sp{flex:1}
+    .as-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+    .as-c{display:grid;grid-template-columns:4px 1fr;gap:12px;background:var(--bg);border:1px solid var(--brd);border-radius:12px;padding:12px 12px 12px 0;overflow:hidden}
+    .as-c .bar{border-radius:0 4px 4px 0}
+    .as-top{display:flex;gap:8px;align-items:baseline}
+    .as-tt{font-weight:600;font-size:14px;color:var(--t1);flex:1;min-width:0}
+    .as-when{font-size:11px;color:var(--t4);white-space:nowrap}
+    .as-chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--brd);color:var(--t3);margin-right:4px}
+    .as-msg{font-size:13.5px;color:var(--t1);margin-top:8px;white-space:pre-wrap;background:var(--bg2);border-radius:10px;padding:9px 11px;border-left:3px solid #ffe500;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+    .as-msg.full{display:block}
+    .as-det{font-size:12.5px;color:var(--t2);margin-top:5px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+    .as-det.full{display:block}
+    .as-acc{font-size:12.5px;color:var(--cyan);margin-top:6px}
+    .as-txt{width:100%;margin-top:8px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;color:var(--t1);font:13px/1.45 'Inter',sans-serif;padding:8px 10px;resize:vertical;min-height:58px}
+    .as-btns{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+    .as-btns .btn{height:30px;font-size:12.5px}
+    .as-ok{background:var(--green)!important;color:#06210f!important;border:none!important;font-weight:700}
+    .as-vacio{font-size:13.5px;color:var(--t3);padding:26px 14px;text-align:center;border:1px dashed var(--brd);border-radius:12px}
+    .as-more{margin-top:10px;background:none;border:1px dashed var(--brda);color:var(--t2);border-radius:10px;padding:9px;width:100%;cursor:pointer;font-size:13px}
+    .as-strip{display:flex;align-items:center;gap:12px;border:1px solid rgba(59,142,255,.35);border-radius:14px;padding:12px 16px;margin-bottom:16px;background:linear-gradient(135deg,rgba(59,142,255,.10),rgba(0,198,255,.03));cursor:pointer;position:relative;z-index:1}
+    .as-strip b{font-family:'Space Grotesk',sans-serif;color:#fff}
+    .as-strip span{font-size:13px;color:var(--t2)}
+    @media(max-width:640px){.as-tiles{grid-template-columns:repeat(2,1fr)}.as-grid{grid-template-columns:1fr}.as-upd{margin-left:0;width:100%}}
+    </style>
+    <div class="as-h">
+      <div class="as-bot"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5M2 13v2M22 13v2"/><circle cx="12" cy="3.5" r="1" fill="#fff"/></svg></div>
+      <div><b>Asistente Gonbel</b><small>Todo lo que hay que resolver, ordenado por plataforma</small></div>
+      <div class="as-upd"><span id="as-upd-t"></span><button type="button" class="btn btn-ghost" id="as-upd-b" onclick="jvActualizarTodo()" style="height:34px">🔄 Actualizar</button><button type="button" class="btn btn-ghost" style="height:34px" onclick="jvReglas()">⚙️ Reglas</button></div>
+    </div>
+    <div class="as-tiles" id="as-tiles"></div>
+    <div class="as-panel" id="as-panel"><div class="as-vacio">Cargando…</div></div>
+  </div>
   <div class="page active" id="page-control">
     <div id="dev-banner" style="display:none;border:1px solid var(--red);border-radius:14px;padding:15px 17px;margin-bottom:16px;background:rgba(239,68,68,.08);">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;flex-wrap:wrap;">
@@ -1887,59 +1942,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div id="wa-atencion-lista"></div>
     </div>
 
-        <!-- ══════ ASISTENTE GONBEL (centro de mando) ══════ -->
-    <style>
-    .jv{border:1px solid rgba(59,142,255,.35);border-radius:16px;padding:16px 18px;margin-bottom:18px;background:linear-gradient(135deg,rgba(59,142,255,.10),rgba(0,198,255,.03));position:relative;z-index:1}
-    .jv-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-    .jv-h b{font-family:'Space Grotesk',sans-serif;font-size:17px;color:#fff}
-    .jv-sub{font-size:12px;color:var(--t3)}
-    .jv-cnt{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
-    .jv-chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--brd);background:var(--bg2);color:var(--t2);cursor:pointer}
-    .jv-chip.on{border-color:var(--blue);color:#fff;background:var(--blueg)}
-    .jv-chip .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
-    .jv-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-    .jv-tab{font-size:12.5px;padding:6px 12px;border-radius:9px;border:1px solid var(--brd);background:transparent;color:var(--t2);cursor:pointer}
-    .jv-tab.on{background:var(--bg3);color:#fff;border-color:var(--brda)}
-    .jv-it{display:grid;grid-template-columns:4px 1fr;gap:12px;background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:12px 14px 12px 0;margin-bottom:8px;overflow:hidden}
-    .jv-bar{border-radius:0 4px 4px 0}
-    .jv-top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-    .jv-pl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
-    .jv-tt{font-weight:600;color:var(--t1);font-size:14px}
-    .jv-when{font-size:11px;color:var(--t4);margin-left:auto}
-    .jv-det{font-size:12.5px;color:var(--t2);margin-top:4px;white-space:pre-wrap}
-    .jv-acc{font-size:12.5px;color:var(--cyan);margin-top:6px}
-    .jv-txt{width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--brd);border-radius:8px;color:var(--t1);font:13px/1.45 'Inter',sans-serif;padding:8px 10px;resize:vertical;min-height:62px}
-    .jv-btns{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
-    .jv-btns button{height:30px;font-size:12.5px}
-    .jv-ok{background:var(--green)!important;color:#06210f!important;border:none!important;font-weight:700}
-    .jv-vacio{font-size:13px;color:var(--t3);padding:14px;text-align:center;border:1px dashed var(--brd);border-radius:12px}
-    .jv-nivel{font-size:10.5px;padding:2px 7px;border-radius:999px;border:1px solid var(--brd);color:var(--t3)}
-    .jv-reg{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd)}
-    .jv-reg small{display:block;color:var(--t3);font-size:12px;margin-top:2px}
-    .jv-reg select{background:var(--bg3);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:6px 8px;font-size:13px}
-    .jv-more{font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;margin-top:4px}
-    @media(max-width:640px){.jv{padding:14px}.jv-cnt{margin-left:0}}
-    </style>
-    <div class="jv" id="jv-box">
-      <div class="jv-h">
-        <span style="font-size:20px">🤖</span>
-        <div><b>Asistente Gonbel</b><div class="jv-sub" id="jv-sub">Qué hay que mirar y qué puedo hacer por vos</div></div>
-        <div class="jv-cnt">
-          <span class="jv-chip" data-p="rojo" onclick="jvFiltroP('rojo')"><span class="d" style="background:var(--red)"></span><span id="jv-n-rojo">0</span> hoy</span>
-          <span class="jv-chip" data-p="amarillo" onclick="jvFiltroP('amarillo')"><span class="d" style="background:var(--amber)"></span><span id="jv-n-amarillo">0</span> vigilar</span>
-          <span class="jv-chip" data-p="verde" onclick="jvFiltroP('verde')"><span class="d" style="background:var(--green)"></span><span id="jv-n-verde">0</span> en orden</span>
-          <button type="button" class="btn btn-ghost" style="height:30px" onclick="jvReglas()">⚙️ Reglas</button>
-          <button type="button" class="btn btn-ghost" style="height:30px" onclick="jvCargar(true)">🔄</button>
-        </div>
-      </div>
-      <div class="jv-tabs">
-        <button type="button" class="jv-tab on" data-t="pend" onclick="jvTab('pend')">Para decidir <span id="jv-tn-pend"></span></button>
-        <button type="button" class="jv-tab" data-t="apr" onclick="jvTab('apr')">Aprobado, por enviar <span id="jv-tn-apr"></span></button>
-        <button type="button" class="jv-tab" data-t="hecho" onclick="jvTab('hecho')">Lo que hice hoy <span id="jv-tn-hecho"></span></button>
-      </div>
-      <div id="jv-lista"><div class="jv-vacio">Cargando…</div></div>
-    </div>
-
+        <div class="as-strip" onclick="showPage('asistente',document.querySelector('[data-page=asistente]'))"><span style="font-size:22px">🤖</span><div><b>Asistente Gonbel</b><br><span id="as-strip-t">Cargando…</span></div><span style="margin-left:auto;color:var(--blue);font-weight:600;font-size:13px">Abrir →</span></div>
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr) auto;">
       <div class="stat s-blue cc-clic" onclick="ccVerLista('activos')"><span class="stat-icon">📋</span><div class="stat-val" id="cc-activos">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-cyan cc-clic" onclick="ccVerLista('encamino')"><span class="stat-icon">🚚</span><div class="stat-val" id="cc-encamino">—</div><div class="stat-lbl">En camino</div></div>
@@ -10219,7 +10222,7 @@ function showPage(id, el){
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {control:'Centro de <span>Control</span>',kanban:'Tablero <span>Kanban</span>',financiero:'Control <span>Financiero</span>',finanalisis:'Control <span>Financiero</span>',fincaja:'Control <span>Financiero</span>',clientes:'Base de <span>Clientes</span>',proveedores:'<span>Proveedores</span>',config:'<span>Configuración</span>',mapa:'Mapa <span>Mundial</span>',catalogo:'Base de <span>Precios</span>',inventario:'<span>Inventario</span>',mapasistema:'Mapa del <span>sistema</span>',contenido:'<span>Contenido</span> · Instagram',tiendaweb:'Tienda <span>web</span>'};
+  const titles = {control:'Centro de <span>Control</span>',kanban:'Tablero <span>Kanban</span>',financiero:'Control <span>Financiero</span>',finanalisis:'Control <span>Financiero</span>',fincaja:'Control <span>Financiero</span>',clientes:'Base de <span>Clientes</span>',proveedores:'<span>Proveedores</span>',config:'<span>Configuración</span>',mapa:'Mapa <span>Mundial</span>',catalogo:'Base de <span>Precios</span>',inventario:'<span>Inventario</span>',mapasistema:'Mapa del <span>sistema</span>',contenido:'<span>Contenido</span> · Instagram',tiendaweb:'Tienda <span>web</span>',asistente:'Asistente <span>Gonbel</span>'};
   const pt = document.getElementById('page-title'); if(pt) pt.innerHTML = titles[id]||id;
   if(id==='control') renderControl();
   if(id==='gonbelfin') renderGonbelFin();
@@ -10230,16 +10233,19 @@ function showPage(id, el){
   if(id==='mapasistema') msPintar();
   if(id==='contenido') ctCargar();
   if(id==='tiendaweb') tnCargar();
+  if(id==='asistente'){ jvPintar(); jvCargar(false); }
   if(id==='whatsapp'){ waCargar(true); waIniciarPolling(); }
 }
 
 // ══════ ASISTENTE GONBEL (centro de mando) ══════
-// Junta en un solo lugar lo que hay que decidir: mensajes y acciones que deja preparadas el asistente
-// (tabla centro_alertas) + alertas que se calculan en vivo con los pedidos. Cada tipo de tarea tiene un
-// nivel de autonomía (centro_reglas): auto = lo hace solo y avisa, sugerido = queda listo para aprobar,
-// manual = solo Lucas (pagos, cancelaciones: bloqueado para siempre).
-let jvAlertas = [], jvReglasData = [], jvTabActual = 'pend', jvFiltro = null, jvSinTablas = false;
-const JV_PL = {ebay:'eBay', alibaba:'Alibaba', aliexpress:'AliExpress', ml:'Mercado Livre', whatsapp:'WhatsApp', tienda:'Tienda online', sistema:'Gonbel OS'};
+// Página propia, antes del Centro de Control. Un cuadro por plataforma (eBay, Alibaba, AliExpress, Amazon,
+// Mercado Livre, Pedidos, Tienda web); al tocarlo se ven solo las cosas de esa plataforma.
+// Fuentes: centro_alertas (lo que dejan las revisiones automáticas), mensajes importantes de Mercado Livre
+// (mmDatos/mpDatos), alertas calculadas con los pedidos y pedidos nuevos de la tienda.
+let jvAlertas = [], jvReglasData = [], jvTienda = [], jvSel = null, jvTabActual = 'pend', jvSinTablas = false, jvVerTodo = false, jvUltima = null;
+const JV_PL = {ebay:'eBay', alibaba:'Alibaba', aliexpress:'AliExpress', amazon:'Amazon', ml:'Mercado Livre', sistema:'Pedidos', tienda:'Tienda web'};
+const JV_ICO = {ebay:['e','#e53238','#fff'], alibaba:['A','#ff6a00','#fff'], aliexpress:['Ae','#e62e04','#fff'], amazon:['a','#232f3e','#ff9900'], ml:['ML','#ffe600','#2d3277'], sistema:['📋','var(--blueg)','#fff'], tienda:['🛒','var(--greeng)','#fff']};
+const JV_SUB = {ebay:'Compras y vendedores de EE. UU.', alibaba:'Proveedores y kits', aliexpress:'Pedidos de China', amazon:'Compras en Amazon', ml:'Mensajes de vendedores', sistema:'Pedidos trabados y cobros', tienda:'Pedidos de la web'};
 const JV_COL = {rojo:'var(--red)', amarillo:'var(--amber)', verde:'var(--green)'};
 const JV_NIV = {auto:'Automático', sugerido:'Sugerido', manual:'Solo vos'};
 
@@ -10252,128 +10258,158 @@ function jvHace(f){
   const d = Math.round(h/24); return 'hace ' + d + (d===1?' día':' días');
 }
 function jvDias(f){ return f ? Math.floor((Date.now() - new Date(f).getTime())/86400000) : 0; }
+function jvOcultos(){ try { return JSON.parse(localStorage.getItem('jv_ocultos')||'{}'); } catch(e){ return {}; } }
+function jvOcultar(clave){ const o = jvOcultos(); o[clave] = Date.now(); try { localStorage.setItem('jv_ocultos', JSON.stringify(o)); } catch(e){} jvPintar(); }
+function jvEstaOculto(clave){ const t = jvOcultos()[clave]; return t && (Date.now() - t) < 3*86400000; }
 
-// Alertas calculadas con los pedidos ya cargados en el sistema (no se guardan en la base)
+// Alertas calculadas con los pedidos (no se guardan; se pueden ocultar 3 días)
 function jvAlertasPedidos(){
   const out = [];
   const nom = o => (o.numero_pedido || o.numero || ('#'+o.id)) + ' · ' + (o.cliente_nombre || 'sin cliente');
   const veh = o => [o.marca, o.modelo, o['año']].filter(Boolean).join(' ');
+  const add = (o, x) => { const clave = 'calc:'+x.k+':'+o.id; if(!jvEstaOculto(clave)) out.push(Object.assign({_calc:true, _clave:clave, order_id:o.id, plataforma:'sistema', estado:'pendiente'}, x)); };
   (orders||[]).forEach(o=>{
     if(o.archivado) return;
     const venta = parseFloat(o.precio_venta)||0, pagado = parseFloat(o.valor_pagado)||0;
-    if(o.estado === 'aprobado'){
-      const d = jvDias(o.fecha_facturado || o.created_at);
-      if(d >= 2) out.push({_calc:true, order_id:o.id, prioridad:'rojo', plataforma:'sistema', tipo:'estado_pedido',
-        titulo:'Aprobado hace ' + d + ' días y sin comprar', detalle: nom(o) + (veh(o)?' — '+veh(o):''),
-        accion:'Comprar las piezas o avisar al cliente del plazo', created_at:o.fecha_facturado||o.created_at});
-    }
-    if(o.estado === 'comprado'){
-      const d = jvDias(o.fecha_pedido || o.created_at);
-      if(d > 10) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'estado_pedido',
-        titulo:'Comprado hace ' + d + ' días y todavía no llegó', detalle: nom(o) + (o.fecha_eta?' — llegada estimada '+o.fecha_eta:''),
-        accion:'Revisar el seguimiento y, si hace falta, reclamar al vendedor', created_at:o.fecha_pedido||o.created_at});
-    }
-    if(o.estado === 'listo-envio'){
-      const d = jvDias(o.fecha_eta || o.created_at);
-      if(d > 3) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'aviso_cliente',
-        titulo:'Listo para entregar y sin entregar', detalle: nom(o), accion:'Coordinar la entrega con el cliente', created_at:o.fecha_eta||o.created_at});
-    }
-    if(['comprado','listo-envio','entregado'].includes(o.estado) && o.flete_requerido && !(parseFloat(o.flete_courier_gs)>0)){
-      out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'costo_compra',
-        titulo:'Falta cargar el flete de EE. UU.', detalle: nom(o), accion:'Cargar el costo del courier para cerrar el margen real', created_at:o.created_at});
-    }
-    if(ESTADOS_VENTA.includes(o.estado)){
-      let items = []; try { items = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){}
-      const sinCosto = items.filter(x=>!(parseFloat(x.cb)>0)).length;
-      if(sinCosto) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'costo_compra',
-        titulo: sinCosto + (sinCosto===1?' pieza sin costo cargado':' piezas sin costo cargado'), detalle: nom(o), accion:'Cargar el costo real para que el margen sea correcto', created_at:o.created_at});
-    }
-    if(o.estado === 'entregado' && !o.pagado_completo && venta > 0 && venta - pagado > 0){
-      const d = jvDias(o.fecha_facturado || o.created_at);
-      out.push({_calc:true, order_id:o.id, prioridad: d > 7 ? 'rojo':'amarillo', plataforma:'sistema', tipo:'aviso_cliente',
-        titulo:'Entregado con saldo pendiente: Gs ' + fmtNum(venta - pagado), detalle: nom(o), accion:'Cobrar al cliente', created_at:o.fecha_facturado||o.created_at});
-    }
+    if(o.estado === 'aprobado'){ const d = jvDias(o.fecha_facturado || o.created_at); if(d >= 2) add(o, {k:'apr', prioridad:'rojo', tipo:'estado_pedido', titulo:'Aprobado hace ' + d + ' días y sin comprar', detalle: nom(o) + (veh(o)?' — '+veh(o):''), accion:'Comprar las piezas o avisar al cliente del plazo', created_at:o.fecha_facturado||o.created_at}); }
+    if(o.estado === 'comprado'){ const d = jvDias(o.fecha_pedido || o.created_at); if(d > 10) add(o, {k:'com', prioridad:'amarillo', tipo:'estado_pedido', titulo:'Comprado hace ' + d + ' días y no llegó', detalle: nom(o) + (o.fecha_eta?' — llegada estimada '+o.fecha_eta:''), accion:'Revisar el seguimiento y reclamar si hace falta', created_at:o.fecha_pedido||o.created_at}); }
+    if(o.estado === 'listo-envio'){ const d = jvDias(o.fecha_eta || o.created_at); if(d > 3) add(o, {k:'lis', prioridad:'amarillo', tipo:'aviso_cliente', titulo:'Listo para entregar y sin entregar', detalle: nom(o), accion:'Coordinar la entrega con el cliente', created_at:o.fecha_eta||o.created_at}); }
+    if(['comprado','listo-envio','entregado'].includes(o.estado) && o.flete_requerido && !(parseFloat(o.flete_courier_gs)>0)) add(o, {k:'fle', prioridad:'amarillo', tipo:'costo_compra', titulo:'Falta el flete de EE. UU.', detalle: nom(o), accion:'Cargar el costo del courier', created_at:o.created_at});
+    if(ESTADOS_VENTA.includes(o.estado)){ let it = []; try { it = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){} const n = it.filter(x=>!(parseFloat(x.cb)>0)).length; if(n) add(o, {k:'cos', prioridad:'amarillo', tipo:'costo_compra', titulo: n + (n===1?' pieza sin costo':' piezas sin costo'), detalle: nom(o), accion:'Cargar el costo real', created_at:o.created_at}); }
+    if(o.estado === 'entregado' && !o.pagado_completo && venta > 0 && venta - pagado > 0){ const d = jvDias(o.fecha_facturado || o.created_at); add(o, {k:'sal', prioridad: d > 7 ? 'rojo':'amarillo', tipo:'aviso_cliente', titulo:'Saldo pendiente: Gs ' + fmtNum(venta - pagado), detalle: nom(o), accion:'Cobrar al cliente', created_at:o.fecha_facturado||o.created_at}); }
+  });
+  return out;
+}
+
+// Mensajes de Mercado Livre: solo los importantes (el vendedor pide o pregunta algo) y respuestas a tus preguntas
+function jvAlertasML(){
+  const out = [];
+  (mmDatos||[]).filter(m=>m.importante !== false).forEach(m=>{
+    out.push({_ml:'msg', _m:m, plataforma:'ml', estado:'pendiente', prioridad:'amarillo', tipo:'respuesta_proveedor',
+      titulo: (m.pieza || m.titulo || 'Conversación de Mercado Livre'), created_at: m.fecha || null});
+  });
+  (mpDatos||[]).forEach(q=>{
+    out.push({_ml:'preg', _q:q, plataforma:'ml', estado:'pendiente', prioridad:'verde', tipo:'respuesta_proveedor',
+      titulo: q.titulo || 'Publicación de Mercado Livre', created_at: q.fecha_respuesta || null});
   });
   return out;
 }
 
 async function jvCargar(manual){
-  const box = document.getElementById('jv-lista'); if(!box) return;
   try {
     const desde = new Date(Date.now() - 36*3600000).toISOString();
     const [al, rg] = await Promise.all([
       sbFetch('/rest/v1/centro_alertas?select=*&or=(estado.in.(pendiente,aprobada,info),resuelta_en.gte.'+desde+')&order=created_at.desc&limit=300'),
       sbFetch('/rest/v1/centro_reglas?select=*&order=orden.asc')
     ]);
-    jvAlertas = al || []; jvReglasData = rg || []; jvSinTablas = false;
+    // Los avisos informativos de más de 4 días ya no se muestran
+    jvAlertas = (al||[]).filter(a=> !(a.estado==='info' && jvDias(a.created_at) > 4));
+    jvReglasData = rg || []; jvSinTablas = false;
   } catch(e){ jvAlertas = []; jvSinTablas = true; }
   try {
     const tp = await sbFetch('/rest/v1/tienda_pedidos?select=id,numero,cliente_nombre,total_gs,created_at,estado&estado=eq.nuevo&order=created_at.desc&limit=20');
-    (tp||[]).forEach(p=> jvAlertas.push({_calc:true, prioridad:'rojo', plataforma:'tienda', tipo:'aviso_cliente', estado:'pendiente',
-      titulo:'Pedido nuevo en la tienda ' + (p.numero||''), detalle:(p.cliente_nombre||'') + ' — Gs ' + fmtNum(p.total_gs||0),
-      accion:'Confirmar stock y plazo al cliente por WhatsApp', created_at:p.created_at}));
-  } catch(e){}
+    jvTienda = (tp||[]).map(p=>({_calc:true, _tienda:p.id, plataforma:'tienda', estado:'pendiente', prioridad:'rojo', tipo:'aviso_cliente',
+      titulo:'Pedido nuevo ' + (p.numero||''), detalle:(p.cliente_nombre||'') + ' — Gs ' + fmtNum(p.total_gs||0), accion:'Confirmar stock y plazo por WhatsApp', created_at:p.created_at}));
+  } catch(e){ jvTienda = []; }
+  jvUltima = new Date();
   jvPintar();
   if(manual) showToast('Asistente actualizado','success');
 }
+async function jvActualizarTodo(){
+  const b = document.getElementById('as-upd-b'); if(b){ b.disabled = true; b.textContent = '⏳ Actualizando…'; }
+  try { await Promise.all([jvCargar(false), (async()=>{ try { await buscarMensajesML(false); } catch(e){} try { await buscarPreguntasML(false); } catch(e){} })()]); } catch(e){}
+  jvPintar();
+  if(b){ b.disabled = false; b.textContent = '🔄 Actualizar'; }
+  showToast('Asistente actualizado','success');
+}
 
-function jvLista(){
-  const calc = jvAlertasPedidos().map(a=>Object.assign({estado:'pendiente'}, a));
-  const todas = jvAlertas.concat(calc);
+function jvTodas(){ return jvAlertas.concat(jvAlertasPedidos(), jvAlertasML(), jvTienda); }
+function jvPorPlat(todas, pl){
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const l = todas.filter(a=>(a.plataforma||'sistema')===pl);
   return {
-    pend: todas.filter(a=>a.estado==='pendiente' || a.estado==='info'),
-    apr: todas.filter(a=>a.estado==='aprobada'),
-    hecho: todas.filter(a=>(a.estado==='hecha') && a.resuelta_en && new Date(a.resuelta_en) >= hoy)
+    pend: l.filter(a=>a.estado==='pendiente' || a.estado==='aprobada'),
+    info: l.filter(a=>a.estado==='info'),
+    hecho: l.filter(a=>(a.estado==='hecha') && a.resuelta_en && new Date(a.resuelta_en) >= hoy)
   };
 }
 
 function jvPintar(){
-  const box = document.getElementById('jv-lista'); if(!box) return;
-  const L = jvLista();
-  ['rojo','amarillo','verde'].forEach(p=>{ const el=document.getElementById('jv-n-'+p); if(el) el.textContent = L.pend.filter(a=>a.prioridad===p).length; });
-  ['pend','apr','hecho'].forEach(t=>{ const el=document.getElementById('jv-tn-'+t); if(el) el.textContent = L[t].length ? '('+L[t].length+')' : ''; });
-  document.querySelectorAll('.jv-chip').forEach(c=>c.classList.toggle('on', c.dataset.p===jvFiltro));
-  document.querySelectorAll('.jv-tab').forEach(c=>c.classList.toggle('on', c.dataset.t===jvTabActual));
-  const sub = document.getElementById('jv-sub');
-  if(sub) sub.textContent = jvSinTablas ? 'Mostrando solo lo que sale de los pedidos (falta conectar la base del asistente)' : 'Qué hay que mirar y qué puedo hacer por vos';
+  const todas = jvTodas();
   const ord = {rojo:0, amarillo:1, verde:2};
-  let lista = L[jvTabActual].slice();
-  if(jvFiltro && jvTabActual==='pend') lista = lista.filter(a=>a.prioridad===jvFiltro);
-  lista.sort((a,b)=> (ord[a.prioridad]-ord[b.prioridad]) || (new Date(b.created_at)-new Date(a.created_at)));
-  if(!lista.length){
-    box.innerHTML = '<div class="jv-vacio">' + ({pend:'Nada para decidir. Todo en orden ✅', apr:'No hay mensajes aprobados esperando envío.', hecho:'Todavía no hice nada solo hoy.'}[jvTabActual]) + '</div>';
-    return;
+  const plats = Object.keys(JV_PL);
+  // contador general (menú y franja del Centro de Control)
+  const pendTot = todas.filter(a=>a.estado==='pendiente').length;
+  const rojos = todas.filter(a=>a.estado==='pendiente' && a.prioridad==='rojo').length;
+  const bd = document.getElementById('badge-asis'); if(bd){ bd.textContent = pendTot; bd.style.display = pendTot ? '' : 'none'; }
+  const st = document.getElementById('as-strip-t'); if(st) st.innerHTML = pendTot ? ('<b style="color:var(--red)">'+rojos+'</b> para hoy · '+(pendTot-rojos)+' para vigilar') : 'Todo en orden ✅';
+  const tiles = document.getElementById('as-tiles'); if(!tiles) return;
+  if(!jvSel){ // abre la plataforma con más cosas urgentes
+    let mejor = 'ebay', pts = -1;
+    plats.forEach(p=>{ const g = jvPorPlat(todas,p); const s = g.pend.filter(a=>a.prioridad==='rojo').length*100 + g.pend.length; if(s > pts){ pts = s; mejor = p; } });
+    jvSel = mejor;
   }
-  const max = box.dataset.todo ? 999 : 12;
-  box.innerHTML = lista.slice(0,max).map(a=>jvItem(a)).join('') +
-    (lista.length > max ? '<button type="button" class="jv-more" onclick="document.getElementById(\'jv-lista\').dataset.todo=1;jvPintar()">Ver las '+(lista.length-max)+' restantes</button>' : '');
+  tiles.innerHTML = plats.map(p=>{
+    const g = jvPorPlat(todas,p), n = g.pend.length, r = g.pend.filter(a=>a.prioridad==='rojo').length;
+    const ic = JV_ICO[p];
+    return '<button type="button" class="as-tile'+(p===jvSel?' on':'')+'" onclick="jvSel=\''+p+'\';jvTabActual=\'pend\';jvVerTodo=false;jvPintar()">' +
+      '<span class="n'+(r?' r':(n?' a':''))+'">'+n+'</span><div class="ic" style="background:'+ic[1]+';color:'+ic[2]+'">'+ic[0]+'</div><b>'+JV_PL[p]+'</b><small>'+(n ? n+' para resolver' : (g.info.length ? g.info.length+' avisos' : JV_SUB[p]))+'</small></button>';
+  }).join('');
+  const ut = document.getElementById('as-upd-t'); if(ut) ut.textContent = jvUltima ? 'Actualizado ' + jvUltima.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) : '';
+  const panel = document.getElementById('as-panel'); if(!panel) return;
+  const g = jvPorPlat(todas, jvSel);
+  let lista = (g[jvTabActual]||[]).slice().sort((a,b)=> (ord[a.prioridad]-ord[b.prioridad]) || (new Date(b.created_at||0)-new Date(a.created_at||0)));
+  const limpiable = jvTabActual!=='hecho' && lista.length && (jvSel==='ml' || lista.some(a=>!a._calc));
+  let h = '<div class="as-ph"><b>'+JV_PL[jvSel]+'</b>' +
+    [['pend','Para hacer'],['info','Avisos'],['hecho','Hecho hoy']].map(t=>'<button type="button" class="as-tab'+(jvTabActual===t[0]?' on':'')+'" onclick="jvTabActual=\''+t[0]+'\';jvVerTodo=false;jvPintar()">'+t[1]+(g[t[0]].length?' ('+g[t[0]].length+')':'')+'</button>').join('') +
+    '<span class="sp"></span>' + (limpiable && jvEsAdmin() ? '<button type="button" class="btn btn-ghost" style="height:30px;font-size:12.5px" onclick="jvLimpiar()">🗑 Borrar todo</button>' : '') + '</div>';
+  if(jvSinTablas && jvSel!=='ml' && jvSel!=='sistema') h += '<div class="as-vacio" style="margin-bottom:10px">Falta conectar la base del asistente.</div>';
+  if(!lista.length){
+    h += '<div class="as-vacio">' + ({pend:'Nada para resolver en '+JV_PL[jvSel]+' ✅', info:'Sin avisos.', hecho:'Todavía no se hizo nada hoy acá.'}[jvTabActual]) + '</div>';
+  } else {
+    const max = jvVerTodo ? 999 : (jvSel==='ml' ? 1 : 6);
+    h += '<div class="as-grid">' + lista.slice(0,max).map(jvItem).join('') + '</div>';
+    if(lista.length > max) h += '<button type="button" class="as-more" onclick="jvVerTodo=true;jvPintar()">Ver '+(lista.length-max)+' más</button>';
+  }
+  panel.innerHTML = h;
 }
 
 function jvItem(a){
-  const adm = jvEsAdmin();
-  const id = a.id;
-  let h = '<div class="jv-it"><div class="jv-bar" style="background:'+(JV_COL[a.prioridad]||'var(--blue)')+'"></div><div>';
-  h += '<div class="jv-top"><span class="jv-pl">'+esc(JV_PL[a.plataforma]||a.plataforma||'')+'</span><span class="jv-tt">'+esc(a.titulo)+'</span>';
-  if(a.nivel && !a._calc) h += '<span class="jv-nivel">'+esc(JV_NIV[a.nivel]||a.nivel)+'</span>';
-  h += '<span class="jv-when">'+jvHace(a.resuelta_en || a.created_at)+'</span></div>';
-  if(a.detalle) h += '<div class="jv-det">'+esc(a.detalle)+'</div>';
-  if(a.accion) h += '<div class="jv-acc">→ '+esc(a.accion)+'</div>';
-  if(a.estado==='hecha' && a.resultado) h += '<div class="jv-det" style="color:var(--green)">✓ '+esc(a.resultado)+'</div>';
-  if(a.texto_sugerido && a.estado==='pendiente' && adm) h += '<textarea class="jv-txt" id="jv-t-'+id+'">'+esc(a.texto_sugerido)+'</textarea>';
-  else if(a.texto_sugerido) h += '<div class="jv-det" style="border-left:2px solid var(--brda);padding-left:8px;margin-top:8px">'+esc(a.texto_sugerido)+'</div>';
+  const adm = jvEsAdmin(), id = a.id;
+  let h = '<div class="as-c"><div class="bar" style="background:'+(JV_COL[a.prioridad]||'var(--blue)')+'"></div><div style="min-width:0">';
+  if(a._ml==='msg'){
+    const m = a._m, num = m.pedido_numero || ('#'+String(m.pack_id).slice(-6));
+    h += '<div class="as-top"><span class="as-tt">'+esc((a.titulo||'').slice(0,60))+'</span><span class="as-when">'+jvHace(m.fecha)+'</span></div>';
+    h += '<div style="margin-top:3px"><span class="as-chip">'+esc(num)+'</span>'+(m.cliente?'<span class="as-chip">'+esc(m.cliente)+'</span>':'')+(m.no_leidos>1?'<span class="as-chip">'+m.no_leidos+' mensajes</span>':'')+'</div>';
+    h += '<div class="as-msg" onclick="this.classList.toggle(\'full\')">'+esc(m.texto || 'Abrí la conversación para leer el mensaje.')+'</div>';
+    h += '<div class="as-btns"><button type="button" class="btn btn-primary" onclick="abrirHiloML(\''+m.pack_id+'\',\''+(m.seller_id||'')+'\',\''+esc(m.pieza||m.titulo||'').replace(/'/g,"\\'")+'\',\''+esc(m.pedido_numero||'').replace(/'/g,"\\'")+'\',\''+esc(m.cliente||'').replace(/'/g,"\\'")+'\')">💬 Responder</button>'+(adm?'<button type="button" class="btn btn-ghost" onclick="jvMlListo(\'msg:'+m.pack_id+'\')">✓ Listo</button>':'')+'</div>';
+    return h + '</div></div>';
+  }
+  if(a._ml==='preg'){
+    const q = a._q;
+    h += '<div class="as-top"><span class="as-tt">'+esc((a.titulo||'').slice(0,60))+'</span><span class="as-when">'+jvHace(q.fecha_respuesta)+'</span></div>';
+    h += '<div class="as-det full">Vos: '+esc(q.pregunta||'')+'</div><div class="as-msg" onclick="this.classList.toggle(\'full\')">'+esc(q.respuesta||'')+'</div>';
+    h += '<div class="as-btns"><button type="button" class="btn btn-ghost" onclick="window.open(\'https://articulo.mercadolivre.com.br/'+esc(q.item_id)+'\',\'_blank\')">↗ Ver publicación</button>'+(adm?'<button type="button" class="btn btn-ghost" onclick="jvMlListo(\'preg:'+q.id+'\')">✓ Listo</button>':'')+'</div>';
+    return h + '</div></div>';
+  }
+  h += '<div class="as-top"><span class="as-tt">'+esc(a.titulo)+'</span><span class="as-when">'+jvHace(a.resuelta_en || a.created_at)+'</span></div>';
+  if(a.detalle) h += '<div class="as-det" onclick="this.classList.toggle(\'full\')">'+esc(a.detalle)+'</div>';
+  if(a.accion && a.estado!=='hecha') h += '<div class="as-acc">→ '+esc(a.accion)+'</div>';
+  if(a.estado==='hecha' && a.resultado) h += '<div class="as-det full" style="color:var(--green)">✓ '+esc(a.resultado)+'</div>';
+  if(a.texto_sugerido && a.estado==='pendiente' && adm) h += '<textarea class="as-txt" id="jv-t-'+id+'">'+esc(a.texto_sugerido)+'</textarea>';
   const b = [];
   if(!a._calc && a.estado==='pendiente' && adm){
-    if(a.texto_sugerido) b.push('<button type="button" class="btn jv-ok" onclick="jvAprobar('+id+')">✅ Aprobar y enviar</button>');
-    else b.push('<button type="button" class="btn jv-ok" onclick="jvHecho('+id+')">✓ Listo</button>');
-    b.push('<button type="button" class="btn btn-ghost" onclick="jvDescartar('+id+')">✕ Descartar</button>');
+    if(a.texto_sugerido) b.push('<button type="button" class="btn as-ok" onclick="jvAprobar('+id+')">✅ Aprobar y enviar</button>');
+    b.push('<button type="button" class="btn btn-ghost" onclick="jvHecho('+id+')">✓ Ya lo hice</button>');
+    b.push('<button type="button" class="btn btn-ghost" onclick="jvDescartar('+id+')">✕</button>');
   }
   if(!a._calc && a.estado==='info' && adm) b.push('<button type="button" class="btn btn-ghost" onclick="jvHecho('+id+')">✓ Visto</button>');
-  if(!a._calc && a.estado==='aprobada' && adm) b.push('<button type="button" class="btn btn-ghost" onclick="jvVolver('+id+')">↩️ No enviar todavía</button>');
-  if(a.order_id) b.push('<button type="button" class="btn btn-ghost" onclick="openOrder('+a.order_id+')">📋 Abrir pedido</button>');
-  if(a.destino && a.destino.url) b.push('<a class="btn btn-ghost" style="height:30px;display:inline-flex;align-items:center" href="'+esc(a.destino.url)+'" target="_blank" rel="noopener">↗ Ver en '+esc(JV_PL[a.plataforma]||'la plataforma')+'</a>');
-  if(b.length) h += '<div class="jv-btns">'+b.join('')+'</div>';
-  if(a.estado==='aprobada') h += '<div class="jv-det" style="color:var(--t3);margin-top:6px">Se envía en el próximo control de compras.</div>';
+  if(!a._calc && a.estado==='aprobada') b.push('<span style="font-size:12px;color:var(--t3);align-self:center">⏳ Sale en el próximo control</span>' + (adm?'<button type="button" class="btn btn-ghost" onclick="jvVolver('+id+')">↩️ No enviar</button>':''));
+  if(a.order_id) b.push('<button type="button" class="btn btn-ghost" onclick="openOrder('+a.order_id+')">📋 Pedido</button>');
+  if(a._calc && a._clave) b.push('<button type="button" class="btn btn-ghost" onclick="jvOcultar(\''+a._clave+'\')">Ocultar 3 días</button>');
+  if(a._tienda) b.push('<button type="button" class="btn btn-ghost" onclick="showPage(\'tiendaweb\',document.querySelector(\'[data-page=tiendaweb]\'));setTimeout(()=>tnTab(\'ped\'),400)">🧾 Ver pedido</button>');
+  if(a.destino && a.destino.url) b.push('<a class="btn btn-ghost" style="display:inline-flex;align-items:center" href="'+esc(a.destino.url)+'" target="_blank" rel="noopener">↗ Abrir</a>');
+  if(b.length) h += '<div class="as-btns">'+b.join('')+'</div>';
   return h + '</div></div>';
 }
 
@@ -10395,7 +10431,6 @@ async function jvAprobar(id){
   const editado = texto !== (a.texto_sugerido||'').trim();
   const quien = (currentUser && currentUser.name) || 'Lucas';
   try {
-    // Mercado Livre se envía al instante; el resto lo manda el asistente en el próximo control (Chrome)
     if(a.plataforma==='ml' && a.destino && a.destino.nc){
       const r = await fetch(ML_MSG + '?accion=enviar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nc:a.destino.nc, texto:texto.slice(0,350)})});
       const j = await r.json();
@@ -10409,43 +10444,48 @@ async function jvAprobar(id){
     if(!editado) jvSumarAprobacion(a.tipo);
   } catch(e){ showToast('No se pudo: ' + (e.message||e), 'error'); }
 }
-async function jvHecho(id){ try { await jvActualizar(id, {estado:'hecha', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||'', resultado: 'Marcado como resuelto'}); } catch(e){ showToast('No se pudo guardar','error'); } }
-async function jvDescartar(id){ try { await jvActualizar(id, {estado:'descartada', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||''}); showToast('Descartado'); } catch(e){ showToast('No se pudo guardar','error'); } }
+async function jvHecho(id){ try { await jvActualizar(id, {estado:'hecha', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||'', resultado:'Resuelto'}); } catch(e){ showToast('No se pudo guardar','error'); } }
+async function jvDescartar(id){ try { await jvActualizar(id, {estado:'descartada', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||''}); } catch(e){ showToast('No se pudo guardar','error'); } }
 async function jvVolver(id){ try { await jvActualizar(id, {estado:'pendiente', resuelta_en:null}); } catch(e){ showToast('No se pudo guardar','error'); } }
-function jvTab(t){ jvTabActual = t; delete document.getElementById('jv-lista').dataset.todo; jvPintar(); }
-function jvFiltroP(p){ jvFiltro = (jvFiltro===p) ? null : p; jvTabActual='pend'; jvPintar(); }
+async function jvMlListo(clave){
+  try { await descartarAviso(clave); } catch(e){}
+  if(clave.startsWith('msg:')) mmDatos = (mmDatos||[]).filter(m=>('msg:'+m.pack_id)!==clave); else mpDatos = (mpDatos||[]).filter(q=>('preg:'+q.id)!==clave);
+  jvPintar();
+}
+async function jvLimpiar(){
+  const nombre = JV_PL[jvSel];
+  if(!confirm('¿Borrar todo lo de ' + nombre + ' de esta lista?')) return;
+  try {
+    if(jvSel==='ml'){
+      await fetch(ML_MSG + '?accion=marcar_todo_visto');
+      mmDatos = []; mpDatos = [];
+      try { actualizarCampanita(); } catch(e){}
+    } else {
+      const estados = jvTabActual==='info' ? '(info)' : '(pendiente,aprobada)';
+      await sbFetch('/rest/v1/centro_alertas?plataforma=eq.'+jvSel+'&estado=in.'+estados, 'PATCH', {estado:'descartada', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||''});
+      jvAlertas = jvAlertas.filter(a=>!(a.plataforma===jvSel && (jvTabActual==='info' ? a.estado==='info' : ['pendiente','aprobada'].includes(a.estado))));
+      jvTodas().filter(a=>a._calc && a._clave && a.plataforma===jvSel).forEach(a=>{ const o = jvOcultos(); o[a._clave] = Date.now(); try { localStorage.setItem('jv_ocultos', JSON.stringify(o)); } catch(e){} });
+    }
+    showToast(nombre + ': lista limpia','success'); jvPintar();
+  } catch(e){ showToast('No se pudo borrar','error'); }
+}
 
 function jvReglas(){
   let ov = document.getElementById('jv-reg-ov');
-  if(!ov){
-    ov = document.createElement('div'); ov.id = 'jv-reg-ov';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,10,20,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
-    ov.onclick = e => { if(e.target===ov) ov.remove(); };
-    document.body.appendChild(ov);
-  }
+  if(!ov){ ov = document.createElement('div'); ov.id = 'jv-reg-ov'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,10,20,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px'; ov.onclick = e => { if(e.target===ov) ov.remove(); }; document.body.appendChild(ov); }
   const adm = jvEsAdmin();
   const filas = jvReglasData.length ? jvReglasData.map(r=>{
-    const sug = (!r.bloqueada && r.nivel==='sugerido' && (r.aprobaciones_ok||0) >= 5)
-      ? '<small style="color:var(--green)">Aprobaste '+r.aprobaciones_ok+' sin cambios. ¿Lo pasamos a automático?</small>' : '';
-    const sel = r.bloqueada ? '<span class="jv-nivel">🔒 Solo vos</span>'
-      : (adm ? '<select onchange="jvCambiarNivel(\''+r.tipo+'\',this.value)">' + ['auto','sugerido','manual'].map(n=>'<option value="'+n+'"'+(n===r.nivel?' selected':'')+'>'+JV_NIV[n]+'</option>').join('') + '</select>'
-             : '<span class="jv-nivel">'+JV_NIV[r.nivel]+'</span>');
-    return '<div class="jv-reg"><div><b style="font-size:14px">'+esc(r.nombre)+'</b><small>'+esc(r.descripcion||'')+'</small>'+sug+'</div>'+sel+'</div>';
-  }).join('') : '<div class="jv-vacio">Las reglas se cargan cuando la base del asistente esté conectada.</div>';
-  ov.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--brda);border-radius:16px;max-width:620px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px">' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-family:\'Space Grotesk\',sans-serif;font-size:17px">⚙️ Qué hace solo el asistente</b><button type="button" onclick="document.getElementById(\'jv-reg-ov\').remove()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;cursor:pointer">×</button></div>' +
-    '<div style="font-size:12.5px;color:var(--t2);margin-bottom:8px"><b>Automático:</b> lo hago y te aviso. <b>Sugerido:</b> lo dejo listo y vos aprobás. <b>Solo vos:</b> no lo toco. Pagos, cancelaciones y pagos fuera de la plataforma quedan siempre en tus manos.</div>' +
-    filas + '</div>';
+    const sug = (!r.bloqueada && r.nivel==='sugerido' && (r.aprobaciones_ok||0) >= 5) ? '<small style="display:block;color:var(--green);font-size:12px">Aprobaste '+r.aprobaciones_ok+' sin cambios. ¿Lo pasamos a automático?</small>' : '';
+    const sel = r.bloqueada ? '<span class="as-chip">🔒 Solo vos</span>' : (adm ? '<select style="background:var(--bg3);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:6px 8px" onchange="jvCambiarNivel(\''+r.tipo+'\',this.value)">' + ['auto','sugerido','manual'].map(n=>'<option value="'+n+'"'+(n===r.nivel?' selected':'')+'>'+JV_NIV[n]+'</option>').join('') + '</select>' : '<span class="as-chip">'+JV_NIV[r.nivel]+'</span>');
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd)"><div><b style="font-size:14px">'+esc(r.nombre)+'</b><small style="display:block;color:var(--t3);font-size:12px">'+esc(r.descripcion||'')+'</small>'+sug+'</div>'+sel+'</div>';
+  }).join('') : '<div class="as-vacio">Las reglas se cargan cuando la base del asistente esté conectada.</div>';
+  ov.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--brda);border-radius:16px;max-width:620px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px"><div style="display:flex;align-items:center;margin-bottom:6px"><b style="font-family:\'Space Grotesk\',sans-serif;font-size:17px">⚙️ Qué hace solo el asistente</b><button type="button" onclick="document.getElementById(\'jv-reg-ov\').remove()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;cursor:pointer">×</button></div><div style="font-size:12.5px;color:var(--t2);margin-bottom:8px"><b>Automático:</b> lo hago y te aviso. <b>Sugerido:</b> lo dejo listo y vos aprobás. <b>Solo vos:</b> no lo toco. Pagos, cancelaciones y pagos por fuera quedan siempre en tus manos.</div>' + filas + '</div>';
 }
 async function jvCambiarNivel(tipo, nivel){
-  try {
-    await sbFetch('/rest/v1/centro_reglas?tipo=eq.'+encodeURIComponent(tipo), 'PATCH', {nivel, aprobaciones_ok:0, updated_at:new Date().toISOString()});
-    const r = jvReglasData.find(x=>x.tipo===tipo); if(r){ r.nivel = nivel; r.aprobaciones_ok = 0; }
-    showToast('Regla actualizada: ' + JV_NIV[nivel], 'success');
-    jvReglas();
-  } catch(e){ showToast('No se pudo cambiar la regla','error'); }
+  try { await sbFetch('/rest/v1/centro_reglas?tipo=eq.'+encodeURIComponent(tipo), 'PATCH', {nivel, aprobaciones_ok:0, updated_at:new Date().toISOString()}); const r = jvReglasData.find(x=>x.tipo===tipo); if(r){ r.nivel = nivel; r.aprobaciones_ok = 0; } showToast('Regla actualizada: ' + JV_NIV[nivel], 'success'); jvReglas(); }
+  catch(e){ showToast('No se pudo cambiar la regla','error'); }
 }
-setInterval(()=>{ try { if(document.getElementById('page-control').classList.contains('active')) jvCargar(false); } catch(e){} }, 60000);
+setInterval(()=>{ try { if(document.getElementById('page-asistente').classList.contains('active') || !window._jvIni2){ window._jvIni2 = 1; jvCargar(false); } } catch(e){} }, 60000);
 
 // ══════ TIENDA WEB (administración) ══════
 // Productos con variantes, combos y compatibilidad por generación; vehículos; pedidos que entran desde la tienda.
@@ -12863,13 +12903,21 @@ async function buscarMensajesML(manual){
         _id: pz && pz._orden ? pz._orden.id : null
       });
     });
+    // Solo lo que el vendedor pide o pregunta. Los mensajes de plantilla ("Agradecemos sua compra", "confira o anúncio")
+    // y los avisos de envío no son importantes, salvo que traigan una pregunta.
+    mmDatos = mmDatos.filter(m=>{
+      if(m.importante === false) return false;
+      const t = (m.texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      if(/agradecemos (a )?sua compra|obrigad[oa] pela (sua )?compra|confirme com o profissional|atente-se as fotos|confira (as fotos|o anuncio)/.test(t) && !/\?/.test(t)) return false;
+      return true;
+    });
     if(!mmDatos.length){
       banner.style.display = 'none';
       if(manual) showToast('Sin mensajes nuevos','success');
       actualizarCampanita();
       return;
     }
-    banner.style.display = 'block';
+    banner.style.display = 'none'; // los mensajes de ML ahora viven en el Asistente
     document.getElementById('ml-msg-lista').innerHTML = mmDatos.map(m=>`
       <div class="ml-msg-row" onclick="abrirHiloML('${m.pack_id}','${m.seller_id||''}','${(m.pieza||'').replace(/'/g,"\\'")}','${(m.pedido_numero||'').replace(/'/g,"\\'")}','${(m.cliente||'').replace(/'/g,"\\'")}')">
         ${m.thumb ? `<img src="${m.thumb}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#fff;">` : ''}
@@ -13708,6 +13756,7 @@ async function marcarTodoLeido(){
 }
 
 function actualizarCampanita(){
+  try { jvPintar(); } catch(e){}
   const dem = parseInt(document.getElementById('chip-dem-n')?.textContent) || 0;
   const alrt = parseInt(document.getElementById('chip-alrt-n')?.textContent) || 0;
   const coord = parseInt(document.getElementById('chip-coord-n')?.textContent) || 0;
@@ -13717,7 +13766,7 @@ function actualizarCampanita(){
   const items = [];
 
   // Cada pregunta respondida va como su propio aviso: se ve qué preguntaste y qué te contestaron
-  (mpDatos||[]).forEach((q,i)=>{
+  ([]).forEach((q,i)=>{
     items.push({
       ic:'❓', c:'var(--cyan)',
       t: (q.titulo || 'Publicación de Mercado Livre').slice(0,52),
@@ -13729,7 +13778,7 @@ function actualizarCampanita(){
     });
   });
   // Cada conversación como aviso propio, para poder sacarla de a una
-  (mmDatos||[]).forEach(m=>{
+  ([]).forEach(m=>{
     items.push({
       ic:'✉️', c:'#FFE500',
       t: (m.pedido_numero ? m.pedido_numero + ' — ' : '') + (m.pieza || 'Conversación de Mercado Livre').slice(0,44),
