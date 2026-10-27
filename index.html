@@ -1804,6 +1804,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
   <a class="sb-item" data-page="inventario" onclick="showPage('inventario',this)"><span class="si">📦</span> Inventario</a>
   <a class="sb-item" data-page="mapasistema" onclick="showPage('mapasistema',this)"><span class="si">🗺</span> Mapa del sistema</a>
   <a class="sb-item" data-page="contenido" onclick="showPage('contenido',this)"><span class="si">📣</span> Contenido</a>
+  <a class="sb-item" data-page="tiendaweb" onclick="showPage('tiendaweb',this)"><span class="si">🛒</span> Tienda web</a>
   <div class="sb-sep"></div>
   <a class="sb-item" data-page="mapa" onclick="showPage('mapa',this)"><span class="si">🌎</span> Mapa</a>
   <a class="sb-item" data-page="clientes" onclick="showPage('clientes',this)"><span class="si">👥</span> Clientes</a>
@@ -1884,6 +1885,59 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" onclick="document.getElementById('wa-atencion-banner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;" title="Cerrar aviso">&times;</button>
       </div>
       <div id="wa-atencion-lista"></div>
+    </div>
+
+        <!-- ══════ ASISTENTE GONBEL (centro de mando) ══════ -->
+    <style>
+    .jv{border:1px solid rgba(59,142,255,.35);border-radius:16px;padding:16px 18px;margin-bottom:18px;background:linear-gradient(135deg,rgba(59,142,255,.10),rgba(0,198,255,.03));position:relative;z-index:1}
+    .jv-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .jv-h b{font-family:'Space Grotesk',sans-serif;font-size:17px;color:#fff}
+    .jv-sub{font-size:12px;color:var(--t3)}
+    .jv-cnt{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+    .jv-chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--brd);background:var(--bg2);color:var(--t2);cursor:pointer}
+    .jv-chip.on{border-color:var(--blue);color:#fff;background:var(--blueg)}
+    .jv-chip .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+    .jv-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+    .jv-tab{font-size:12.5px;padding:6px 12px;border-radius:9px;border:1px solid var(--brd);background:transparent;color:var(--t2);cursor:pointer}
+    .jv-tab.on{background:var(--bg3);color:#fff;border-color:var(--brda)}
+    .jv-it{display:grid;grid-template-columns:4px 1fr;gap:12px;background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:12px 14px 12px 0;margin-bottom:8px;overflow:hidden}
+    .jv-bar{border-radius:0 4px 4px 0}
+    .jv-top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+    .jv-pl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+    .jv-tt{font-weight:600;color:var(--t1);font-size:14px}
+    .jv-when{font-size:11px;color:var(--t4);margin-left:auto}
+    .jv-det{font-size:12.5px;color:var(--t2);margin-top:4px;white-space:pre-wrap}
+    .jv-acc{font-size:12.5px;color:var(--cyan);margin-top:6px}
+    .jv-txt{width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--brd);border-radius:8px;color:var(--t1);font:13px/1.45 'Inter',sans-serif;padding:8px 10px;resize:vertical;min-height:62px}
+    .jv-btns{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+    .jv-btns button{height:30px;font-size:12.5px}
+    .jv-ok{background:var(--green)!important;color:#06210f!important;border:none!important;font-weight:700}
+    .jv-vacio{font-size:13px;color:var(--t3);padding:14px;text-align:center;border:1px dashed var(--brd);border-radius:12px}
+    .jv-nivel{font-size:10.5px;padding:2px 7px;border-radius:999px;border:1px solid var(--brd);color:var(--t3)}
+    .jv-reg{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd)}
+    .jv-reg small{display:block;color:var(--t3);font-size:12px;margin-top:2px}
+    .jv-reg select{background:var(--bg3);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:6px 8px;font-size:13px}
+    .jv-more{font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;margin-top:4px}
+    @media(max-width:640px){.jv{padding:14px}.jv-cnt{margin-left:0}}
+    </style>
+    <div class="jv" id="jv-box">
+      <div class="jv-h">
+        <span style="font-size:20px">🤖</span>
+        <div><b>Asistente Gonbel</b><div class="jv-sub" id="jv-sub">Qué hay que mirar y qué puedo hacer por vos</div></div>
+        <div class="jv-cnt">
+          <span class="jv-chip" data-p="rojo" onclick="jvFiltroP('rojo')"><span class="d" style="background:var(--red)"></span><span id="jv-n-rojo">0</span> hoy</span>
+          <span class="jv-chip" data-p="amarillo" onclick="jvFiltroP('amarillo')"><span class="d" style="background:var(--amber)"></span><span id="jv-n-amarillo">0</span> vigilar</span>
+          <span class="jv-chip" data-p="verde" onclick="jvFiltroP('verde')"><span class="d" style="background:var(--green)"></span><span id="jv-n-verde">0</span> en orden</span>
+          <button type="button" class="btn btn-ghost" style="height:30px" onclick="jvReglas()">⚙️ Reglas</button>
+          <button type="button" class="btn btn-ghost" style="height:30px" onclick="jvCargar(true)">🔄</button>
+        </div>
+      </div>
+      <div class="jv-tabs">
+        <button type="button" class="jv-tab on" data-t="pend" onclick="jvTab('pend')">Para decidir <span id="jv-tn-pend"></span></button>
+        <button type="button" class="jv-tab" data-t="apr" onclick="jvTab('apr')">Aprobado, por enviar <span id="jv-tn-apr"></span></button>
+        <button type="button" class="jv-tab" data-t="hecho" onclick="jvTab('hecho')">Lo que hice hoy <span id="jv-tn-hecho"></span></button>
+      </div>
+      <div id="jv-lista"><div class="jv-vacio">Cargando…</div></div>
     </div>
 
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr) auto;">
@@ -2316,6 +2370,43 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
     </div>
   </div>
 
+  <div class="page" id="page-tiendaweb">
+    <style>
+    .tn-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+    .tn-tab{padding:8px 14px;border-radius:10px;border:1px solid var(--brd);background:var(--bg2);color:var(--t2);cursor:pointer;font-size:13.5px}
+    .tn-tab.on{background:var(--bg4);color:#fff;border-color:var(--brda)}
+    .tn-bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+    .tn-bar input,.tn-f input,.tn-f select,.tn-f textarea{background:var(--bg);border:1px solid var(--brda);border-radius:9px;color:var(--t1);padding:8px 10px;font-size:13.5px;font-family:inherit}
+    .tn-row{display:grid;grid-template-columns:56px 1fr auto auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--brd);border-radius:12px;background:var(--bg2);margin-bottom:6px;cursor:pointer}
+    .tn-row:hover{border-color:var(--brda)}
+    .tn-th{width:56px;height:56px;border-radius:9px;background:var(--bg3) center/cover;display:grid;place-items:center;font-size:20px}
+    .tn-row small{display:block;color:var(--t3);font-size:12px}
+    .tn-pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--brd);color:var(--t3)}
+    .tn-pill.on{color:var(--green);border-color:rgba(34,217,122,.4)}
+    .tn-ov{position:fixed;inset:0;background:rgba(5,10,20,.75);z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto}
+    .tn-md{background:var(--bg2);border:1px solid var(--brda);border-radius:16px;max-width:860px;width:100%;padding:18px 20px}
+    .tn-f{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px}
+    .tn-f label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t3);font-weight:600}
+    .tn-f .w2{grid-column:span 2}.tn-f .w3{grid-column:1/-1}
+    .tn-sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin:16px 0 8px}
+    .tn-mini{display:grid;gap:6px;align-items:center;margin-bottom:6px}
+    .tn-mini input,.tn-mini select{background:var(--bg);border:1px solid var(--brda);border-radius:8px;color:var(--t1);padding:7px 8px;font-size:13px;min-width:0}
+    .tn-x{background:none;border:none;color:var(--red);font-size:18px;cursor:pointer}
+    .tn-imgs{display:flex;gap:8px;flex-wrap:wrap}
+    .tn-imgs div{width:84px;height:84px;border-radius:10px;background:var(--bg3) center/cover;position:relative;border:1px solid var(--brd)}
+    .tn-imgs button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer}
+    .tn-aviso{border:1px solid rgba(245,166,35,.4);background:var(--amberg);border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+    @media(max-width:640px){.tn-f .w2{grid-column:1/-1}.tn-row{grid-template-columns:48px 1fr auto}.tn-row>:nth-child(4){display:none}}
+    </style>
+    <div class="tn-tabs">
+      <button type="button" class="tn-tab on" data-t="prod" onclick="tnTab('prod')">📦 Productos</button>
+      <button type="button" class="tn-tab" data-t="veh" onclick="tnTab('veh')">🚗 Vehículos</button>
+      <button type="button" class="tn-tab" data-t="ped" onclick="tnTab('ped')">🧾 Pedidos web <span id="tn-ped-n"></span></button>
+      <a class="btn btn-ghost" style="margin-left:auto;height:34px;display:inline-flex;align-items:center" href="https://gonbel2026.github.io/gonbel-os/tienda/" target="_blank" rel="noopener">↗ Ver la tienda</a>
+    </div>
+    <div id="tn-aviso"></div>
+    <div id="tn-body"><div style="color:var(--t3)">Cargando…</div></div>
+  </div>
   <div class="page" id="page-inventario">
     <div class="pv-h">
       <input class="pv-buscar" id="inv-buscar" placeholder="🔍 Buscar por nombre, código OEM, vehículo o ubicación…" oninput="invPintar()">
@@ -10128,7 +10219,7 @@ function showPage(id, el){
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {control:'Centro de <span>Control</span>',kanban:'Tablero <span>Kanban</span>',financiero:'Control <span>Financiero</span>',finanalisis:'Control <span>Financiero</span>',fincaja:'Control <span>Financiero</span>',clientes:'Base de <span>Clientes</span>',proveedores:'<span>Proveedores</span>',config:'<span>Configuración</span>',mapa:'Mapa <span>Mundial</span>',catalogo:'Base de <span>Precios</span>',inventario:'<span>Inventario</span>',mapasistema:'Mapa del <span>sistema</span>',contenido:'<span>Contenido</span> · Instagram'};
+  const titles = {control:'Centro de <span>Control</span>',kanban:'Tablero <span>Kanban</span>',financiero:'Control <span>Financiero</span>',finanalisis:'Control <span>Financiero</span>',fincaja:'Control <span>Financiero</span>',clientes:'Base de <span>Clientes</span>',proveedores:'<span>Proveedores</span>',config:'<span>Configuración</span>',mapa:'Mapa <span>Mundial</span>',catalogo:'Base de <span>Precios</span>',inventario:'<span>Inventario</span>',mapasistema:'Mapa del <span>sistema</span>',contenido:'<span>Contenido</span> · Instagram',tiendaweb:'Tienda <span>web</span>'};
   const pt = document.getElementById('page-title'); if(pt) pt.innerHTML = titles[id]||id;
   if(id==='control') renderControl();
   if(id==='gonbelfin') renderGonbelFin();
@@ -10138,7 +10229,384 @@ function showPage(id, el){
   if(id==='inventario') invCargar();
   if(id==='mapasistema') msPintar();
   if(id==='contenido') ctCargar();
+  if(id==='tiendaweb') tnCargar();
   if(id==='whatsapp'){ waCargar(true); waIniciarPolling(); }
+}
+
+// ══════ ASISTENTE GONBEL (centro de mando) ══════
+// Junta en un solo lugar lo que hay que decidir: mensajes y acciones que deja preparadas el asistente
+// (tabla centro_alertas) + alertas que se calculan en vivo con los pedidos. Cada tipo de tarea tiene un
+// nivel de autonomía (centro_reglas): auto = lo hace solo y avisa, sugerido = queda listo para aprobar,
+// manual = solo Lucas (pagos, cancelaciones: bloqueado para siempre).
+let jvAlertas = [], jvReglasData = [], jvTabActual = 'pend', jvFiltro = null, jvSinTablas = false;
+const JV_PL = {ebay:'eBay', alibaba:'Alibaba', aliexpress:'AliExpress', ml:'Mercado Livre', whatsapp:'WhatsApp', tienda:'Tienda online', sistema:'Gonbel OS'};
+const JV_COL = {rojo:'var(--red)', amarillo:'var(--amber)', verde:'var(--green)'};
+const JV_NIV = {auto:'Automático', sugerido:'Sugerido', manual:'Solo vos'};
+
+function jvEsAdmin(){ return currentUser && currentUser.role === 'admin'; }
+function jvHace(f){
+  if(!f) return '';
+  const m = Math.round((Date.now() - new Date(f).getTime())/60000);
+  if(m < 60) return 'hace ' + Math.max(m,1) + ' min';
+  const h = Math.round(m/60); if(h < 24) return 'hace ' + h + ' h';
+  const d = Math.round(h/24); return 'hace ' + d + (d===1?' día':' días');
+}
+function jvDias(f){ return f ? Math.floor((Date.now() - new Date(f).getTime())/86400000) : 0; }
+
+// Alertas calculadas con los pedidos ya cargados en el sistema (no se guardan en la base)
+function jvAlertasPedidos(){
+  const out = [];
+  const nom = o => (o.numero_pedido || o.numero || ('#'+o.id)) + ' · ' + (o.cliente_nombre || 'sin cliente');
+  const veh = o => [o.marca, o.modelo, o['año']].filter(Boolean).join(' ');
+  (orders||[]).forEach(o=>{
+    if(o.archivado) return;
+    const venta = parseFloat(o.precio_venta)||0, pagado = parseFloat(o.valor_pagado)||0;
+    if(o.estado === 'aprobado'){
+      const d = jvDias(o.fecha_facturado || o.created_at);
+      if(d >= 2) out.push({_calc:true, order_id:o.id, prioridad:'rojo', plataforma:'sistema', tipo:'estado_pedido',
+        titulo:'Aprobado hace ' + d + ' días y sin comprar', detalle: nom(o) + (veh(o)?' — '+veh(o):''),
+        accion:'Comprar las piezas o avisar al cliente del plazo', created_at:o.fecha_facturado||o.created_at});
+    }
+    if(o.estado === 'comprado'){
+      const d = jvDias(o.fecha_pedido || o.created_at);
+      if(d > 10) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'estado_pedido',
+        titulo:'Comprado hace ' + d + ' días y todavía no llegó', detalle: nom(o) + (o.fecha_eta?' — llegada estimada '+o.fecha_eta:''),
+        accion:'Revisar el seguimiento y, si hace falta, reclamar al vendedor', created_at:o.fecha_pedido||o.created_at});
+    }
+    if(o.estado === 'listo-envio'){
+      const d = jvDias(o.fecha_eta || o.created_at);
+      if(d > 3) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'aviso_cliente',
+        titulo:'Listo para entregar y sin entregar', detalle: nom(o), accion:'Coordinar la entrega con el cliente', created_at:o.fecha_eta||o.created_at});
+    }
+    if(['comprado','listo-envio','entregado'].includes(o.estado) && o.flete_requerido && !(parseFloat(o.flete_courier_gs)>0)){
+      out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'costo_compra',
+        titulo:'Falta cargar el flete de EE. UU.', detalle: nom(o), accion:'Cargar el costo del courier para cerrar el margen real', created_at:o.created_at});
+    }
+    if(ESTADOS_VENTA.includes(o.estado)){
+      let items = []; try { items = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){}
+      const sinCosto = items.filter(x=>!(parseFloat(x.cb)>0)).length;
+      if(sinCosto) out.push({_calc:true, order_id:o.id, prioridad:'amarillo', plataforma:'sistema', tipo:'costo_compra',
+        titulo: sinCosto + (sinCosto===1?' pieza sin costo cargado':' piezas sin costo cargado'), detalle: nom(o), accion:'Cargar el costo real para que el margen sea correcto', created_at:o.created_at});
+    }
+    if(o.estado === 'entregado' && !o.pagado_completo && venta > 0 && venta - pagado > 0){
+      const d = jvDias(o.fecha_facturado || o.created_at);
+      out.push({_calc:true, order_id:o.id, prioridad: d > 7 ? 'rojo':'amarillo', plataforma:'sistema', tipo:'aviso_cliente',
+        titulo:'Entregado con saldo pendiente: Gs ' + fmtNum(venta - pagado), detalle: nom(o), accion:'Cobrar al cliente', created_at:o.fecha_facturado||o.created_at});
+    }
+  });
+  return out;
+}
+
+async function jvCargar(manual){
+  const box = document.getElementById('jv-lista'); if(!box) return;
+  try {
+    const desde = new Date(Date.now() - 36*3600000).toISOString();
+    const [al, rg] = await Promise.all([
+      sbFetch('/rest/v1/centro_alertas?select=*&or=(estado.in.(pendiente,aprobada,info),resuelta_en.gte.'+desde+')&order=created_at.desc&limit=300'),
+      sbFetch('/rest/v1/centro_reglas?select=*&order=orden.asc')
+    ]);
+    jvAlertas = al || []; jvReglasData = rg || []; jvSinTablas = false;
+  } catch(e){ jvAlertas = []; jvSinTablas = true; }
+  try {
+    const tp = await sbFetch('/rest/v1/tienda_pedidos?select=id,numero,cliente_nombre,total_gs,created_at,estado&estado=eq.nuevo&order=created_at.desc&limit=20');
+    (tp||[]).forEach(p=> jvAlertas.push({_calc:true, prioridad:'rojo', plataforma:'tienda', tipo:'aviso_cliente', estado:'pendiente',
+      titulo:'Pedido nuevo en la tienda ' + (p.numero||''), detalle:(p.cliente_nombre||'') + ' — Gs ' + fmtNum(p.total_gs||0),
+      accion:'Confirmar stock y plazo al cliente por WhatsApp', created_at:p.created_at}));
+  } catch(e){}
+  jvPintar();
+  if(manual) showToast('Asistente actualizado','success');
+}
+
+function jvLista(){
+  const calc = jvAlertasPedidos().map(a=>Object.assign({estado:'pendiente'}, a));
+  const todas = jvAlertas.concat(calc);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return {
+    pend: todas.filter(a=>a.estado==='pendiente' || a.estado==='info'),
+    apr: todas.filter(a=>a.estado==='aprobada'),
+    hecho: todas.filter(a=>(a.estado==='hecha') && a.resuelta_en && new Date(a.resuelta_en) >= hoy)
+  };
+}
+
+function jvPintar(){
+  const box = document.getElementById('jv-lista'); if(!box) return;
+  const L = jvLista();
+  ['rojo','amarillo','verde'].forEach(p=>{ const el=document.getElementById('jv-n-'+p); if(el) el.textContent = L.pend.filter(a=>a.prioridad===p).length; });
+  ['pend','apr','hecho'].forEach(t=>{ const el=document.getElementById('jv-tn-'+t); if(el) el.textContent = L[t].length ? '('+L[t].length+')' : ''; });
+  document.querySelectorAll('.jv-chip').forEach(c=>c.classList.toggle('on', c.dataset.p===jvFiltro));
+  document.querySelectorAll('.jv-tab').forEach(c=>c.classList.toggle('on', c.dataset.t===jvTabActual));
+  const sub = document.getElementById('jv-sub');
+  if(sub) sub.textContent = jvSinTablas ? 'Mostrando solo lo que sale de los pedidos (falta conectar la base del asistente)' : 'Qué hay que mirar y qué puedo hacer por vos';
+  const ord = {rojo:0, amarillo:1, verde:2};
+  let lista = L[jvTabActual].slice();
+  if(jvFiltro && jvTabActual==='pend') lista = lista.filter(a=>a.prioridad===jvFiltro);
+  lista.sort((a,b)=> (ord[a.prioridad]-ord[b.prioridad]) || (new Date(b.created_at)-new Date(a.created_at)));
+  if(!lista.length){
+    box.innerHTML = '<div class="jv-vacio">' + ({pend:'Nada para decidir. Todo en orden ✅', apr:'No hay mensajes aprobados esperando envío.', hecho:'Todavía no hice nada solo hoy.'}[jvTabActual]) + '</div>';
+    return;
+  }
+  const max = box.dataset.todo ? 999 : 12;
+  box.innerHTML = lista.slice(0,max).map(a=>jvItem(a)).join('') +
+    (lista.length > max ? '<button type="button" class="jv-more" onclick="document.getElementById(\'jv-lista\').dataset.todo=1;jvPintar()">Ver las '+(lista.length-max)+' restantes</button>' : '');
+}
+
+function jvItem(a){
+  const adm = jvEsAdmin();
+  const id = a.id;
+  let h = '<div class="jv-it"><div class="jv-bar" style="background:'+(JV_COL[a.prioridad]||'var(--blue)')+'"></div><div>';
+  h += '<div class="jv-top"><span class="jv-pl">'+esc(JV_PL[a.plataforma]||a.plataforma||'')+'</span><span class="jv-tt">'+esc(a.titulo)+'</span>';
+  if(a.nivel && !a._calc) h += '<span class="jv-nivel">'+esc(JV_NIV[a.nivel]||a.nivel)+'</span>';
+  h += '<span class="jv-when">'+jvHace(a.resuelta_en || a.created_at)+'</span></div>';
+  if(a.detalle) h += '<div class="jv-det">'+esc(a.detalle)+'</div>';
+  if(a.accion) h += '<div class="jv-acc">→ '+esc(a.accion)+'</div>';
+  if(a.estado==='hecha' && a.resultado) h += '<div class="jv-det" style="color:var(--green)">✓ '+esc(a.resultado)+'</div>';
+  if(a.texto_sugerido && a.estado==='pendiente' && adm) h += '<textarea class="jv-txt" id="jv-t-'+id+'">'+esc(a.texto_sugerido)+'</textarea>';
+  else if(a.texto_sugerido) h += '<div class="jv-det" style="border-left:2px solid var(--brda);padding-left:8px;margin-top:8px">'+esc(a.texto_sugerido)+'</div>';
+  const b = [];
+  if(!a._calc && a.estado==='pendiente' && adm){
+    if(a.texto_sugerido) b.push('<button type="button" class="btn jv-ok" onclick="jvAprobar('+id+')">✅ Aprobar y enviar</button>');
+    else b.push('<button type="button" class="btn jv-ok" onclick="jvHecho('+id+')">✓ Listo</button>');
+    b.push('<button type="button" class="btn btn-ghost" onclick="jvDescartar('+id+')">✕ Descartar</button>');
+  }
+  if(!a._calc && a.estado==='info' && adm) b.push('<button type="button" class="btn btn-ghost" onclick="jvHecho('+id+')">✓ Visto</button>');
+  if(!a._calc && a.estado==='aprobada' && adm) b.push('<button type="button" class="btn btn-ghost" onclick="jvVolver('+id+')">↩️ No enviar todavía</button>');
+  if(a.order_id) b.push('<button type="button" class="btn btn-ghost" onclick="openOrder('+a.order_id+')">📋 Abrir pedido</button>');
+  if(a.destino && a.destino.url) b.push('<a class="btn btn-ghost" style="height:30px;display:inline-flex;align-items:center" href="'+esc(a.destino.url)+'" target="_blank" rel="noopener">↗ Ver en '+esc(JV_PL[a.plataforma]||'la plataforma')+'</a>');
+  if(b.length) h += '<div class="jv-btns">'+b.join('')+'</div>';
+  if(a.estado==='aprobada') h += '<div class="jv-det" style="color:var(--t3);margin-top:6px">Se envía en el próximo control de compras.</div>';
+  return h + '</div></div>';
+}
+
+async function jvActualizar(id, cambios){
+  await sbFetch('/rest/v1/centro_alertas?id=eq.'+id, 'PATCH', cambios);
+  const a = jvAlertas.find(x=>x.id===id); if(a) Object.assign(a, cambios);
+  jvPintar();
+}
+async function jvSumarAprobacion(tipo){
+  const r = jvReglasData.find(x=>x.tipo===tipo); if(!r || r.bloqueada) return;
+  r.aprobaciones_ok = (r.aprobaciones_ok||0) + 1;
+  try { await sbFetch('/rest/v1/centro_reglas?tipo=eq.'+encodeURIComponent(tipo), 'PATCH', {aprobaciones_ok:r.aprobaciones_ok, updated_at:new Date().toISOString()}); } catch(e){}
+}
+async function jvAprobar(id){
+  const a = jvAlertas.find(x=>x.id===id); if(!a) return;
+  const ta = document.getElementById('jv-t-'+id);
+  const texto = ta ? ta.value.trim() : (a.texto_sugerido||'');
+  if(!texto){ showToast('El mensaje está vacío','error'); return; }
+  const editado = texto !== (a.texto_sugerido||'').trim();
+  const quien = (currentUser && currentUser.name) || 'Lucas';
+  try {
+    // Mercado Livre se envía al instante; el resto lo manda el asistente en el próximo control (Chrome)
+    if(a.plataforma==='ml' && a.destino && a.destino.nc){
+      const r = await fetch(ML_MSG + '?accion=enviar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nc:a.destino.nc, texto:texto.slice(0,350)})});
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || 'Mercado Livre no aceptó el mensaje');
+      await jvActualizar(id, {estado:'hecha', texto_sugerido:texto, resuelta_en:new Date().toISOString(), resuelta_por:quien, resultado:'Enviado por Mercado Livre'});
+      showToast('Mensaje enviado al vendedor','success');
+    } else {
+      await jvActualizar(id, {estado:'aprobada', texto_sugerido:texto, resuelta_en:new Date().toISOString(), resuelta_por:quien});
+      showToast('Aprobado: sale en el próximo control','success');
+    }
+    if(!editado) jvSumarAprobacion(a.tipo);
+  } catch(e){ showToast('No se pudo: ' + (e.message||e), 'error'); }
+}
+async function jvHecho(id){ try { await jvActualizar(id, {estado:'hecha', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||'', resultado: 'Marcado como resuelto'}); } catch(e){ showToast('No se pudo guardar','error'); } }
+async function jvDescartar(id){ try { await jvActualizar(id, {estado:'descartada', resuelta_en:new Date().toISOString(), resuelta_por:(currentUser&&currentUser.name)||''}); showToast('Descartado'); } catch(e){ showToast('No se pudo guardar','error'); } }
+async function jvVolver(id){ try { await jvActualizar(id, {estado:'pendiente', resuelta_en:null}); } catch(e){ showToast('No se pudo guardar','error'); } }
+function jvTab(t){ jvTabActual = t; delete document.getElementById('jv-lista').dataset.todo; jvPintar(); }
+function jvFiltroP(p){ jvFiltro = (jvFiltro===p) ? null : p; jvTabActual='pend'; jvPintar(); }
+
+function jvReglas(){
+  let ov = document.getElementById('jv-reg-ov');
+  if(!ov){
+    ov = document.createElement('div'); ov.id = 'jv-reg-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,10,20,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.onclick = e => { if(e.target===ov) ov.remove(); };
+    document.body.appendChild(ov);
+  }
+  const adm = jvEsAdmin();
+  const filas = jvReglasData.length ? jvReglasData.map(r=>{
+    const sug = (!r.bloqueada && r.nivel==='sugerido' && (r.aprobaciones_ok||0) >= 5)
+      ? '<small style="color:var(--green)">Aprobaste '+r.aprobaciones_ok+' sin cambios. ¿Lo pasamos a automático?</small>' : '';
+    const sel = r.bloqueada ? '<span class="jv-nivel">🔒 Solo vos</span>'
+      : (adm ? '<select onchange="jvCambiarNivel(\''+r.tipo+'\',this.value)">' + ['auto','sugerido','manual'].map(n=>'<option value="'+n+'"'+(n===r.nivel?' selected':'')+'>'+JV_NIV[n]+'</option>').join('') + '</select>'
+             : '<span class="jv-nivel">'+JV_NIV[r.nivel]+'</span>');
+    return '<div class="jv-reg"><div><b style="font-size:14px">'+esc(r.nombre)+'</b><small>'+esc(r.descripcion||'')+'</small>'+sug+'</div>'+sel+'</div>';
+  }).join('') : '<div class="jv-vacio">Las reglas se cargan cuando la base del asistente esté conectada.</div>';
+  ov.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--brda);border-radius:16px;max-width:620px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-family:\'Space Grotesk\',sans-serif;font-size:17px">⚙️ Qué hace solo el asistente</b><button type="button" onclick="document.getElementById(\'jv-reg-ov\').remove()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:22px;cursor:pointer">×</button></div>' +
+    '<div style="font-size:12.5px;color:var(--t2);margin-bottom:8px"><b>Automático:</b> lo hago y te aviso. <b>Sugerido:</b> lo dejo listo y vos aprobás. <b>Solo vos:</b> no lo toco. Pagos, cancelaciones y pagos fuera de la plataforma quedan siempre en tus manos.</div>' +
+    filas + '</div>';
+}
+async function jvCambiarNivel(tipo, nivel){
+  try {
+    await sbFetch('/rest/v1/centro_reglas?tipo=eq.'+encodeURIComponent(tipo), 'PATCH', {nivel, aprobaciones_ok:0, updated_at:new Date().toISOString()});
+    const r = jvReglasData.find(x=>x.tipo===tipo); if(r){ r.nivel = nivel; r.aprobaciones_ok = 0; }
+    showToast('Regla actualizada: ' + JV_NIV[nivel], 'success');
+    jvReglas();
+  } catch(e){ showToast('No se pudo cambiar la regla','error'); }
+}
+setInterval(()=>{ try { if(document.getElementById('page-control').classList.contains('active')) jvCargar(false); } catch(e){} }, 60000);
+
+// ══════ TIENDA WEB (administración) ══════
+// Productos con variantes, combos y compatibilidad por generación; vehículos; pedidos que entran desde la tienda.
+let TN = {tab:'prod', prods:[], cats:[], veh:[], ped:[], q:'', cols:{}};
+const TN_ORIGEN = {stock:'En stock', brasil:'Brasil', usa:'EE. UU.', europa:'Europa', china:'China'};
+function tnSlug(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function tnTasa(){ return (typeof BCP_USD!=='undefined' && BCP_USD>0) ? Math.round(BCP_USD)+50 : (TN.tasaCfg||0); }
+// La tienda calcula los precios en USD con la tasa guardada en tienda_config: se mantiene igual a BCP + 50.
+async function tnSyncTasa(){
+  try {
+    const c = await sbFetch('/rest/v1/tienda_config?select=valor&clave=eq.tasa_usd_gs');
+    TN.tasaCfg = c && c[0] ? +c[0].valor : 0;
+    const t = (typeof BCP_USD!=='undefined' && BCP_USD>0) ? Math.round(BCP_USD)+50 : 0;
+    if(t && t !== TN.tasaCfg){ await sbFetch('/rest/v1/tienda_config', 'POST', {clave:'tasa_usd_gs', valor:String(t), updated_at:new Date().toISOString()}, {'Prefer':'resolution=merge-duplicates'}); TN.tasaCfg = t; }
+  } catch(e){}
+}
+async function tnCargar(){
+  tnSyncTasa();
+  try {
+    const [p,c,v,pe] = await Promise.all([
+      sbFetch('/rest/v1/tienda_productos?select=*&order=created_at.desc'),
+      sbFetch('/rest/v1/tienda_categorias?select=*&order=orden.asc'),
+      sbFetch('/rest/v1/tienda_vehiculos?select=*&order=marca.asc,modelo.asc,anio_desde.asc'),
+      sbFetch('/rest/v1/tienda_pedidos?select=*&order=created_at.desc&limit=200')
+    ]);
+    TN.prods=p||[]; TN.cats=c||[]; TN.veh=v||[]; TN.ped=pe||[];
+    TN.cols = {variantes: TN.prods.length ? ('variantes' in TN.prods[0]) : true, generacion: TN.veh.length ? ('generacion' in TN.veh[0]) : true};
+  } catch(e){ document.getElementById('tn-body').innerHTML = '<div class="tn-aviso">No se pudo cargar la tienda: '+esc(e.message||e)+'</div>'; return; }
+  const nNuevos = TN.ped.filter(x=>x.estado==='nuevo').length;
+  const pn = document.getElementById('tn-ped-n'); if(pn) pn.textContent = nNuevos ? '('+nNuevos+')' : '';
+  const av = [];
+  if(!TN.cols.variantes || !TN.cols.generacion) av.push('Falta actualizar la base de la tienda para guardar variantes, combos y generaciones. Hasta entonces esos campos no se guardan.');
+  const ejemplos = TN.prods.filter(p=>!p.fuente || p.fuente==='ejemplo').length;
+  if(ejemplos && TN.prods.length <= 14) av.push('Los '+ejemplos+' productos cargados son de ejemplo, con precios inventados. Borralos o desactivalos antes de publicar la tienda.');
+  document.getElementById('tn-aviso').innerHTML = av.map(a=>'<div class="tn-aviso">⚠️ '+esc(a)+'</div>').join('');
+  tnPintar();
+}
+function tnTab(t){ TN.tab=t; document.querySelectorAll('.tn-tab').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); tnPintar(); }
+function tnPrecio(p){
+  if(p.tipo_precio==='fijo') return p.precio_gs ? 'Gs '+fmtNum(p.precio_gs) : '—';
+  if(p.tipo_precio==='ebay') return p.costo_usd ? 'USD '+p.costo_usd+' + '+(p.margen_pct||35)+'%' : '—';
+  return 'A cotizar';
+}
+function tnPintar(){
+  const b = document.getElementById('tn-body'); if(!b) return;
+  if(TN.tab==='prod'){
+    const q = TN.q.toLowerCase();
+    const l = TN.prods.filter(p=>!q || (p.nombre+' '+(p.marca||'')+' '+(p.oem||'')).toLowerCase().includes(q));
+    b.innerHTML = '<div class="tn-bar"><input placeholder="Buscar producto…" value="'+esc(TN.q)+'" oninput="TN.q=this.value;tnPintar();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="flex:1;min-width:180px"><button type="button" class="btn btn-primary" onclick="tnEditar()">+ Nuevo producto</button></div>' +
+      (l.length ? l.map(p=>{ const im=(p.imagenes||[])[0]; const c=TN.cats.find(x=>x.id===p.categoria_id); const nv=(p.variantes||[]).length;
+        return '<div class="tn-row" onclick="tnEditar(\''+p.id+'\')"><div class="tn-th" style="'+(im?'background-image:url('+esc(im)+')':'')+'">'+(im?'':'📦')+'</div><div><b>'+esc(p.nombre)+'</b><small>'+esc([c&&c.nombre, p.marca, TN_ORIGEN[p.origen]||p.origen, nv?nv+' variantes':'', p.universal?'Universal':((p.compat||[]).length+' vehículos')].filter(Boolean).join(' · '))+'</small></div><div style="font-weight:600">'+tnPrecio(p)+'</div><div style="display:flex;gap:4px">'+(p.destacado?'<span class="tn-pill on">Destacado</span>':'')+'<span class="tn-pill'+(p.activo?' on':'')+'">'+(p.activo?'Publicado':'Oculto')+'</span></div></div>'; }).join('')
+       : '<div style="color:var(--t3);padding:20px;text-align:center">No hay productos.</div>');
+  }
+  if(TN.tab==='veh'){
+    b.innerHTML = '<div class="tn-bar"><span style="color:var(--t3);font-size:13px">Cada fila es una generación: aparece en el menú "Por vehículo" y tiene su propia página en la tienda.</span><button type="button" class="btn btn-primary" style="margin-left:auto" onclick="tnVeh()">+ Agregar vehículo</button></div>' +
+      TN.veh.map(v=>'<div class="tn-row" onclick="tnVeh(\''+v.id+'\')"><div class="tn-th" style="'+(v.imagen_base?'background-image:url('+esc(v.imagen_base)+')':'')+'">'+(v.imagen_base?'':'🚗')+'</div><div><b>'+esc(v.marca+' '+v.modelo+' '+(v.generacion||''))+'</b><small>'+(v.anio_desde||'')+(v.anio_hasta?' – '+v.anio_hasta:'')+' · '+TN.prods.filter(p=>tnLeQueda(p,v)).length+' productos</small></div><div></div><div><span class="tn-pill'+(v.activo?' on':'')+'">'+(v.activo?'Visible':'Oculto')+'</span></div></div>').join('');
+  }
+  if(TN.tab==='ped'){
+    const E = {nuevo:'🆕 Nuevo', confirmado:'✅ Confirmado', pagado:'💵 Pagado', entregado:'📦 Entregado', cancelado:'✕ Cancelado'};
+    b.innerHTML = TN.ped.length ? TN.ped.map(p=>{
+      const it = Array.isArray(p.items) ? p.items : [];
+      const tel = String(p.telefono||'').replace(/\D/g,'').replace(/^0/,'595');
+      return '<div class="tn-row" style="cursor:default;grid-template-columns:1fr auto"><div><b>'+esc(p.numero||'')+' · '+esc(p.cliente_nombre||'')+'</b> <span class="tn-pill">'+esc(p.tipo_cliente||'')+'</span><small>'+esc(new Date(p.created_at).toLocaleString('es-PY'))+' · '+esc(p.ciudad||'')+(p.vehiculo?' · '+esc(p.vehiculo):'')+'</small><small style="color:var(--t2);margin-top:4px">'+it.map(i=>esc((i.cantidad||1)+' × '+i.nombre+(i.variante?' ('+i.variante+')':''))).join('<br>')+'</small>'+(p.notas?'<small>'+esc(p.notas)+'</small>':'')+'</div>' +
+        '<div style="text-align:right"><b>Gs '+fmtNum(p.total_gs||0)+'</b><div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end;flex-wrap:wrap"><select onchange="tnPedEstado(\''+p.id+'\',this.value)" style="background:var(--bg);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:5px">'+Object.keys(E).map(k=>'<option value="'+k+'"'+(p.estado===k?' selected':'')+'>'+E[k]+'</option>').join('')+'</select>'+(tel?'<a class="btn btn-ghost" style="height:30px;display:inline-flex;align-items:center" target="_blank" rel="noopener" href="https://wa.me/'+tel+'">💬</a>':'')+'</div></div></div>';
+    }).join('') : '<div style="color:var(--t3);padding:20px;text-align:center">Todavía no entró ningún pedido desde la tienda.</div>';
+  }
+}
+function tnLeQueda(p, v){
+  if(p.universal) return true;
+  return (p.compat||[]).some(x=>{
+    if(x.vehiculo_id) return x.vehiculo_id===v.id;
+    if((x.marca||'').toLowerCase()!==(v.marca||'').toLowerCase() || (x.modelo||'').toLowerCase()!==(v.modelo||'').toLowerCase()) return false;
+    return (x.desde||0) <= (v.anio_hasta||9999) && (x.hasta||9999) >= (v.anio_desde||0);
+  });
+}
+async function tnPedEstado(id, estado){ try { await sbFetch('/rest/v1/tienda_pedidos?id=eq.'+id, 'PATCH', {estado, updated_at:new Date().toISOString()}); const p=TN.ped.find(x=>x.id===id); if(p) p.estado=estado; showToast('Pedido actualizado','success'); } catch(e){ showToast('No se pudo','error'); } }
+
+/* editor de producto */
+let TNE = null;
+function tnEditar(id){
+  const p = id ? JSON.parse(JSON.stringify(TN.prods.find(x=>x.id===id))) : {nombre:'', tipo_precio:'fijo', origen:'stock', margen_pct:35, envio_usd:0, imagenes:[], compat:[], variantes:[], combo:{ids:[], descuento_pct:10}, activo:false, destacado:false, universal:false, tags:[]};
+  p.variantes = p.variantes || []; p.combo = p.combo || {ids:[], descuento_pct:10}; p.compat = p.compat || []; p.imagenes = p.imagenes || [];
+  TNE = p; tnModal();
+}
+function tnModal(){
+  const p = TNE; let ov = document.getElementById('tn-ov');
+  if(!ov){ ov = document.createElement('div'); ov.id='tn-ov'; ov.className='tn-ov'; document.body.appendChild(ov); }
+  const t = tnTasa();
+  const calc = p.tipo_precio==='ebay' && p.costo_usd && t ? Math.round(((+p.costo_usd)+(+p.envio_usd||0))*(1+(+p.margen_pct||35)/100)*t/1000)*1000 : 0;
+  const vehOpts = '<option value="">Elegí vehículo…</option>' + TN.veh.map(v=>'<option value="'+v.id+'">'+esc(v.marca+' '+v.modelo+' '+(v.generacion||'')+' '+(v.anio_desde||'')+'–'+(v.anio_hasta||''))+'</option>').join('');
+  let h = '<div class="tn-md"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><b style="font-family:\'Space Grotesk\',sans-serif;font-size:18px">'+(p.id?'Editar producto':'Nuevo producto')+'</b><button type="button" onclick="document.getElementById(\'tn-ov\').remove()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:24px;cursor:pointer">×</button></div>';
+  h += '<div class="tn-f"><label class="w3">Nombre<input value="'+esc(p.nombre)+'" oninput="TNE.nombre=this.value"></label>';
+  h += '<label>Categoría<select onchange="TNE.categoria_id=this.value">'+'<option value="">—</option>'+TN.cats.map(c=>'<option value="'+c.id+'"'+(c.id===p.categoria_id?' selected':'')+'>'+esc(c.nombre)+'</option>').join('')+'</select></label>';
+  h += '<label>Marca<input value="'+esc(p.marca||'')+'" oninput="TNE.marca=this.value"></label><label>Código OEM / pieza<input value="'+esc(p.oem||'')+'" oninput="TNE.oem=this.value"></label>';
+  h += '<label>Origen<select onchange="TNE.origen=this.value;if(this.value===\'stock\')TNE.dias_entrega=0">'+Object.keys(TN_ORIGEN).map(k=>'<option value="'+k+'"'+(p.origen===k?' selected':'')+'>'+TN_ORIGEN[k]+'</option>').join('')+'</select></label>';
+  h += '<label>Días de entrega (máx.)<input type="number" value="'+esc(p.dias_entrega==null?'':p.dias_entrega)+'" oninput="TNE.dias_entrega=this.value===\'\'?null:+this.value"></label></div>';
+  h += '<div class="tn-sec">Precio</div><div class="tn-f"><label>Tipo<select onchange="TNE.tipo_precio=this.value;tnModal()"><option value="fijo"'+(p.tipo_precio==='fijo'?' selected':'')+'>Precio fijo en Gs</option><option value="ebay"'+(p.tipo_precio==='ebay'?' selected':'')+'>Costo USD + margen</option><option value="cotizar"'+(p.tipo_precio==='cotizar'?' selected':'')+'>A cotizar</option></select></label>';
+  if(p.tipo_precio==='fijo') h += '<label>Precio (Gs)<input type="number" value="'+esc(p.precio_gs||'')+'" oninput="TNE.precio_gs=+this.value||null"></label>';
+  if(p.tipo_precio==='ebay') h += '<label>Costo (USD)<input type="number" value="'+esc(p.costo_usd||'')+'" oninput="TNE.costo_usd=+this.value||null" onchange="tnModal()"></label><label>Flete (USD)<input type="number" value="'+esc(p.envio_usd||0)+'" oninput="TNE.envio_usd=+this.value||0" onchange="tnModal()"></label><label>Margen %<input type="number" value="'+esc(p.margen_pct||35)+'" oninput="TNE.margen_pct=+this.value" onchange="tnModal()"></label><label>Precio que ve el cliente<input disabled value="'+(calc?'Gs '+fmtNum(calc):'—')+'"></label>';
+  h += '</div>';
+  h += '<div class="tn-sec">Variantes (acabado, color, medida…)</div><div style="font-size:12px;color:var(--t3);margin-bottom:6px">Si una variante tiene otro precio, ponelo; si lo dejás vacío usa el precio del producto.</div>';
+  h += p.variantes.map((v,i)=>'<div class="tn-mini" style="grid-template-columns:1fr 1.3fr 1fr 1fr auto"><input placeholder="Grupo (ej. Acabado)" value="'+esc(v.grupo||'')+'" oninput="TNE.variantes['+i+'].grupo=this.value"><input placeholder="Nombre (ej. Negro brillante)" value="'+esc(v.nombre||'')+'" oninput="TNE.variantes['+i+'].nombre=this.value"><input type="number" placeholder="Precio Gs" value="'+esc(v.precio_gs||'')+'" oninput="TNE.variantes['+i+'].precio_gs=+this.value||null"><input type="number" placeholder="o costo USD" value="'+esc(v.costo_usd||'')+'" oninput="TNE.variantes['+i+'].costo_usd=+this.value||null"><button type="button" class="tn-x" onclick="TNE.variantes.splice('+i+',1);tnModal()">×</button></div>').join('');
+  h += '<button type="button" class="btn btn-ghost" style="height:30px" onclick="TNE.variantes.push({grupo:(TNE.variantes[0]||{}).grupo||\'Acabado\',nombre:\'\'});tnModal()">+ Variante</button>';
+  h += '<div class="tn-sec">Le queda a</div><label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-bottom:8px"><input type="checkbox" '+(p.universal?'checked':'')+' onchange="TNE.universal=this.checked;tnModal()"> Universal (le queda a casi todos)</label>';
+  if(!p.universal){
+    h += p.compat.map((c,i)=>'<div class="tn-mini" style="grid-template-columns:1fr 1fr .8fr .6fr .6fr auto"><input placeholder="Marca" value="'+esc(c.marca||'')+'" oninput="TNE.compat['+i+'].marca=this.value"><input placeholder="Modelo" value="'+esc(c.modelo||'')+'" oninput="TNE.compat['+i+'].modelo=this.value"><input placeholder="Generación" value="'+esc(c.generacion||'')+'" oninput="TNE.compat['+i+'].generacion=this.value"><input type="number" placeholder="Desde" value="'+esc(c.desde||'')+'" oninput="TNE.compat['+i+'].desde=+this.value||null"><input type="number" placeholder="Hasta" value="'+esc(c.hasta||'')+'" oninput="TNE.compat['+i+'].hasta=+this.value||null"><button type="button" class="tn-x" onclick="TNE.compat.splice('+i+',1);tnModal()">×</button></div>').join('');
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><select id="tn-addveh" style="background:var(--bg);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:6px">'+vehOpts+'</select><button type="button" class="btn btn-ghost" style="height:30px" onclick="tnAddVeh()">+ Agregar este</button><button type="button" class="btn btn-ghost" style="height:30px" onclick="TNE.compat.push({});tnModal()">+ Escribir a mano</button></div>';
+    h += '<div style="font-size:12px;color:var(--amber);margin-top:6px">Cargá solo compatibilidades confirmadas. Igual se verifica con el chasis antes de comprar.</div>';
+  }
+  h += '<div class="tn-sec">Fotos</div><div class="tn-imgs">'+p.imagenes.map((u,i)=>'<div style="background-image:url('+esc(u)+')"><button type="button" onclick="TNE.imagenes.splice('+i+',1);tnModal()">×</button></div>').join('')+'</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><label class="btn btn-ghost" style="height:32px;display:inline-flex;align-items:center;cursor:pointer">📷 Subir fotos<input type="file" accept="image/*" multiple style="display:none" onchange="tnSubir(this.files)"></label><input id="tn-url" placeholder="o pegá el link de una foto" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--brda);border-radius:8px;color:var(--t1);padding:6px 8px"><button type="button" class="btn btn-ghost" style="height:32px" onclick="const u=document.getElementById(\'tn-url\').value.trim();if(u){TNE.imagenes.push(u);tnModal()}">Agregar</button></div><div style="font-size:12px;color:var(--t3);margin-top:4px">La primera es la principal; la segunda aparece al pasar el mouse.</div>';
+  h += '<div class="tn-sec">Combo "Llevalo junto"</div><div class="tn-mini" style="grid-template-columns:1fr 120px"><select id="tn-addcombo" style="background:var(--bg);color:var(--t1);border:1px solid var(--brda);border-radius:8px;padding:6px" onchange="if(this.value){TNE.combo.ids.push(this.value);tnModal()}"><option value="">Agregar producto al combo…</option>'+TN.prods.filter(x=>x.id!==p.id && !p.combo.ids.includes(x.id)).map(x=>'<option value="'+x.id+'">'+esc(x.nombre)+'</option>').join('')+'</select><input type="number" placeholder="% desc." value="'+esc(p.combo.descuento_pct||'')+'" oninput="TNE.combo.descuento_pct=+this.value||0"></div>' + p.combo.ids.map((cid,i)=>{ const c=TN.prods.find(x=>x.id===cid); return c?'<div style="font-size:13.5px;display:flex;gap:8px;align-items:center;padding:4px 0">• '+esc(c.nombre)+'<button type="button" class="tn-x" onclick="TNE.combo.ids.splice('+i+',1);tnModal()">×</button></div>':''; }).join('');
+  h += '<div class="tn-sec">Descripción</div><textarea style="width:100%;min-height:100px;background:var(--bg);border:1px solid var(--brda);border-radius:9px;color:var(--t1);padding:9px;font:13.5px/1.5 Inter,sans-serif" oninput="TNE.descripcion=this.value">'+esc(p.descripcion||'')+'</textarea>';
+  h += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin:12px 0;font-size:13.5px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" '+(p.activo?'checked':'')+' onchange="TNE.activo=this.checked"> Publicado en la tienda</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" '+(p.destacado?'checked':'')+' onchange="TNE.destacado=this.checked"> Destacado</label></div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap">'+(p.id?'<button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="tnBorrar()">🗑 Borrar</button>':'')+'<button type="button" class="btn btn-primary" style="margin-left:auto" onclick="tnGuardar()">Guardar</button></div></div>';
+  ov.innerHTML = h;
+}
+function tnAddVeh(){ const id = document.getElementById('tn-addveh').value; const v = TN.veh.find(x=>x.id===id); if(!v) return; TNE.compat.push({marca:v.marca, modelo:v.modelo, generacion:v.generacion||null, desde:v.anio_desde, hasta:v.anio_hasta, vehiculo_id:v.id}); tnModal(); }
+async function tnSubir(files){
+  for(const f of files){
+    try {
+      const blob = (typeof foComprimir==='function') ? await foComprimir(f) : f;
+      const path = 'productos/' + Date.now() + '_' + tnSlug(f.name.replace(/\.[^.]+$/,'')) + '.jpg';
+      const r = await fetch(SB_URL + '/storage/v1/object/tienda-imagenes/' + path, {method:'POST', headers:{apikey:SB_KEY, Authorization:headers.Authorization, 'Content-Type':'image/jpeg'}, body:blob});
+      if(!r.ok) throw new Error(await r.text());
+      TNE.imagenes.push(SB_URL + '/storage/v1/object/public/tienda-imagenes/' + path);
+    } catch(e){ showToast('No se pudo subir '+f.name,'error'); }
+  }
+  tnModal();
+}
+async function tnGuardar(){
+  const p = TNE;
+  if(!p.nombre || !p.nombre.trim()){ showToast('Falta el nombre','error'); return; }
+  p.variantes = (p.variantes||[]).filter(v=>v.nombre && v.nombre.trim());
+  p.compat = (p.compat||[]).filter(c=>c.marca && c.modelo);
+  const fila = {nombre:p.nombre.trim(), slug:p.slug || tnSlug(p.nombre)+'-'+Date.now().toString(36).slice(-4), descripcion:p.descripcion||null, categoria_id:p.categoria_id||null, marca:p.marca||null, tipo_precio:p.tipo_precio, precio_gs:p.precio_gs||null, costo_usd:p.costo_usd||null, envio_usd:p.envio_usd||0, margen_pct:p.margen_pct||35, origen:p.origen, dias_entrega:p.dias_entrega, imagenes:p.imagenes, compat:p.compat, universal:!!p.universal, destacado:!!p.destacado, activo:!!p.activo, fuente:p.fuente && p.fuente!=='ejemplo' ? p.fuente : 'manual', updated_at:new Date().toISOString()};
+  if(TN.cols.variantes){ fila.variantes = p.variantes; fila.combo = p.combo; fila.oem = p.oem||null; }
+  try {
+    if(p.id) await sbFetch('/rest/v1/tienda_productos?id=eq.'+p.id, 'PATCH', fila);
+    else await sbFetch('/rest/v1/tienda_productos', 'POST', fila);
+    document.getElementById('tn-ov').remove(); showToast('Producto guardado','success'); tnCargar();
+  } catch(e){ showToast('No se pudo guardar: '+String(e.message||e).slice(0,120),'error'); }
+}
+async function tnBorrar(){
+  if(!confirm('¿Borrar "'+TNE.nombre+'" de la tienda?')) return;
+  try { await sbFetch('/rest/v1/tienda_productos?id=eq.'+TNE.id, 'DELETE'); document.getElementById('tn-ov').remove(); showToast('Producto borrado'); tnCargar(); } catch(e){ showToast('No se pudo borrar','error'); }
+}
+/* editor de vehículo */
+function tnVeh(id){
+  const v = id ? Object.assign({}, TN.veh.find(x=>x.id===id)) : {marca:'', modelo:'', generacion:'', anio_desde:null, anio_hasta:null, activo:true};
+  window.TNV = v;
+  let ov = document.getElementById('tn-ov'); if(!ov){ ov=document.createElement('div'); ov.id='tn-ov'; ov.className='tn-ov'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div class="tn-md" style="max-width:560px"><div style="display:flex;align-items:center;margin-bottom:12px"><b style="font-size:18px">'+(v.id?'Editar vehículo':'Nuevo vehículo')+'</b><button type="button" onclick="document.getElementById(\'tn-ov\').remove()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:24px;cursor:pointer">×</button></div>' +
+    '<div class="tn-f"><label>Marca<input value="'+esc(v.marca)+'" oninput="TNV.marca=this.value"></label><label>Modelo<input value="'+esc(v.modelo)+'" oninput="TNV.modelo=this.value" placeholder="Clase C"></label><label>Generación<input value="'+esc(v.generacion||'')+'" oninput="TNV.generacion=this.value" placeholder="W204"></label><label>Desde (año)<input type="number" value="'+esc(v.anio_desde||'')+'" oninput="TNV.anio_desde=+this.value||null"></label><label>Hasta (año)<input type="number" value="'+esc(v.anio_hasta||'')+'" oninput="TNV.anio_hasta=+this.value||null"></label><label class="w3">Foto (link)<input value="'+esc(v.imagen_base||'')+'" oninput="TNV.imagen_base=this.value" placeholder="https://…"></label></div>' +
+    '<label style="display:flex;gap:6px;align-items:center;font-size:13.5px;margin-bottom:12px"><input type="checkbox" '+(v.activo?'checked':'')+' onchange="TNV.activo=this.checked"> Visible en la tienda</label><div style="display:flex"><button type="button" class="btn btn-primary" style="margin-left:auto" onclick="tnVehGuardar()">Guardar</button></div></div>';
+}
+async function tnVehGuardar(){
+  const v = window.TNV; if(!v.marca || !v.modelo){ showToast('Falta marca o modelo','error'); return; }
+  const fila = {marca:v.marca.trim(), modelo:v.modelo.trim(), anio_desde:v.anio_desde, anio_hasta:v.anio_hasta, imagen_base:v.imagen_base||null, activo:!!v.activo};
+  if(TN.cols.generacion){ fila.generacion = (v.generacion||'').trim() || null; fila.slug = tnSlug([fila.marca, fila.modelo, fila.generacion, fila.anio_desde].filter(Boolean).join(' ')); }
+  try { if(v.id) await sbFetch('/rest/v1/tienda_vehiculos?id=eq.'+v.id, 'PATCH', fila); else await sbFetch('/rest/v1/tienda_vehiculos', 'POST', fila); document.getElementById('tn-ov').remove(); showToast('Vehículo guardado','success'); tnCargar(); }
+  catch(e){ showToast('No se pudo guardar','error'); }
 }
 
 // ══════ MAPA DEL SISTEMA ══════
@@ -12081,6 +12549,7 @@ function cotizacionUSD(){
 }
 
 function renderControl(){
+  try { if(!window._jvIni){ window._jvIni = 1; jvCargar(false); } else jvPintar(); } catch(e){ console.error(e); }
   try { renderDevoluciones(); } catch(e){ console.error(e); }
   renderExterior();
   const activos = orders.filter(o=>ACTIVOS.includes(o.estado)).length;
