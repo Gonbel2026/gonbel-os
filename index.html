@@ -3039,17 +3039,17 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="modal-sec-title">🚗 Datos del Vehículo</div>
       <div id="vp-picker" class="vp-wrap" style="display:none;"></div>
       <div class="form-grid cols3">
-        <div class="field"><label>Marca</label><input id="f-marca" data-sug="dl-marcas" autocomplete="off" placeholder="Toyota, Ford… o escribila si no está" onchange="this.value=vehMarcaCanon(this.value);crSyncDesdeAbajo();crLlenarModelos()"></div>
-        <div class="field"><label>Modelo</label><input id="f-modelo" data-sug="dl-modelos" autocomplete="off" placeholder="Hilux, Ranger..." onchange="crSyncDesdeAbajo()"></div>
-        <div class="field"><label>Año</label><input id="f-año" placeholder="2019" onchange="crSyncDesdeAbajo()"></div>
         <div class="field full">
-          <label>VIN / Chasis <span id="vin-count" class="vin-count" style="color:var(--t3);"></span></label>
+          <label>VIN / Chasis <span style="color:var(--t3);font-weight:400">(opcional · 17 caracteres)</span> <span id="vin-count" class="vin-count" style="color:var(--t3);"></span></label>
           <div style="display:flex;gap:8px;">
             <input id="f-vin" placeholder="Ej: 9BWZZZ377VT004251" style="flex:1;text-transform:uppercase;letter-spacing:.06em;" oninput="vinInput(this)">
             <button type="button" class="btn btn-ghost" onclick="decodeVin()" style="flex-shrink:0;height:40px;" title="Decodificar chasis">🔎 Decodificar</button>
           </div>
           <div id="vin-box" class="vin-box"></div>
         </div>
+        <div class="field"><label>Marca</label><input id="f-marca" data-sug="dl-marcas" autocomplete="off" placeholder="Toyota, Ford… o escribila si no está" onchange="this.value=vehMarcaCanon(this.value);crSyncDesdeAbajo();crLlenarModelos()"></div>
+        <div class="field"><label>Modelo</label><input id="f-modelo" data-sug="dl-modelos" autocomplete="off" placeholder="Hilux, Ranger..." onchange="crSyncDesdeAbajo()"></div>
+        <div class="field"><label>Año</label><input id="f-año" placeholder="2019" onchange="crSyncDesdeAbajo()"></div>
         <div class="field full"><label>Motor / Versión</label><input id="f-motor" placeholder="2.8 TDCI, 2TR-FE..."></div>
       </div>
       <div style="margin-top:12px;">
@@ -8660,7 +8660,7 @@ function renderCard(o, colorClass){
   }
 
   const venta = o.precio_venta ? 'Gs '+fmtNum(o.precio_venta) : '';
-  const fecha = o.created_at ? new Date(o.created_at).toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'}) : '';
+  const fecha = o.created_at ? new Date(o.created_at).toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'}) + ' ' + new Date(o.created_at).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) : '';
 
   // Reloj de espera: solo en las etapas donde el cliente está esperando una respuesta nuestra.
   // Los datos son claros: de 29 presupuestos que tardaron más de 24h, ninguno se cerró.
@@ -8687,7 +8687,7 @@ function renderCard(o, colorClass){
     ${piezaPrincipal ? `<div class="card-piece">${piezaPrincipal}</div>` : ''}
     ${cardTimelineHTML(items)}
     <div class="card-footer">
-      ${venta ? `<span class="card-price">${venta}</span>` : `<span class="card-date">${fecha}</span>`}
+      ${venta ? `<span class="card-price">${venta}</span>` : ''}${fecha ? `<span class="card-date" title="Hora de carga">🕒 ${fecha}</span>` : ''}
       ${espera ? `<span class="card-espera" style="color:${espera.color};background:${espera.bg};">${espera.txt}</span>` : ''}
       ${items.length ? `<span class="card-piezas-n">${items.length} pieza${items.length===1?'':'s'}</span>` : ''}
       ${(()=>{ const nf = fotosPorPedido[String(o.id)] || 0;
@@ -8970,7 +8970,7 @@ function fillModal(o){
   document.getElementById('modal-num').textContent = o.numero || '#C???';
   document.getElementById('modal-title').value = o.titulo || '';
   document.getElementById('modal-estado').value = o.estado || 'entrante';
-  document.getElementById('modal-fecha-tag').textContent = o.created_at ? new Date(o.created_at).toLocaleDateString('es-PY') : '';
+  document.getElementById('modal-fecha-tag').textContent = o.created_at ? ('🕒 Cargado ' + new Date(o.created_at).toLocaleDateString('es-PY') + ' ' + new Date(o.created_at).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})) : '';
   if(o.id) pintarLineaTiempo(o.id);
   crCargarDesdePedido(o);
   // Fill client ID field if client is in DB
@@ -10302,8 +10302,8 @@ async function jvCargar(manual){
       sbFetch('/rest/v1/centro_alertas?select=*&or=(estado.in.(pendiente,aprobada,info),resuelta_en.gte.'+desde+')&order=created_at.desc&limit=300'),
       sbFetch('/rest/v1/centro_reglas?select=*&order=orden.asc')
     ]);
-    // Los avisos informativos de más de 4 días ya no se muestran
-    jvAlertas = (al||[]).filter(a=> !(a.estado==='info' && jvDias(a.created_at) > 4));
+    // Los avisos informativos de más de 24 h ya no se muestran (cada control horario limpia lo resuelto)
+    jvAlertas = (al||[]).filter(a=> !(a.estado==='info' && (Date.now() - new Date(a.created_at).getTime()) > 24*3600000));
     jvReglasData = rg || []; jvSinTablas = false;
   } catch(e){ jvAlertas = []; jvSinTablas = true; }
   try {
