@@ -4732,6 +4732,10 @@ function pegarML(){
   renderPiezasItems();
   showToast('🛒 Compra registrada en "'+(it.d||'pieza '+(idx+1))+'"','success');
 }
+// Precio unitario de la pieza (pu). El total de la línea (p) = pu × cantidad.
+function pzUnit(it){ const q=parseInt(it.q,10)||1; if(parseFloat(it.pu)>0) return parseFloat(it.pu); const p=parseFloat(it.p)||0; return q>1?Math.round(p/q):p; }
+function pzSetUnit(i,v){ const it=piezasItems[i]; it.pu=v; const q=parseInt(it.q,10)||1; it.p=v*q; }
+function pzSetQty(i,n){ const it=piezasItems[i]; const u=pzUnit(it); it.q=Math.max(1,n||1); if(u>0){ it.pu=u; it.p=u*it.q; } }
 // Cuando una pieza lleva mas de una unidad, se muestra el calculo debajo
 function pintarResumenPieza(i){
   const it = piezasItems[i];
@@ -4740,9 +4744,8 @@ function pintarResumenPieza(i){
   const q = parseInt(it.q,10) || 1;
   const p = parseFloat(it.p) || 0;
   if(q > 1 && p > 0){
-    // El precio es el total de la línea (la cantidad no lo multiplica)
     el.style.display = 'block';
-    el.innerHTML = q + ' unidades — total de la línea: <b style="color:var(--t1)">Gs ' + fmtNum(p) + '</b>';
+    el.innerHTML = q + ' × Gs ' + fmtNum(pzUnit(it)) + ' = total de la línea: <b style="color:var(--t1)">Gs ' + fmtNum(p) + '</b>';
   } else {
     el.style.display = 'none';
     el.innerHTML = '';
@@ -4780,8 +4783,9 @@ function pzQtyMenu(i,btn){
   m.addEventListener('click',e=>{
     const b=e.target.closest('button'); if(!b) return;
     const n=parseInt(b.dataset.n,10);
-    piezasItems[i].q=n;
+    pzSetQty(i,n);
     const inp=document.getElementById('pz-q-'+i); if(inp) inp.value=n;
+    const pin=document.getElementById('pz-pu-'+i); if(pin && piezasItems[i].pu) pin.value=Number(piezasItems[i].pu).toLocaleString('de-DE');
     calcPiezasTotal(); pintarResumenPieza(i); m.remove();
   });
   box.appendChild(m);
@@ -4795,8 +4799,8 @@ function renderPiezasItems(){
       <div class="pz-l1">
         <label class="pz-f pz-f-desc"><span>Pieza</span><input type="text" placeholder="Descripción de la pieza" value="${(it.d||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].d=this.value"></label>
         <label class="pz-f pz-f-cond"><span>Condición</span><input type="text" list="dl-condicion" title="Condición de la pieza (para el presupuesto)" placeholder="Nuevo / Usado…" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value"></label>
-        <div class="pz-f pz-f-cant"><span>Cantidad</span><div class="pz-qty"><input type="text" inputmode="numeric" id="pz-q-${i}" title="Cantidad — escribí o elegí con la flechita" value="${parseInt(it.q,10)>1?parseInt(it.q,10):1}" onfocus="this.select()" oninput="this.value=this.value.replace(/[^0-9]/g,'');piezasItems[${i}].q=Math.max(1,parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})" onblur="if(!this.value||this.value==='0')this.value=1"><button type="button" class="pz-qty-arr" title="Elegir cantidad" onclick="pzQtyMenu(${i},this)">▾</button></div></div>
-        <label class="pz-f pz-f-precio"><span>Precio venta (total)</span><input type="text" inputmode="numeric" placeholder="Gs" value="${it.p?Number(it.p).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);piezasItems[${i}].p=parseFloat((this.value||'').replace(/[^\d]/g,''))||0;calcPiezasTotal()"></label>
+        <div class="pz-f pz-f-cant"><span>Cantidad</span><div class="pz-qty"><input type="text" inputmode="numeric" id="pz-q-${i}" title="Cantidad — escribí o elegí con la flechita" value="${parseInt(it.q,10)>1?parseInt(it.q,10):1}" onfocus="this.select()" oninput="this.value=this.value.replace(/[^0-9]/g,'');pzSetQty(${i},parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})" onblur="if(!this.value||this.value==='0')this.value=1"><button type="button" class="pz-qty-arr" title="Elegir cantidad" onclick="pzQtyMenu(${i},this)">▾</button></div></div>
+        <label class="pz-f pz-f-precio"><span>Precio venta (unitario)</span><input type="text" inputmode="numeric" id="pz-pu-${i}" placeholder="Gs" value="${pzUnit(it)?Number(pzUnit(it)).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);pzSetUnit(${i},parseFloat((this.value||'').replace(/[^\d]/g,''))||0);calcPiezasTotal();pintarResumenPieza(${i})"></label>
       </div>
       <div class="pz-l2">
         <div class="pz-estados">
@@ -4813,7 +4817,7 @@ function renderPiezasItems(){
           <button type="button" class="pz-btn" title="Quitar" onclick="delPiezaRow(${i})">✕</button>
         </div>
       </div>
-      <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' unidades — total de la línea: <b style="color:var(--t1)">Gs '+Number(it.p).toLocaleString('de-DE')+'</b>'):''}</div>
+      <div id="pz-cant-${i}" style="display:${(it.q>1 && it.p)?'block':'none'};font-size:11.5px;color:var(--t3);margin-top:6px;">${(it.q>1 && it.p)?(it.q+' × Gs '+Number(pzUnit(it)).toLocaleString('de-DE')+' = total de la línea: <b style="color:var(--t1)">Gs '+Number(it.p).toLocaleString('de-DE')+'</b>'):''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;">
         <button type="button" class="pz-btn" style="width:auto;padding:0 12px;font-size:11px;font-weight:600;" onclick="togglePzMas(${i})">
           ${it.pr||it.nc||it.tk ? '🛒 '+[it.pr,it.nc].filter(Boolean).join(' · ') : '＋ Datos de compra'} ▾
@@ -5157,7 +5161,7 @@ function calcPiezasTotal(){
   try{ calcCostoBRL(); }catch(e){}
   try{ pintarResumenModal(); }catch(e){}
   const box = document.getElementById('pz-total-box');
-  // El precio cargado es por unidad: se multiplica por la cantidad
+  // p = total de la línea (precio unitario × cantidad)
   const total = piezasItems.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
   // Resumen comprado / pendiente
   const res = document.getElementById('pz-resumen');
@@ -12250,7 +12254,7 @@ function anNumeros(o){
   try { items = o.piezas_items ? JSON.parse(o.piezas_items) : []; } catch(e){ items = []; }
   items.forEach(it=>{
     const cant = Number(it.q || 1) || 1;
-    venta += (Number(it.ventaManual || it.p || 0) || 0) * cant;
+    venta += (Number(it.p) > 0) ? Number(it.p) : (Number(it.ventaManual || 0) || 0) * cant;
     costo += (Number(it.cr || 0) || 0) * cant;
   });
   const ganancia = venta - costo;
@@ -14156,7 +14160,7 @@ async function ejecutarGeneracionPresupuesto(formaPago, plazo){
     const cant = parseInt(x.q,10)||1;
     // El precio cargado es el TOTAL de la línea (ej. kit de 4 = un solo precio); la cantidad es informativa
     const sub = parseFloat(x.p)||0;
-    const unit = cant > 1 ? Math.round(sub/cant) : sub;
+    const unit = parseFloat(x.pu)>0 ? parseFloat(x.pu) : (cant > 1 ? Math.round(sub/cant) : sub);
     const cond = (x.cond||'Nuevo').trim();
     const notaEntrega = x.entregaNota ? '<div style="font-size:10px;color:#1B6FC8;font-style:italic;margin-top:2px;">Entrega: '+x.entregaNota+'</div>' : '';
     return '<tr style="background:'+(i%2?'#F7FAFD':'#fff')+';border-bottom:1px solid #A8C8F0;">'
