@@ -2432,6 +2432,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
       </div>
     <div id="cj-billeteras" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px;"></div>
 
@@ -2457,11 +2458,32 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
     <div id="cj-movs"></div>
   </div>
 
+  <div class="page" id="page-finreembolsos">
+      <div class="fin-tabs">
+        <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
+        <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+      </div>
+      <div id="rb-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:13px;">
+        <input class="pv-buscar" id="rb-buscar" placeholder="🔍 Buscar por pieza, pedido, cliente o vendedor…" oninput="rbPintar()" style="flex:1;min-width:230px;">
+        <select class="inp" id="rb-filtro" onchange="rbPintar()" style="width:auto;">
+          <option value="">Todos</option>
+          <option value="pend">Falta confirmar acreditación</option>
+          <option value="acred">Acreditados</option>
+        </select>
+      </div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5;">Cada control automático agrega acá los reembolsos nuevos de Mercado Livre, eBay, AliExpress y Alibaba. Marcá <b>Acreditado</b> cuando la plata ya entró a tu cuenta.</div>
+      <div id="rb-lista"></div>
+  </div>
+
   <div class="page" id="page-finanalisis">
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
       </div>
       <div id="an-periodo" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--t3);">Período:</span>
@@ -2492,6 +2514,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
       </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--t3);">Mes:</span>
@@ -12180,7 +12203,7 @@ function abrirFinanzas(tab, el){
   }
   FIN_TAB = tab || 'pedidos';
   if(FIN_TAB === 'empresa') FIN_TAB = 'pedidos';   // Empresa se fusiono con Pedidos
-  const paginas = {pedidos:'financiero', caja:'fincaja', analisis:'finanalisis'};
+  const paginas = {pedidos:'financiero', caja:'fincaja', analisis:'finanalisis', reembolsos:'finreembolsos'};
   const id = paginas[FIN_TAB];
 
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -12202,7 +12225,80 @@ function abrirFinanzas(tab, el){
     if(FIN_TAB === 'pedidos'){ fpSimple(); try { renderGonbelFin(); } catch(e){ console.error(e); } }
     if(FIN_TAB === 'caja'){ cjCargar(); }
     if(FIN_TAB === 'analisis'){ renderAnalisis(); }
+    if(FIN_TAB === 'reembolsos'){ rbCargar(); }
   } catch(e){ console.error(e); }
+}
+
+// ===== Reembolsos (devoluciones de plata de las plataformas) =====
+let RB_LISTA = [];
+async function rbCargar(){
+  try { RB_LISTA = await sbFetch('/rest/v1/reembolsos?order=fecha_reembolso.desc.nullslast,id.desc&limit=1000') || []; }
+  catch(e){ console.error(e); RB_LISTA = []; }
+  rbPintar();
+}
+function rbPlat(p){
+  return {mercadolivre:'Mercado Livre', ebay:'eBay', aliexpress:'AliExpress', alibaba:'Alibaba', amazon:'Amazon'}[p] || p;
+}
+function rbMonto(r){
+  const m = parseFloat(r.monto)||0;
+  const sim = r.moneda === 'BRL' ? 'R$ ' : (r.moneda === 'USD' ? 'USD ' : 'Gs ');
+  return sim + m.toLocaleString('es-PY', {minimumFractionDigits: r.moneda==='PYG'?0:2, maximumFractionDigits: r.moneda==='PYG'?0:2});
+}
+function rbFecha(d){ if(!d) return '—'; const p = String(d).slice(0,10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function rbPintar(){
+  const kp = document.getElementById('rb-kpis'), cont = document.getElementById('rb-lista');
+  if(!kp || !cont) return;
+  const q = (document.getElementById('rb-buscar')?.value || '').toLowerCase().trim();
+  const f = document.getElementById('rb-filtro')?.value || '';
+  const hoy = new Date(); const mesAct = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
+  let pendBRL=0, pendUSD=0, pendN=0, acrBRL=0, acrUSD=0, mesBRL=0, mesUSD=0, totGs=0;
+  RB_LISTA.forEach(r=>{
+    const m = parseFloat(r.monto)||0, acr = r.estado === 'acreditado';
+    if(r.moneda==='BRL'){ if(acr) acrBRL+=m; else pendBRL+=m; } else if(r.moneda==='USD'){ if(acr) acrUSD+=m; else pendUSD+=m; }
+    if(!acr) pendN++;
+    if(String(r.fecha_reembolso||'').slice(0,7) === mesAct){ if(r.moneda==='BRL') mesBRL+=m; else if(r.moneda==='USD') mesUSD+=m; }
+    totGs += parseFloat(r.monto_gs)||0;
+  });
+  const fm = (brl,usd)=> [brl ? 'R$ ' + brl.toLocaleString('es-PY',{minimumFractionDigits:2,maximumFractionDigits:2}) : '', usd ? 'USD ' + usd.toLocaleString('es-PY',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''].filter(Boolean).join(' + ') || '—';
+  const card = (t,v,s,c)=> '<div class="card" style="padding:14px;"><div style="font-size:11.5px;color:var(--t3);">'+t+'</div><div style="font-size:19px;font-weight:700;margin-top:4px;color:'+(c||'var(--t1)')+'">'+v+'</div>'+(s?'<div style="font-size:11px;color:var(--t3);margin-top:3px;">'+s+'</div>':'')+'</div>';
+  kp.innerHTML = card('⏳ Falta confirmar que entró', fm(pendBRL,pendUSD), pendN + ' reembolso' + (pendN===1?'':'s'), 'var(--amber, #f5a623)')
+    + card('✅ Ya acreditado', fm(acrBRL,acrUSD), '', 'var(--green, #3ecf8e)')
+    + card('📅 Reembolsado este mes', fm(mesBRL,mesUSD), '')
+    + card('💰 Total histórico', 'Gs ' + fmtNum(totGs), RB_LISTA.length + ' reembolsos (aprox. en Gs)');
+  let rows = RB_LISTA.filter(r=>{
+    if(f==='pend' && r.estado==='acreditado') return false;
+    if(f==='acred' && r.estado!=='acreditado') return false;
+    if(!q) return true;
+    return [r.pieza, r.pedido_numero, r.cliente, r.vendedor, r.compra_id, r.nota].join(' ').toLowerCase().includes(q);
+  });
+  if(!rows.length){ cont.innerHTML = '<div class="card" style="padding:18px;color:var(--t3);text-align:center;">No hay reembolsos para mostrar</div>'; return; }
+  cont.innerHTML = '<div class="card" style="padding:0;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+    + '<thead><tr style="text-align:left;color:var(--t3);font-size:11px;">'
+    + ['Reembolso','Plataforma','Pieza','Pedido / cliente','Monto','Estado',''].map(h=>'<th style="padding:10px 12px;border-bottom:1px solid var(--brd);font-weight:600;">'+h+'</th>').join('')
+    + '</tr></thead><tbody>'
+    + rows.map(r=>{
+      const acr = r.estado === 'acreditado';
+      const ped = r.order_id ? '<a href="javascript:void(0)" onclick="openOrder('+r.order_id+')" style="color:var(--cyan);">'+(r.pedido_numero||('Pedido '+r.order_id))+'</a> · '+(r.cliente||'') : '<span style="color:var(--t3);">Sin pedido</span>';
+      const quit = r.costo_quitado_gs ? '<div style="font-size:10.5px;color:var(--t3);">Costo quitado: Gs '+fmtNum(r.costo_quitado_gs)+'</div>' : '';
+      const nota = r.nota ? '<div style="font-size:10.5px;color:'+(String(r.nota).startsWith('OJO')?'var(--amber, #f5a623)':'var(--t3)')+';margin-top:2px;">'+r.nota+'</div>' : '';
+      return '<tr style="border-bottom:1px solid var(--brd);vertical-align:top;">'
+        + '<td style="padding:10px 12px;white-space:nowrap;">'+rbFecha(r.fecha_reembolso)+'<div style="font-size:10.5px;color:var(--t3);">compra '+rbFecha(r.fecha_compra)+'</div></td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;">'+rbPlat(r.plataforma)+'<div style="font-size:10.5px;color:var(--t3);">'+(r.compra_id||'')+'</div></td>'
+        + '<td style="padding:10px 12px;min-width:200px;">'+(r.pieza||'')+(r.vendedor?'<div style="font-size:10.5px;color:var(--t3);">'+r.vendedor+'</div>':'')+nota+'</td>'
+        + '<td style="padding:10px 12px;">'+ped+quit+'</td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;font-weight:600;">'+rbMonto(r)+(r.monto_gs?'<div style="font-size:10.5px;color:var(--t3);font-weight:400;">≈ Gs '+fmtNum(r.monto_gs)+'</div>':'')+'</td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;">'+(acr?'<span style="color:var(--green, #3ecf8e);">✅ Acreditado'+(r.acreditado_en?' '+rbFecha(r.acreditado_en):'')+'</span>':'<span style="color:var(--amber, #f5a623);">⏳ Falta confirmar</span>')+'</td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="rbToggle('+r.id+')">'+(acr?'Desmarcar':'Marcar acreditado')+'</button></td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table></div>';
+}
+async function rbToggle(id){
+  const r = RB_LISTA.find(x=>x.id===id); if(!r) return;
+  const acr = r.estado === 'acreditado';
+  const body = acr ? {estado:'reembolsado_plataforma', acreditado_en:null} : {estado:'acreditado', acreditado_en:new Date().toISOString().slice(0,10)};
+  try { await sbFetch('/rest/v1/reembolsos?id=eq.' + id, 'PATCH', body); Object.assign(r, body); rbPintar(); showToast(acr ? 'Marcado como pendiente' : 'Reembolso marcado como acreditado'); }
+  catch(e){ console.error(e); showToast('No se pudo guardar','error'); }
 }
 
 let AN_HITOS = [];
