@@ -2474,7 +2474,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
           <option value="acred">Acreditados</option>
         </select>
       </div>
-      <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5;">Cada control automático agrega acá los reembolsos nuevos de Mercado Livre, eBay, AliExpress y Alibaba. Marcá <b>Acreditado</b> cuando la plata ya entró a tu cuenta.</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5;">Cada control automático agrega acá los reembolsos nuevos de Mercado Livre, eBay, AliExpress y Alibaba. Cuando el banco o la tarjeta te devuelva la plata, tocá <b>💰 Ya me devolvieron</b> en esa fila.</div>
       <div id="rb-lista"></div>
   </div>
 
@@ -12287,8 +12287,8 @@ function rbPintar(){
         + '<td style="padding:10px 12px;min-width:200px;">'+(r.pieza||'')+(r.vendedor?'<div style="font-size:10.5px;color:var(--t3);">'+r.vendedor+'</div>':'')+nota+'</td>'
         + '<td style="padding:10px 12px;">'+ped+quit+'</td>'
         + '<td style="padding:10px 12px;white-space:nowrap;font-weight:600;">'+rbMonto(r)+(r.monto_gs?'<div style="font-size:10.5px;color:var(--t3);font-weight:400;">≈ Gs '+fmtNum(r.monto_gs)+'</div>':'')+'</td>'
-        + '<td style="padding:10px 12px;white-space:nowrap;">'+(acr?'<span style="color:var(--green, #3ecf8e);">✅ Acreditado'+(r.acreditado_en?' '+rbFecha(r.acreditado_en):'')+'</span>':'<span style="color:var(--amber, #f5a623);">⏳ Falta confirmar</span>')+'</td>'
-        + '<td style="padding:10px 12px;white-space:nowrap;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="rbToggle('+r.id+')">'+(acr?'Desmarcar':'Marcar acreditado')+'</button></td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;">'+(acr?'<span style="color:var(--green, #3ecf8e);">✅ Acreditado'+(r.acreditado_en?' '+rbFecha(r.acreditado_en):'')+'</span>':'<span style="color:var(--amber, #f5a623);">⏳ Falta que entre la plata</span>')+'</td>'
+        + '<td style="padding:10px 12px;white-space:nowrap;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="rbToggle('+r.id+')">'+(acr?'↩︎ Deshacer':'💰 Ya me devolvieron')+'</button></td>'
         + '</tr>';
     }).join('')
     + '</tbody></table></div>';
@@ -12297,7 +12297,7 @@ async function rbToggle(id){
   const r = RB_LISTA.find(x=>x.id===id); if(!r) return;
   const acr = r.estado === 'acreditado';
   const body = acr ? {estado:'reembolsado_plataforma', acreditado_en:null} : {estado:'acreditado', acreditado_en:new Date().toISOString().slice(0,10)};
-  try { await sbFetch('/rest/v1/reembolsos?id=eq.' + id, 'PATCH', body); Object.assign(r, body); rbPintar(); showToast(acr ? 'Marcado como pendiente' : 'Reembolso marcado como acreditado'); }
+  try { await sbFetch('/rest/v1/reembolsos?id=eq.' + id, 'PATCH', body); Object.assign(r, body); rbPintar(); showToast(acr ? 'Vuelve a quedar pendiente' : 'Listo: marcado como devuelto'); }
   catch(e){ console.error(e); showToast('No se pudo guardar','error'); }
 }
 
