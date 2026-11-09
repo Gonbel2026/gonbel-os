@@ -2436,6 +2436,8 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       </div>
     <div id="cj-billeteras" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px;"></div>
 
+    <div id="cj-bandeja" style="margin-bottom:20px;"></div>
+
     <div id="cj-pendientes" style="margin-bottom:20px;"></div>
 
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
@@ -3734,13 +3736,21 @@ let autoRefTimer = null, mlTimer = null;
 function arrancarAutoRefresco(){
   arrancarAvisosEnVivo();
   if(autoRefTimer) return;
+  // Ahorro de Supabase (04/11/2026): antes recargaba TODO cada 1 minuto en cada
+  // equipo abierto, aunque nadie lo estuviera usando (la Mac queda prendida todo el día).
+  // Ahora: cada 3 minutos y solo si alguien tocó la pantalla en los últimos 10 minutos.
+  ['mousemove','keydown','touchstart','click','scroll'].forEach(ev=>document.addEventListener(ev, ()=>{ const antes = window._ultimaActividad||0; window._ultimaActividad = Date.now(); if(Date.now()-antes > 600000 && !document.getElementById('modal-overlay').classList.contains('open')) loadAll(); }, {passive:true}));
+  window._ultimaActividad = Date.now();
   autoRefTimer = setInterval(()=>{
     if(document.hidden) return;                       // no gastar si la pestaña está oculta
+    if(Date.now() - (window._ultimaActividad||0) > 600000) return; // nadie la está usando
     if(document.getElementById('modal-overlay').classList.contains('open')) return; // no pisar edición
     loadAll();
     cargarAlertas();
     try{ if(document.getElementById('page-mapa').classList.contains('active')) pintarMapa(); }catch(e){}
-  }, 60000);
+    // Asistente: que no quede con avisos viejos (antes solo se calculaba al entrar)
+    try{ const pa = document.getElementById('page-asistente'); if(pa && pa.classList.contains('active')) jvCargar(false); }catch(e){}
+  }, 180000);
   mlTimer = setInterval(()=>{ if(!document.hidden && mlConectado) mlSync(false); }, 600000);
   document.addEventListener('visibilitychange', ()=>{
     if(!document.hidden && !document.getElementById('modal-overlay').classList.contains('open')) loadAll();
@@ -9237,9 +9247,33 @@ function ventaTotalCalculada(){
   const sv = piezasItems.reduce((s,x)=>s+(parseFloat(x.p)||0),0);
   return sv>0 ? sv : (numVal('f-venta')||0);
 }
-function pagadoCompletoToggle(){
-  const completo = document.getElementById('f-pagado-completo').checked;
-  if(completo){
+async function pagadoCompletoToggle(){
+  const chk = document.getElementById('f-pagado-completo');
+  const completo = chk.checked;
+  if(completo && currentOrder && currentOrder.id){
+    // Para marcar como pagado tiene que haber comprobante de cada transferencia
+    let pagos = [];
+    try{ pagos = await sbFetch('/rest/v1/order_pagos?order_id=eq.'+currentOrder.id+'&select=id,monto,metodo,comprobante_url&limit=100') || []; }catch(e){}
+    const venta = ventaTotalCalculada();
+    const registrado = pagos.reduce((s,p)=> s+parseFloat(p.monto||0), 0);
+    const sinComp = pagos.filter(p=> !p.comprobante_url && p.metodo!=='Efectivo');
+    const falta = Math.max(0, venta - registrado);
+    if(falta > 0){
+      chk.checked = false;
+      showToast('Registrá el pago con la foto de la transferencia para marcarlo pagado','info');
+      opNuevo(falta, registrado>0 ? 'Pago final' : 'Pago total', function(){
+        chk.checked = true; setMoney('f-pagado', ventaTotalCalculada()); calcMargen(); scheduleAutoSave(100);
+      });
+      return;
+    }
+    if(sinComp.length){
+      chk.checked = false;
+      showToast(sinComp.length+' pago'+(sinComp.length>1?'s':'')+' sin comprobante — subí la foto en "Pagos registrados"','error');
+      try{ document.getElementById('op-lista').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+      return;
+    }
+  }
+  if(chk.checked){
     const venta = ventaTotalCalculada();
     setMoney('f-pagado', venta);
   }
@@ -10295,14 +10329,22 @@ function jvAlertasPedidos(){
   const nom = o => (o.numero_pedido || o.numero || ('#'+o.id)) + ' · ' + (o.cliente_nombre || 'sin cliente');
   const veh = o => [o.marca, o.modelo, o['año']].filter(Boolean).join(' ');
   const add = (o, x) => { const clave = 'calc:'+x.k+':'+o.id; if(!jvEstaOculto(clave)) out.push(Object.assign({_calc:true, _clave:clave, order_id:o.id, plataforma:'sistema', estado:'pendiente'}, x)); };
+  // Piezas reales del pedido (sin las filas de título/precio tipo "PRESUPUESTO AUDI A7" o "VALOR")
+  const piezasReales = o => { let it = []; try { it = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){} return it.filter(x=> x && !/^\s*(valor|presupuesto|total|subtotal|mano de obra)\b/i.test(x.d||'')); };
+  const comprada = x => !!x.c || parseFloat(x.cb)>0 || parseFloat(x.cbrl)>0 || parseFloat(x.cr)>0 || !!x.nc;
   (orders||[]).forEach(o=>{
     if(o.archivado) return;
     const venta = parseFloat(o.precio_venta)||0, pagado = parseFloat(o.valor_pagado)||0;
-    if(o.estado === 'aprobado'){ const d = jvDias(o.fecha_facturado || o.created_at); if(d >= 2) add(o, {k:'apr', prioridad:'rojo', tipo:'estado_pedido', titulo:'Aprobado hace ' + d + ' días y sin comprar', detalle: nom(o) + (veh(o)?' — '+veh(o):''), accion:'Comprar las piezas o avisar al cliente del plazo', created_at:o.fecha_facturado||o.created_at}); }
+    if(o.estado === 'aprobado'){
+      const d = jvDias(o.fecha_facturado || o.created_at);
+      const pz = piezasReales(o), pend = pz.filter(x=>!comprada(x)).length;
+      if(pz.length && pend === 0) add(o, {k:'apr-ok', prioridad:'verde', tipo:'estado_pedido', titulo:'Todo comprado — pasalo a Comprado / En camino', detalle: nom(o) + (veh(o)?' — '+veh(o):''), accion:'Mover el pedido a 🛒 Comprado', created_at:o.fecha_facturado||o.created_at});
+      else if(d >= 2) add(o, {k:'apr', prioridad:'rojo', tipo:'estado_pedido', titulo:'Aprobado hace ' + d + ' días: ' + (pz.length ? (pend===pz.length ? 'nada comprado' : pend + ' de ' + pz.length + ' piezas sin comprar') : 'sin comprar'), detalle: nom(o) + (veh(o)?' — '+veh(o):''), accion:'Comprar lo que falta o avisar al cliente del plazo', created_at:o.fecha_facturado||o.created_at});
+    }
     if(o.estado === 'comprado'){ const d = jvDias(o.fecha_pedido || o.created_at); if(d > 10) add(o, {k:'com', prioridad:'amarillo', tipo:'estado_pedido', titulo:'Comprado hace ' + d + ' días y no llegó', detalle: nom(o) + (o.fecha_eta?' — llegada estimada '+o.fecha_eta:''), accion:'Revisar el seguimiento y reclamar si hace falta', created_at:o.fecha_pedido||o.created_at}); }
     if(o.estado === 'listo-envio'){ const d = jvDias(o.fecha_eta || o.created_at); if(d > 3) add(o, {k:'lis', prioridad:'amarillo', tipo:'aviso_cliente', titulo:'Listo para entregar y sin entregar', detalle: nom(o), accion:'Coordinar la entrega con el cliente', created_at:o.fecha_eta||o.created_at}); }
     if(['comprado','listo-envio','entregado'].includes(o.estado) && o.flete_requerido && !(parseFloat(o.flete_courier_gs)>0)) add(o, {k:'fle', prioridad:'amarillo', tipo:'costo_compra', titulo:'Falta el flete de EE. UU.', detalle: nom(o), accion:'Cargar el costo del courier', created_at:o.created_at});
-    if(ESTADOS_VENTA.includes(o.estado)){ let it = []; try { it = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){} const n = it.filter(x=>!(parseFloat(x.cb)>0)).length; if(n) add(o, {k:'cos', prioridad:'amarillo', tipo:'costo_compra', titulo: n + (n===1?' pieza sin costo':' piezas sin costo'), detalle: nom(o), accion:'Cargar el costo real', created_at:o.created_at}); }
+    if(ESTADOS_VENTA.includes(o.estado)){ const it = piezasReales(o); const n = it.filter(x=>!(parseFloat(x.cb)>0 || parseFloat(x.cbrl)>0 || parseFloat(x.cr)>0)).length; if(n) add(o, {k:'cos', prioridad:'amarillo', tipo:'costo_compra', titulo: n + (n===1?' pieza sin costo':' piezas sin costo'), detalle: nom(o), accion:'Cargar el costo real', created_at:o.created_at}); }
     if(o.estado === 'entregado' && !o.pagado_completo && venta > 0 && venta - pagado > 0){ const d = jvDias(o.fecha_facturado || o.created_at); add(o, {k:'sal', prioridad: d > 7 ? 'rojo':'amarillo', tipo:'aviso_cliente', titulo:'Saldo pendiente: Gs ' + fmtNum(venta - pagado), detalle: nom(o), accion:'Cobrar al cliente', created_at:o.fecha_facturado||o.created_at}); }
   });
   return out;
@@ -10344,7 +10386,7 @@ async function jvCargar(manual){
 }
 async function jvActualizarTodo(){
   const b = document.getElementById('as-upd-b'); if(b){ b.disabled = true; b.textContent = '⏳ Actualizando…'; }
-  try { await Promise.all([jvCargar(false), (async()=>{ try { await buscarMensajesML(false); } catch(e){} try { await buscarPreguntasML(false); } catch(e){} })()]); } catch(e){}
+  try { await Promise.all([(async()=>{ try { await loadAll(); } catch(e){} })(), jvCargar(false), (async()=>{ try { await buscarMensajesML(false); } catch(e){} try { await buscarPreguntasML(false); } catch(e){} })()]); } catch(e){}
   jvPintar();
   if(b){ b.disabled = false; b.textContent = '🔄 Actualizar'; }
   showToast('Asistente actualizado','success');
@@ -11672,6 +11714,114 @@ async function cjCargar(){
   cjPintarPendientes();
   cjLlenarFiltros();
   cjPintarMovs();
+  cjCargarBandeja();
+}
+
+// ══════ BANDEJA DE AVISOS DEL BANCO ══════
+// Claude lee los avisos que mandan los bancos al correo y los deja acá.
+// Nada entra a la Caja hasta que alguien toca "Confirmar".
+let CJ_BANDEJA = [];
+async function cjCargarBandeja(){
+  try { CJ_BANDEJA = await sbFetch('/rest/v1/fin_bandeja_banco?estado=eq.pendiente&order=fecha_movimiento.desc.nullslast,id.desc&limit=300') || []; }
+  catch(e){ CJ_BANDEJA = []; console.error(e); }
+  cjPintarBandeja();
+}
+function cjBdEsEntrada(a){ return ['credito','entrada','ingreso'].includes(String(a.tipo||'').toLowerCase()); }
+function cjBdBilletera(a){
+  const sinTilde = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const banco = sinTilde(a.banco).replace(/banco\s*/,'').trim();
+  if(!banco) return null;
+  const b = CJ_BILL.find(x=>x.activa!==false && sinTilde(x.nombre).includes(banco));
+  return b ? b.id : null;
+}
+function cjBdCategoria(a){
+  if(a.sugerencia && a.sugerencia.categoria_id) return a.sugerencia.categoria_id;
+  const txt = ((a.concepto||'') + ' ' + (a.contraparte||'')).toLowerCase();
+  const porNombre = n => { const c = CJ_CAT.find(x=>x.nombre.toLowerCase().startsWith(n)); return c ? c.id : null; };
+  if(cjBdEsEntrada(a)) return porNombre('cobro de cliente');
+  if(/mercado ?(livre|pago|libre)|ebay|alibaba|aliexpress|amazon|paypal/.test(txt)) return porNombre('compra de mercader');
+  if(/ande|copaco|tigo|personal|claro|internet|essap/.test(txt)) return porNombre('servicios');
+  if(/meta|facebook|instagram|google ads/.test(txt)) return porNombre('marketing');
+  if(/combustible|petrobras|shell|copetrol|puma/.test(txt)) return porNombre('combustible');
+  return null;
+}
+// Pedidos que podrían ser este cobro: saldo igual (±1.000), la mitad (seña) o el nombre del que pagó
+function cjBdPedidos(a){
+  if(!cjBdEsEntrada(a)) return [];
+  const monto = parseFloat(a.monto)||0;
+  const quien = String(a.contraparte||'').toLowerCase().split(' ')[0];
+  return (orders||[]).filter(o=>!o.archivado && !o.pagado_completo && ['aprobado','comprado','listo-envio','entregado','presupuesto-enviado'].includes(o.estado))
+    .map(o=>{ const saldo=(parseFloat(o.precio_venta)||0)-(parseFloat(o.valor_pagado)||0); return {o, saldo, d:Math.abs(saldo-monto)}; })
+    .filter(x=>x.saldo>0 && (x.d<=1000 || Math.abs((parseFloat(x.o.precio_venta)||0)/2-monto)<=1000 || (quien.length>3 && String(x.o.cliente_nombre||'').toLowerCase().includes(quien))))
+    .sort((a,b)=>a.d-b.d).slice(0,6);
+}
+function cjPintarBandeja(){
+  const cont = document.getElementById('cj-bandeja');
+  if(!cont) return;
+  if(!CJ_BANDEJA.length){ cont.innerHTML=''; return; }
+  const optsBill = id => '<option value="">— Billetera —</option>' + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="'+b.id+'"'+(b.id===id?' selected':'')+'>'+b.nombre+'</option>').join('');
+  const optsCat = (ent,id) => '<option value="">— Categoría —</option>' + CJ_CAT.filter(c=>c.tipo===(ent?'entrada':'salida')).map(c=>'<option value="'+c.id+'"'+(c.id===id?' selected':'')+'>'+c.nombre+'</option>').join('');
+  cont.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--amber);border-radius:12px;padding:14px 16px;">'
+    + '<div style="font-weight:700;font-size:14.5px;margin-bottom:4px;">📥 Avisos del banco por revisar ('+CJ_BANDEJA.length+')</div>'
+    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px;">Llegaron por correo. Revisá billetera, categoría y pedido, y tocá ✅ Confirmar para pasarlo a la Caja.</div>'
+    + CJ_BANDEJA.map(a=>{
+        const ent = cjBdEsEntrada(a);
+        const bill = a.billetera_id || cjBdBilletera(a);
+        const cat = a.categoria_id || cjBdCategoria(a);
+        const peds = cjBdPedidos(a);
+        const sel = a.order_id || (peds.length===1 && peds[0].d<=1000 ? peds[0].o.id : null);
+        const optsPed = '<option value="">— Sin pedido —</option>' + peds.map(x=>'<option value="'+x.o.id+'"'+(x.o.id===sel?' selected':'')+'>'+(x.o.numero||'')+' · '+(x.o.cliente_nombre||'')+' · saldo Gs '+fmtNum(x.saldo)+'</option>').join('');
+        return '<div style="border-top:1px solid var(--brd);padding:10px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
+          + '<div style="min-width:200px;flex:1;">'
+          +   '<div style="font-weight:700;color:'+(ent?'var(--green)':'var(--red)')+';">'+(ent?'↓ ':'↑ ')+cjMonto(a.monto, a.moneda||'PYG')+'</div>'
+          +   '<div style="font-size:12.5px;color:var(--t1);">'+(a.concepto||a.asunto||'')+(a.contraparte?' · '+a.contraparte:'')+'</div>'
+          +   '<div style="font-size:11.5px;color:var(--t3);">'+(a.banco||'')+' · '+(a.fecha_movimiento||String(a.fecha_email||'').slice(0,10))+'</div>'
+          + '</div>'
+          + '<select class="inp" id="bd-bill-'+a.id+'" style="width:auto;">'+optsBill(bill)+'</select>'
+          + '<select class="inp" id="bd-cat-'+a.id+'" style="width:auto;">'+optsCat(ent,cat)+'</select>'
+          + (ent ? '<select class="inp" id="bd-ped-'+a.id+'" style="width:auto;max-width:260px;">'+optsPed+'</select>' : '')
+          + '<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="cjBdConfirmar('+a.id+')">✅ Confirmar</button>'
+          + '<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" onclick="cjBdDescartar('+a.id+')">✖</button>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+async function cjBdConfirmar(id){
+  const a = CJ_BANDEJA.find(x=>x.id===id); if(!a) return;
+  const g = k => document.getElementById(k);
+  const billId = parseInt((g('bd-bill-'+id)||{}).value,10) || null;
+  if(!billId){ showToast('Elegí la billetera','error'); return; }
+  const catId = parseInt((g('bd-cat-'+id)||{}).value,10) || null;
+  const pedId = parseInt((g('bd-ped-'+id)||{}).value,10) || null;
+  const ped = pedId ? (orders||[]).find(o=>o.id===pedId) : null;
+  const moneda = a.moneda || 'PYG';
+  const cot = cjTasa(moneda);
+  try {
+    const r = await sbFetch('/rest/v1/fin_movimientos', 'POST', {
+      fecha: a.fecha_movimiento || String(a.fecha_email||'').slice(0,10) || new Date().toISOString().slice(0,10),
+      tipo: cjBdEsEntrada(a) ? 'entrada' : 'salida',
+      billetera_id: billId, categoria_id: catId,
+      monto: parseFloat(a.monto)||0, moneda,
+      cotizacion: moneda === 'PYG' ? null : cot,
+      monto_gs: cjEnGs(a.monto, moneda, cot),
+      concepto: [a.concepto, a.contraparte].filter(Boolean).join(' · ') || a.asunto || null,
+      order_id: ped ? ped.id : null, pedido_numero: ped ? ped.numero : null, cliente: ped ? ped.cliente_nombre : null,
+      origen: 'aviso_banco', conciliado: true,
+      cargado_por: (currentUser && currentUser.name) || null,
+      notas: 'Aviso del banco por correo (bandeja #'+a.id+')'
+    }, {'Prefer':'return=representation'});
+    const movId = r && r[0] ? r[0].id : null;
+    await sbFetch('/rest/v1/fin_bandeja_banco?id=eq.'+id, 'PATCH', {estado:'confirmado', movimiento_id: movId, order_id: ped ? ped.id : null, revisado_en: new Date().toISOString()});
+    showToast('✓ Pasado a la Caja' + (ped ? ' · recordá registrar el cobro en el pedido '+ped.numero : ''),'success');
+    await cjCargar();
+  } catch(e){ console.error(e); showToast('No se pudo confirmar','error'); }
+}
+async function cjBdDescartar(id){
+  try {
+    await sbFetch('/rest/v1/fin_bandeja_banco?id=eq.'+id, 'PATCH', {estado:'descartado', revisado_en: new Date().toISOString()});
+    CJ_BANDEJA = CJ_BANDEJA.filter(x=>x.id!==id); cjPintarBandeja();
+    showToast('Aviso descartado','success');
+  } catch(e){ showToast('No se pudo descartar','error'); }
 }
 
 // El saldo sale del inicial mas todo lo que entro menos lo que salio
@@ -13926,16 +14076,18 @@ function pintarAvisosTablero(items, total){
     ? items.map((x,i)=>`<div class="sn-row" onclick="_notifIr(${i})" title="${String(x.s||'').replace(/"/g,'&quot;')}"><span>${x.ic}</span><span class="sn-t">${x.t}</span><span class="sn-c">${x.n}</span></div>`).join('')
     : '<div class="sn-vacio">✅ Todo al día</div>';
 }
-// Avisos casi en vivo: cada 20 s se vuelve a consultar Mercado Livre (mensajes y respuestas a preguntas)
+// Avisos casi en vivo: cada 60 s (si alguien usa la pantalla) se vuelve a consultar Mercado Livre (mensajes y respuestas a preguntas)
 // mientras la pestaña está visible, así Joaquín y Alexis ven en el Tablero cuando alguien escribe.
 let avisosVivoTimer = null;
 function arrancarAvisosEnVivo(){
   if(avisosVivoTimer) return;
+  // Ahorro de Supabase (04/11/2026): antes cada 20 s aunque nadie mirara la pantalla.
   avisosVivoTimer = setInterval(()=>{
     if(document.hidden) return;
+    if(Date.now() - (window._ultimaActividad||Date.now()) > 600000) return; // nadie la está usando
     try{ buscarMensajesML(false); }catch(e){}
     try{ buscarPreguntasML(false); }catch(e){}
-  }, 20000);
+  }, 60000);
 }
 function _notifIr(i){
   const it = window._notifItems && window._notifItems[i];
@@ -17819,37 +17971,88 @@ function opRender(rows){
       var b=_opBilleteras.find(function(x){return x.id==r.billetera_id;});
       return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);">'
         +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;">Gs '+parseFloat(r.monto).toLocaleString('es-PY')+(b?' - '+b.nombre:'')+'</div>'
-        +'<div style="font-size:11px;color:var(--t3);">'+r.fecha+(r.concepto?' - '+r.concepto:'')+' - '+(r.cargado_por||'?')+'</div></div>'
+        +'<div style="font-size:11px;color:var(--t3);">'+r.fecha+(r.metodo?' - '+r.metodo:'')+(r.concepto?' - '+r.concepto:'')+' - '+(r.cargado_por||'?')+'</div></div>'
+        +(r.comprobante_url
+          ?'<a href="'+r.comprobante_url+'" target="_blank" rel="noopener" title="Ver comprobante"><img src="'+r.comprobante_url+'" style="width:38px;height:38px;object-fit:cover;border-radius:7px;border:1px solid var(--brd);"></a>'
+          :(r.metodo==='Efectivo'?'':'<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 9px;color:var(--amber);" onclick="opAgregarComprobante('+r.id+')">🧾 Subir comprobante</button>'))
         +(r.confirmado_beatriz?'<span style="font-size:11px;color:var(--green);">confirmado</span>'
           :(isBz?'<button type="button" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="opConfirmar('+r.id+')">Confirmar</button>':'<span style="font-size:11px;color:var(--amber);">pendiente</span>'))
         +'</div>';
     }).join('');
 }
-async function opNuevo(){
+// Comprobante de pago: sube la foto de la transferencia al bucket de fotos
+async function opSubirComprobante(file){
+  const blob = await foComprimir(file);
+  const num = (currentOrder.numero_pedido || currentOrder.numero || 'SIN-NUM').replace(/[^\w-]/g,'');
+  const path = 'comprobantes/'+num+'/'+Date.now()+'_'+foLimpiarNombre(file.name)+'.jpg';
+  const up = await fetch(SB_URL+'/storage/v1/object/'+FOTOS_BUCKET+'/'+path, {
+    method:'POST', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg'}, body:blob });
+  if(!up.ok){ const det=await up.text().catch(()=> ''); throw new Error('Storage '+up.status+' '+det.slice(0,120)); }
+  return { path:path, url: SB_URL+'/storage/v1/object/public/'+FOTOS_BUCKET+'/'+path };
+}
+function opPrevComprobante(inp){
+  var pv=document.getElementById('op-comp-prev'); if(!pv) return;
+  var f=inp.files&&inp.files[0];
+  pv.innerHTML=f?'<img src="'+URL.createObjectURL(f)+'" style="max-width:100%;max-height:160px;border-radius:9px;border:1px solid var(--brd);">':'';
+}
+function opMetodoCambio(){
+  var m=(document.getElementById('op-metodo')||{}).value;
+  var lbl=document.getElementById('op-comp-lbl');
+  if(lbl) lbl.textContent = m==='Efectivo' ? 'Comprobante (opcional en efectivo)' : 'Foto de la transferencia *';
+}
+async function opAgregarComprobante(pagoId){
+  if(!currentOrder) return;
+  invModal('Subir comprobante','<div style="display:grid;gap:10px;">'
+    +'<input class="inp" id="op-comp" type="file" accept="image/*" onchange="opPrevComprobante(this)">'
+    +'<div id="op-comp-prev"></div></div>', async function(){
+    var f=(document.getElementById('op-comp')||{}).files; f=f&&f[0];
+    if(!f){showToast('Elegí la foto del comprobante','error');return false;}
+    try{
+      var c=await opSubirComprobante(f);
+      await sbFetch('/rest/v1/order_pagos?id=eq.'+pagoId,'PATCH',{comprobante_url:c.url,comprobante_path:c.path});
+      await opCargar(currentOrder.id); logHistory(currentOrder.id,'Comprobante de pago subido');
+      showToast('🧾 Comprobante guardado','success'); return true;
+    }catch(e){showToast('Error al subir: '+(e.message||e),'error');return false;}
+  });
+}
+async function opNuevo(montoSugerido, conceptoSugerido, onDone){
   if(!currentOrder) return;
   if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?activa=is.true&order=orden.asc&limit=20')||[];}catch(e){} }
   var opts=_opBilleteras.map(function(b){return '<option value="'+b.id+'">'+b.nombre+'</option>';}).join('');
+  var montoIni = (typeof montoSugerido==='number' && montoSugerido>0) ? Math.round(montoSugerido).toLocaleString('es-PY') : '';
   invModal('Registrar pago','<div style="display:grid;gap:12px;">'
-    +'<div class="field"><label class="lbl">Monto (Gs) *</label><input class="inp" id="op-monto" type="text" inputmode="numeric" placeholder="0" oninput="fmtMoneyInput(this)"></div>'
+    +'<div class="field"><label class="lbl">Monto (Gs) *</label><input class="inp" id="op-monto" type="text" inputmode="numeric" placeholder="0" value="'+montoIni+'" oninput="fmtMoneyInput(this)"></div>'
     +'<div class="field"><label class="lbl">Fecha *</label><input class="inp" id="op-fecha" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    +'<div class="field"><label class="lbl">Método</label><select class="inp" id="op-metodo" onchange="opMetodoCambio()"><option>Transferencia</option><option>Efectivo</option><option>Otro</option></select></div>'
     +'<div class="field"><label class="lbl">Billetera</label><select class="inp" id="op-bill"><option value="">-- Sin especificar --</option>'+opts+'</select></div>'
-    +'<div class="field"><label class="lbl">Concepto</label><input class="inp" id="op-concepto" placeholder="Ej: sena, anticipo, pago final"></div>'
+    +'<div class="field"><label class="lbl">Concepto</label><input class="inp" id="op-concepto" placeholder="Ej: sena, anticipo, pago final" value="'+(conceptoSugerido||'')+'"></div>'
+    +'<div class="field"><label class="lbl" id="op-comp-lbl">Foto de la transferencia *</label><input class="inp" id="op-comp" type="file" accept="image/*" onchange="opPrevComprobante(this)"><div id="op-comp-prev" style="margin-top:8px;"></div></div>'
     +'</div>', async function(){
     var monto=numVal('op-monto'); var fecha=(document.getElementById('op-fecha')||{}).value;
+    var metodo=(document.getElementById('op-metodo')||{}).value||'Transferencia';
+    var fComp=(document.getElementById('op-comp')||{}).files; fComp=fComp&&fComp[0];
     if(!monto||monto<=0){showToast('Ingresa el monto','error');return false;}
     if(!fecha){showToast('Ingresa la fecha','error');return false;}
+    if(!fComp && metodo!=='Efectivo'){showToast('Subí la foto de la transferencia','error');return false;}
+    var bG=document.getElementById('inv-guardar'); if(bG){ if(bG.disabled) return false; bG.disabled=true; bG.textContent='Subiendo…'; }
+    var reactivar=function(){ if(bG){ bG.disabled=false; bG.textContent='💾 Guardar'; } };
     try {
-      await sbFetch('/rest/v1/order_pagos','POST',{order_id:currentOrder.id,monto:monto,fecha:fecha,
+      var comp=null;
+      if(fComp){ try{ comp=await opSubirComprobante(fComp); }catch(e){ reactivar(); showToast('No se pudo subir el comprobante: '+(e.message||e),'error'); return false; } }
+      await sbFetch('/rest/v1/order_pagos','POST',{order_id:currentOrder.id,monto:monto,fecha:fecha,metodo:metodo,
         concepto:(document.getElementById('op-concepto')||{}).value||null,
         billetera_id:(document.getElementById('op-bill')||{}).value?parseInt(document.getElementById('op-bill').value):null,
+        comprobante_url:comp?comp.url:null, comprobante_path:comp?comp.path:null,
         cargado_por:currentUser?currentUser.role:'lucas',creado_en:new Date().toISOString()});
       var rows=await sbFetch('/rest/v1/order_pagos?order_id=eq.'+currentOrder.id+'&select=monto&limit=100');
       var tot=(rows||[]).reduce(function(s,r){return s+parseFloat(r.monto||0);},0);
       await sbFetch('/rest/v1/orders?id=eq.'+currentOrder.id,'PATCH',{valor_pagado:tot,pago_marcado_por:currentUser?currentUser.role:'lucas',pago_marcado_en:new Date().toISOString()});
       currentOrder.valor_pagado=tot; await opCargar(currentOrder.id); setMoney('f-pagado',tot);
-      logHistory(currentOrder.id,'Pago Gs '+tot.toLocaleString('es-PY'));
-      showToast('Pago registrado','success'); return true;
-    } catch(e){showToast('Error al guardar','error');return false;}
+      logHistory(currentOrder.id,'Pago Gs '+monto.toLocaleString('es-PY')+' ('+metodo+(comp?', con comprobante':'')+') — total pagado Gs '+tot.toLocaleString('es-PY'));
+      showToast('Pago registrado','success');
+      if(typeof onDone==='function'){ setTimeout(function(){ try{onDone();}catch(e){} },50); }
+      return true;
+    } catch(e){reactivar();showToast('Error al guardar','error');return false;}
   });
 }
 async function opConfirmar(pagoId){
