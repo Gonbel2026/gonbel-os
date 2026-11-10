@@ -4824,6 +4824,25 @@ function pzQtyMenu(i,btn){
   box.appendChild(m);
   setTimeout(()=>document.addEventListener('click',function cerrar(e){ if(!m.contains(e.target)&&e.target!==btn){ m.remove(); } document.removeEventListener('click',cerrar); }),0);
 }
+// Link de donde se encontró la pieza al cotizar (así no hay que buscarla de nuevo para comprar)
+function pzSetLink(i, valor){
+  const it = piezasItems[i]; if(!it) return;
+  const v = (valor||'').trim();
+  it.linkCompra = v || null;
+  const a = document.getElementById('pz-lnk-a-'+i);
+  if(a){ a.style.display = v ? 'inline-flex' : 'none'; a.href = v || '#'; }
+  if(!cargandoPedido) scheduleAutoSave(700);
+}
+async function pzPegarLink(i){
+  let txt = '';
+  try { txt = await navigator.clipboard.readText(); } catch(e){}
+  if(!txt){ const inp=document.getElementById('pz-lnk-'+i); if(inp){ inp.focus(); } showToast('Mantené apretado el campo y elegí "Pegar"','info'); return; }
+  const m = txt.match(/https?:\/\/\S+/);
+  const link = m ? m[0] : txt.trim();
+  const inp = document.getElementById('pz-lnk-'+i); if(inp) inp.value = link;
+  pzSetLink(i, link);
+  showToast('🔗 Link guardado','success');
+}
 function renderPiezasItems(){
   const cont = document.getElementById('piezas-items');
   if(!cont) return;
@@ -4834,6 +4853,12 @@ function renderPiezasItems(){
         <label class="pz-f pz-f-cond"><span>Condición</span><input type="text" list="dl-condicion" title="Condición de la pieza (para el presupuesto)" placeholder="Nuevo / Usado…" value="${(it.cond||'').replace(/"/g,'&quot;')}" oninput="piezasItems[${i}].cond=this.value"></label>
         <div class="pz-f pz-f-cant"><span>Cantidad</span><div class="pz-qty"><input type="text" inputmode="numeric" id="pz-q-${i}" title="Cantidad — escribí o elegí con la flechita" value="${parseInt(it.q,10)>1?parseInt(it.q,10):1}" onfocus="this.select()" oninput="this.value=this.value.replace(/[^0-9]/g,'');pzSetQty(${i},parseInt(this.value,10)||1);calcPiezasTotal();pintarResumenPieza(${i})" onblur="if(!this.value||this.value==='0')this.value=1"><button type="button" class="pz-qty-arr" title="Elegir cantidad" onclick="pzQtyMenu(${i},this)">▾</button></div></div>
         <label class="pz-f pz-f-precio"><span>Precio venta (unitario)</span><input type="text" inputmode="numeric" id="pz-pu-${i}" placeholder="Gs" value="${pzUnit(it)?Number(pzUnit(it)).toLocaleString('de-DE'):''}" oninput="fmtMoneyInput(this);pzSetUnit(${i},parseFloat((this.value||'').replace(/[^\d]/g,''))||0);calcPiezasTotal();pintarResumenPieza(${i})"></label>
+      </div>
+      <div class="pz-link-row" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+        <span style="font-size:11px;font-weight:700;color:var(--t3);white-space:nowrap;">🔗 Link</span>
+        <input type="url" id="pz-lnk-${i}" placeholder="Pegá acá el link de donde encontraste la pieza (ML, eBay, proveedor…)" value="${(it.linkCompra||'').replace(/"/g,'&quot;')}" oninput="pzSetLink(${i},this.value)" style="flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:9px;color:var(--t1);font-size:12.5px;padding:8px 10px;outline:none;">
+        <button type="button" class="pz-btn" style="width:auto;padding:0 10px;font-size:11px;font-weight:600;" title="Pegar el link copiado" onclick="pzPegarLink(${i})">📋 Pegar</button>
+        <a id="pz-lnk-a-${i}" href="${it.linkCompra?String(it.linkCompra).replace(/"/g,'&quot;'):'#'}" target="_blank" rel="noopener" class="pz-btn" style="width:auto;padding:0 10px;font-size:11px;font-weight:600;text-decoration:none;display:${it.linkCompra?'inline-flex':'none'};align-items:center;" title="Abrir el link">Abrir ↗</a>
       </div>
       <div class="pz-l2">
         <div class="pz-estados">
