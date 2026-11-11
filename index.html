@@ -2916,6 +2916,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       </div>
       <div class="mp-flags" id="mp-flags"></div>
     </div>
+    <div id="mp-pedidos" style="margin-top:16px;"></div>
     <div class="mp-res" id="mp-res"></div>
   </div>
 
@@ -3174,6 +3175,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
           <button type="button" class="btn btn-primary" onclick="generarPresupuesto()" style="flex:1;justify-content:center;min-width:180px;">📄 Generar presupuesto PDF</button>
           <button type="button" class="btn btn-ghost" onclick="copiarLinkSeguimiento()" style="flex:1;justify-content:center;min-width:180px;">🔗 Link de seguimiento del cliente</button>
+          <button type="button" class="btn btn-ghost" onclick="segVerPedido(currentOrder)" style="flex:1;justify-content:center;min-width:140px;">📍 Ver dónde está</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
           <button type="button" onclick="abrirMensajes()" style="flex:1;justify-content:center;min-width:180px;background:#25D366;color:#04140a;font-weight:700;font-size:13px;padding:11px 16px;border-radius:10px;border:none;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:8px;">💬 Avisar al cliente por WhatsApp</button>
@@ -15381,6 +15383,7 @@ function mapaCalcular(){
     try { items = o.piezas_items ? JSON.parse(o.piezas_items) : []; } catch(e){ return; }
     items.forEach(it=>{
       if(!it.c || it.ll || it.ret || it.env) return;
+      if(!mpReciente(o, it)) return;
       const k = paisDe(it);
       if(!g[k]) g[k] = {pais:k, piezas:[], demora:0};
       const lim = it.lim || it.eta;
@@ -15470,7 +15473,104 @@ function aplicarVista(){
   if(g) g.setAttribute('transform', `translate(${mpDX},${mpDY}) scale(${mpEsc})`);
 }
 
+// ══════ SEGUIMIENTO RÁPIDO (Lucas, Joaquín, Alexis) ══════
+// Mapa y lista: solo compras de los últimos 15 días (pedido de Lucas 11/11; lo viejo ya se entregó).
+const MP_DIAS = 15;
+function mpReciente(o, x){
+  const lim = MP_DIAS*86400000, ahora = Date.now();
+  // con rastreo actualizado hace poco (ej. body kits en el agente de China) sigue contando
+  const t = x && x.trk_at ? new Date(x.trk_at) : null;
+  if(t && !isNaN(t) && ahora - t.getTime() <= lim) return true;
+  const f = new Date((x && (x.fcompra || x.fechaCompra)) || (o && o.created_at) || 0);
+  return !isNaN(f) && (ahora - f.getTime()) <= lim;
+}
+// Lo que llega a Miami hasta el viernes sale con el courier y llega a CDE martes/miércoles de la semana siguiente
+function etaDesdeMiami(base){
+  const d = new Date(base || Date.now()); if(isNaN(d)) return null;
+  const dow = d.getDay(); // 0 dom … 6 sáb
+  let hastaLunes = (8 - dow) % 7 || 7;
+  if(dow === 6 || dow === 0) hastaLunes += 7;
+  const mie = new Date(d.getTime() + (hastaLunes + 2) * 86400000);
+  mie.setHours(12,0,0,0);
+  return mie;
+}
+// Abre la misma vista que ve el cliente, con el código único del pedido.
+async function segCodigoDe(o){
+  if(!o || !o.id) return null;
+  if(o.seg_codigo) return o.seg_codigo;
+  try { const r = await sbFetch('/rest/v1/orders?id=eq.'+o.id+'&select=seg_codigo'); const c = r && r[0] && r[0].seg_codigo; if(c){ o.seg_codigo = c; return c; } } catch(e){}
+  return null;
+}
+async function segVerPedido(o){
+  if(typeof o !== 'object') o = (orders||[]).find(x=>String(x.id)===String(o));
+  if(!o || !o.id){ showToast('Guardá el pedido primero','error'); return; }
+  const w = window.open('about:blank','_blank');
+  const cod = await segCodigoDe(o);
+  if(!cod){ if(w) w.close(); showToast('No se pudo obtener el código de seguimiento','error'); return; }
+  const url = location.origin + location.pathname + '?s=' + cod;
+  if(w) w.location.href = url; else location.href = url;
+}
+async function segCopiarDe(id){
+  const o = (orders||[]).find(x=>String(x.id)===String(id));
+  const cod = await segCodigoDe(o);
+  if(!cod){ showToast('No se pudo obtener el código','error'); return; }
+  const link = location.origin + location.pathname + '?s=' + cod;
+  const nom = String(o.cliente_nombre||'').trim().split(' ')[0];
+  const msg = `Hola${nom && !/^\d/.test(nom)?' '+nom:''}! Acá podés seguir tu pedido en tiempo real:\n${link}\n\nGonbel Imports`;
+  navigator.clipboard.writeText(msg).then(()=>showToast('🔗 Link copiado — pegalo en WhatsApp','success')).catch(()=>prompt('Copiá este link:', link));
+}
+// Lista de pedidos con paquetes en camino, debajo del mapa
+function mpPintarPedidos(){
+  const cont = document.getElementById('mp-pedidos'); if(!cont) return;
+  const filas = [];
+  (orders||[]).forEach(o=>{
+    if(o.archivado || ['entregado','devolucion','cancelado','perdido'].includes(o.estado)) return;
+    let it = []; try { it = JSON.parse(o.piezas_items||'[]')||[]; } catch(e){ return; }
+    it = it.filter(x=> x && x.d && !/^\s*(valor|presupuesto|total|subtotal|mano de obra|seña|sena)\b/i.test(x.d));
+    const comp = it.filter(x=>x.c && mpReciente(o, x));
+    if(!comp.length || comp.every(x=>x.env)) return;
+    const n = { camino: comp.filter(x=>!x.env && !x.loc && !x.mia && (x.tk || x.ll || x.ret)).length,
+                miami: comp.filter(x=>x.mia && !x.ll && !x.loc && !x.env).length,
+                esperando: comp.filter(x=>!x.env && !x.loc && !x.mia && !x.tk && !x.ll && !x.ret).length,
+                listas: comp.filter(x=>x.loc && !x.env).length };
+    if(!n.camino && !n.miami && !n.esperando && !n.listas) return;
+    const etas = comp.filter(x=>!x.env && !x.loc).map(x=> x.mia ? etaDesdeMiami(x.fmia || x.trk_at) : (x.lim||x.eta)).filter(Boolean).map(d=>new Date(d)).filter(d=>!isNaN(d)).sort((a,b)=>a-b);
+    filas.push({o, n, total: it.length, prox: etas[0]||null, ult: etas[etas.length-1]||null});
+  });
+  filas.sort((a,b)=> (a.prox?a.prox.getTime():9e15) - (b.prox?b.prox.getTime():9e15));
+  if(!filas.length){ cont.innerHTML=''; return; }
+  const f = d => d ? d.toLocaleDateString('es-PY',{day:'2-digit',month:'short'}) : '';
+  const chip = (t,c) => '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:'+c+'22;color:'+c+';white-space:nowrap;">'+t+'</span>';
+  cont.innerHTML = '<div style="background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:18px;padding:16px 18px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'
+    +   '<div style="font-weight:700;font-size:15px;">📍 Dónde está cada pedido <span style="color:var(--t3);font-weight:500;font-size:12.5px;">· '+filas.length+' con paquetes en camino</span></div>'
+    +   '<input class="inp" id="mp-ped-q" placeholder="Buscar cliente o vehículo…" oninput="mpFiltrarPedidos(this.value)" style="max-width:240px;padding:7px 11px;font-size:12.5px;">'
+    + '</div>'
+    + filas.map(r=>{
+        const o = r.o, veh = [o.marca,o.modelo,o['año']].filter(Boolean).join(' ');
+        const chips = [r.n.camino?chip('🚚 '+r.n.camino+' en camino','#00c6ff'):'', r.n.miami?chip('🇺🇸 '+r.n.miami+' en Miami','#a78bfa'):'', r.n.esperando?chip('⏳ '+r.n.esperando+' sin despachar','#f5a623'):'', r.n.listas?chip('📦 '+r.n.listas+' en CDE','#22d97a'):''].filter(Boolean).join(' ');
+        return '<div class="mp-ped-row" data-q="'+esc(((o.cliente_nombre||'')+' '+veh+' '+(o.numero_pedido||o.numero||'')).toLowerCase())+'" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0;border-top:1px solid var(--brd);">'
+          + '<div style="flex:1;min-width:200px;">'
+          +   '<div style="font-weight:600;font-size:13.5px;">'+esc(o.cliente_nombre||'Sin nombre')+' <span style="color:var(--t3);font-weight:500;font-size:12px;">'+esc(o.numero_pedido||o.numero||'')+'</span></div>'
+          +   '<div style="font-size:12px;color:var(--t3);margin-top:2px;">'+(veh?'🚗 '+esc(veh)+' · ':'')+r.total+' pieza'+(r.total===1?'':'s')+(r.ult?' · llega aprox. '+(r.prox && r.prox.toDateString()!==r.ult.toDateString()? f(r.prox)+' – ':'')+f(r.ult):'')+'</div>'
+          +   '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">'+chips+'</div>'
+          + '</div>'
+          + '<div style="display:flex;gap:6px;">'
+          +   '<button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="segVerPedido(\''+o.id+'\')">📍 Ver</button>'
+          +   '<button type="button" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" title="Copiar link para el cliente" onclick="segCopiarDe(\''+o.id+'\')">🔗</button>'
+          +   '<button type="button" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" title="Abrir pedido" onclick="openOrder(\''+o.id+'\')">📋</button>'
+          + '</div></div>';
+      }).join('')
+    + '</div>';
+  const q = document.getElementById('mp-ped-q'); if(q && window._mpPedQ){ q.value = window._mpPedQ; mpFiltrarPedidos(window._mpPedQ); }
+}
+function mpFiltrarPedidos(q){
+  window._mpPedQ = q || '';
+  const t = (q||'').toLowerCase().trim();
+  document.querySelectorAll('.mp-ped-row').forEach(r=>{ r.style.display = !t || r.dataset.q.includes(t) ? 'flex' : 'none'; });
+}
 function pintarMapa(){
+  try { mpPintarPedidos(); } catch(e){ console.error(e); }
   mapaDatos = mapaCalcular();
   const total = mapaDatos.reduce((s,x)=>s+x.piezas.length,0);
   const dem = mapaDatos.reduce((s,x)=>s+x.demora,0);
