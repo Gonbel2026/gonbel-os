@@ -6562,6 +6562,11 @@ function bpCostoKeydown(ev, i){
 function bpElegirCalidad(i, cal){
   const it = bpStaging[i]; if(!it) return;
   it.calidad = (it.calidad === cal) ? null : cal;
+  // Que el estado elegido llegue también a la pieza del pedido (lo usa el presupuesto PDF)
+  try {
+    const pz = (typeof piezasItems!=='undefined') ? (piezasItems[i] && (piezasItems[i].d||'').trim()===(it.d||'').trim() ? piezasItems[i] : piezasItems.find(x=>(x.d||'').trim()===(it.d||'').trim())) : null;
+    if(pz){ pz.calidad = it.calidad; if(!cargandoPedido) scheduleAutoSave(700); }
+  } catch(e){}
   bpRenderLista();
   bpVivo();
 }
@@ -14399,6 +14404,14 @@ function generarPresupuesto(){
   });
 }
 
+// Estado del repuesto para el presupuesto: lo elegido en el desglose (Usado Original / Alternativo Nuevo / Original Nuevo)
+// manda; si no se eligió, usa lo escrito a mano en "Condición"; si no hay nada, "Nuevo".
+function condPresupuesto(x){
+  const calMap = { usada:'Usado Original', nueva_alt:'Alternativo Nuevo', nueva_orig:'Original Nuevo' };
+  if(x && x.calidad && calMap[x.calidad]) return calMap[x.calidad];
+  const c = String((x && x.cond) || '').trim();
+  return c || 'Nuevo';
+}
 async function ejecutarGeneracionPresupuesto(formaPago, plazo){
   const val = id => { const e=document.getElementById(id); return e ? (e.value||'').trim() : ''; };
   const cliente = val('f-cliente-nombre');
@@ -14434,7 +14447,7 @@ async function ejecutarGeneracionPresupuesto(formaPago, plazo){
     // El precio cargado es el TOTAL de la línea (ej. kit de 4 = un solo precio); la cantidad es informativa
     const sub = parseFloat(x.p)||0;
     const unit = parseFloat(x.pu)>0 ? parseFloat(x.pu) : (cant > 1 ? Math.round(sub/cant) : sub);
-    const cond = (x.cond||'Nuevo').trim();
+    const cond = condPresupuesto(x);
     const notaEntrega = x.entregaNota ? '<div style="font-size:10px;color:#1B6FC8;font-style:italic;margin-top:2px;">Entrega: '+x.entregaNota+'</div>' : '';
     return '<tr style="background:'+(i%2?'#F7FAFD':'#fff')+';border-bottom:1px solid #A8C8F0;">'
       + '<td style="padding:9px 10px;color:#6B7A8D;">'+(i+1)+'</td>'
@@ -14525,7 +14538,7 @@ async function ejecutarGeneracionPresupuesto(formaPago, plazo){
       order_id: (currentOrder && currentOrder.id) || null,
       cliente_nombre: cliente, cliente_ruc: clienteRuc||null,
       vehiculo: vehiculo||null, chasis: chasis||null,
-      items: items.map(x=>({d:x.d,cond:x.cond||'',q:parseInt(x.q,10)||1,p:parseFloat(x.p)||0})),
+      items: items.map(x=>({d:x.d,cond:condPresupuesto(x),q:parseInt(x.q,10)||1,p:parseFloat(x.p)||0})),
       total, forma_pago: formaPago, plazo_entrega: plazo||null,
       fecha_emision: hoy.toISOString().slice(0,10), fecha_validez: venc.toISOString().slice(0,10),
       creado_por: (currentUser && currentUser.name) || null
@@ -14538,10 +14551,17 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;'
 
 
 // ══════ v47: LINK DE SEGUIMIENTO ══════
-function copiarLinkSeguimiento(){
-  const num = (document.getElementById('modal-num').textContent||'').replace(/[^A-Z0-9]/gi,'');
-  if(!num || num.includes('???')){ showToast('Guardá el pedido primero','error'); return; }
-  const link = location.origin + location.pathname + '?s=' + num;
+async function copiarLinkSeguimiento(){
+  // Cada pedido tiene un código único (seg_codigo). El número #C se repite entre pedidos,
+  // así que NO sirve para el link: un cliente podría ver el pedido de otro.
+  if(!currentOrder || !currentOrder.id){ showToast('Guardá el pedido primero','error'); return; }
+  let cod = currentOrder.seg_codigo;
+  if(!cod){
+    try { const r = await sbFetch('/rest/v1/orders?id=eq.'+currentOrder.id+'&select=seg_codigo'); cod = r && r[0] && r[0].seg_codigo; } catch(e){}
+    if(cod) currentOrder.seg_codigo = cod;
+  }
+  if(!cod){ showToast('No se pudo obtener el código de seguimiento','error'); return; }
+  const link = location.origin + location.pathname + '?s=' + cod;
   const cliente = (document.getElementById('f-cliente-nombre').value||'').trim();
   const msg = `Hola${cliente?' '+cliente.split(' ')[0]:''}! Acá podés seguir tu pedido en tiempo real:\n${link}\n\nGonbel Imports`;
   navigator.clipboard.writeText(msg).then(()=>{
@@ -14552,6 +14572,31 @@ function copiarLinkSeguimiento(){
 // ══════ v47: PÁGINA PÚBLICA DE SEGUIMIENTO ══════
 const SEG_FUNC = SB_URL + '/functions/v1/seguimiento';
 
+// Detalle de rastreo de cada pieza en la vista del cliente: origen, courier, tracking y fecha estimada
+const SEG_BANDERA = {'Brasil':'🇧🇷','Estados Unidos':'🇺🇸','China':'🇨🇳','Foz do Iguaçu':'🇧🇷'};
+function segLinkTracking(courier, tk){
+  const c = String(courier||'').toLowerCase(), t = encodeURIComponent(tk);
+  if(/usps/.test(c)) return 'https://tools.usps.com/go/TrackConfirmAction?tLabels='+t;
+  if(/fedex/.test(c)) return 'https://www.fedex.com/fedextrack/?trknbr='+t;
+  if(/\bups\b/.test(c)) return 'https://www.ups.com/track?tracknum='+t;
+  if(/dhl/.test(c)) return 'https://www.dhl.com/global-en/home/tracking/tracking-express.html?tracking-id='+t;
+  return 'https://t.17track.net/es#nums='+t;
+}
+function segDetallePieza(pz){
+  const partes = [];
+  if(pz.origen) partes.push((SEG_BANDERA[pz.origen]||'🌎')+' Desde '+pz.origen);
+  if(pz.fecha_estimada){
+    const f = new Date(pz.fecha_estimada);
+    if(!isNaN(f)) partes.push('📅 Llega aprox. '+f.toLocaleDateString('es-PY',{day:'2-digit',month:'short'}));
+  }
+  let html = partes.length ? '<div style="font-size:11.5px;color:#8fa6c2;margin-top:4px;">'+partes.join(' · ')+'</div>' : '';
+  if(pz.tracking){
+    html += '<div style="font-size:11.5px;margin-top:3px;"><a href="'+segLinkTracking(pz.courier, pz.tracking)+'" target="_blank" rel="noopener" style="color:#2f8fff;text-decoration:none;">🔎 '+(pz.courier?esc(pz.courier)+' · ':'')+esc(pz.tracking)+'</a></div>';
+  } else if(pz.courier){
+    html += '<div style="font-size:11.5px;color:#8fa6c2;margin-top:3px;">🚚 '+esc(pz.courier)+'</div>';
+  }
+  return html;
+}
 async function verSeguimientoPublico(codigo){
   document.getElementById('seg-page').style.display = 'block';
   const cont = document.getElementById('seg-cont');
@@ -14610,7 +14655,10 @@ async function verSeguimientoPublico(codigo){
       ${j.piezas.length?`<div style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px;">
         <div style="font-size:11px;color:#6d8bb0;letter-spacing:1.6px;font-weight:700;margin-bottom:15px;">TUS PIEZAS · ${j.piezas_enviadas||0} enviadas de ${j.total_piezas}</div>
         ${j.piezas.map(pz=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06);">
-          <div style="font-size:14.5px;color:#e8edf5;font-weight:600;">${pz.nombre}</div>
+          <div style="min-width:0;">
+            <div style="font-size:14.5px;color:#e8edf5;font-weight:600;">${pz.nombre}</div>
+            ${segDetallePieza(pz)}
+          </div>
           <span style="font-size:11px;font-weight:700;padding:5px 11px;border-radius:8px;white-space:nowrap;background:${pz.enviada?'rgba(0,198,255,.22)':(pz.en_local?'rgba(34,217,122,.2)':(pz.llego?'rgba(167,139,250,.18)':(pz.comprada?'rgba(0,198,255,.14)':'rgba(255,255,255,.06)')))};color:${pz.enviada?'#00c6ff':(pz.en_local?'#22d97a':(pz.llego?'#a78bfa':(pz.comprada?'#00c6ff':'#8fa0b8')))};">${(pz.enviada||pz.en_local)?'✓ ':''}${pz.estado}</span>
         </div>`).join('')}
       </div>`:''}
