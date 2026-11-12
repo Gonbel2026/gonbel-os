@@ -19598,6 +19598,7 @@ function ctTab(t){
           + '<div class="ct-acc">'
             + '<button type="button" class="btn btn-ghost" onclick="ctVerPedido(' + g.order_id + ')">\uD83D\uDCF7 Ver fotos</button>'
             + '<button type="button" class="btn btn-primary" onclick="pgAbrirDesdeSugerido(' + g.portada.id + ',\'' + g.order_id + '\')">\uD83C\uDFA8 Generar</button>'
+            + (g.libre ? '<button type="button" class="btn btn-ghost" title="Borrar foto" style="color:var(--red);" onclick="ctBorrarFoto(' + g.portada.id + ')">\uD83D\uDDD1\uFE0F</button>' : '')
           + '</div>'
         + '</div></div>';
     }).join('') + '</div>';
@@ -19814,6 +19815,7 @@ function ctVerPedido(orderId){
           + '<input type="checkbox" class="ctp-chk" data-url="' + f.url + '" ' + (f.publicada ? '' : 'checked') + '> incluir'
         + '</label>'
         + '<button type="button" class="inv-b" onclick="ctFavorita(' + f.id + ',' + orderId + ')" title="Marcar como portada">' + (f.favorita ? '\u2B50' : '\u2606') + '</button>'
+        + '<button type="button" class="inv-b" onclick="ctBorrarFoto(' + f.id + ')" title="Borrar foto" style="color:var(--red);">\uD83D\uDDD1\uFE0F</button>'
       + '</div></div>').join('')
     + '</div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">'
@@ -19825,6 +19827,25 @@ function ctVerPedido(orderId){
     + '</div>'
     + (g.fotos.length > 1 ? '<div style="font-size:11px;color:var(--t3);margin-top:9px;">El carrusel es una sola publicaci\u00f3n con varias fotos, hasta 10. No aplica a historias: esas se publican de a una.</div>' : '');
   invModal('\uD83D\uDCF7 Fotos del pedido', html, null);
+}
+
+// Borrar una foto cargada por error (cualquier usuario). Saca el archivo y el registro.
+async function ctBorrarFoto(fotoId){
+  const f = (ctFotos||[]).find(x => x.id === fotoId);
+  if(!f) return;
+  if(!confirm('\u00bfBorrar esta foto?\n\nSe elimina del sistema y no se puede recuperar.')) return;
+  try {
+    if(f.storage_path){
+      await fetch(SB_URL + '/storage/v1/object/' + FOTOS_BUCKET + '/' + f.storage_path, {
+        method:'DELETE', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+    }
+    await sbFetch('/rest/v1/pedido_fotos?id=eq.' + fotoId, 'DELETE');
+    try { invCerrarModal(); } catch(e){}
+    await ctCargar(true);
+    try { if(typeof foCargarConteos==='function') foCargarConteos(); } catch(e){}
+    showToast('\uD83D\uDDD1\uFE0F Foto borrada','success');
+  } catch(e){ showToast('No se pudo borrar la foto','error'); }
 }
 
 async function ctFavorita(fotoId, orderId){
@@ -19886,10 +19907,21 @@ let ctLibreFotos = [];
 
 function ctLibrePrevia(files){
   ctLibreFotos = Array.from(files || []);
+  ctLibrePintar();
+}
+// Quitar una foto elegida por error antes de subirla
+function ctLibreQuitar(i){
+  ctLibreFotos.splice(i, 1);
+  if(!ctLibreFotos.length){ const inp = document.getElementById('ctl-file'); if(inp) inp.value = ''; }
+  ctLibrePintar();
+}
+function ctLibrePintar(){
   const cont = document.getElementById('ctl-prev');
+  if(!cont) return;
   if(!ctLibreFotos.length){ cont.innerHTML = ''; return; }
   cont.innerHTML = '<div style="display:flex;gap:7px;overflow-x:auto;">' +
-    ctLibreFotos.map(function(f, i){ return '<img id="ctl-p' + i + '" style="height:110px;border-radius:9px;flex-shrink:0;">'; }).join('') + '</div>';
+    ctLibreFotos.map(function(f, i){ return '<div style="position:relative;flex-shrink:0;"><img id="ctl-p' + i + '" style="height:110px;border-radius:9px;display:block;">'
+      + '<button type="button" title="Quitar esta foto" onclick="ctLibreQuitar(' + i + ')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:14px;cursor:pointer;line-height:26px;padding:0;">\u2715</button></div>'; }).join('') + '</div>';
   ctLibreFotos.forEach(function(f, i){
     const r = new FileReader();
     r.onload = function(e){ const el = document.getElementById('ctl-p' + i); if(el) el.src = e.target.result; };
