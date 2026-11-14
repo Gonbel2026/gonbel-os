@@ -1842,7 +1842,8 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <div class="sn-lista" id="sn-lista"><div class="sn-vacio">Cargando…</div></div>
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:9px;">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:9px;flex-wrap:wrap;align-items:center;">
+      <div id="vend-filtro" style="display:flex;gap:4px;align-items:center;margin-right:auto;flex-wrap:wrap;"></div>
       <button type="button" class="btn btn-ghost" style="padding:7px 13px;font-size:12.5px;" onclick="plegarTodas(true)">▲ Plegar todas</button>
       <button type="button" class="btn btn-ghost" style="padding:7px 13px;font-size:12.5px;" onclick="plegarTodas(false)">▼ Abrir todas</button>
     </div>
@@ -3046,6 +3047,14 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       </div>
 
       <div class="form-grid">
+        <div class="field full"><label>🧑‍💼 Vendedor <span style="color:var(--red);">*</span></label>
+          <select id="f-vendedor" onchange="scheduleAutoSave(300)" style="font-weight:700;">
+            <option value="">Elegí quién vende…</option>
+            <option value="Lucas">Lucas</option>
+            <option value="Joaquín">Joaquín</option>
+            <option value="Alexis">Alexis</option>
+          </select>
+        </div>
         <div class="field"><label>Nombre / Empresa</label><input id="f-cliente-nombre" placeholder="Nombre completo o empresa"></div>
         <div class="field"><label>Ciudad</label><input id="f-cliente-ciudad" placeholder="Ciudad, Paraguay"></div>
         <div class="field"><label>Teléfono / WhatsApp</label><div style="display:flex;gap:8px;align-items:center;"><input id="f-cliente-tel" placeholder="09XX XXX XXX" style="flex:1" oninput="updateWALink()"><a id="wa-link" href="#" target="_blank" title="Abrir chat WhatsApp" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);flex-shrink:0;text-decoration:none;transition:all .18s;" onmouseover="this.style.background='rgba(37,211,102,.3)'" onmouseout="this.style.background='rgba(37,211,102,.15)'"><svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 3C9.373 3 4 8.373 4 15c0 2.385.668 4.61 1.822 6.51L4 29l7.697-1.793A12.94 12.94 0 0016 28c6.627 0 12-5.373 12-12S22.627 3 16 3z" fill="#25D366"/><path d="M21.5 18.5c-.3-.15-1.77-.87-2.04-.97-.28-.1-.48-.15-.68.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.63-.93-2.23-.24-.58-.49-.5-.68-.51-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.48s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.49 1.7.62.72.23 1.37.2 1.88.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z" fill="#fff"/></svg></a></div></div>
@@ -8601,12 +8610,56 @@ function plegarTodas(valor){
   renderKanban();
 }
 
+// ── Vendedor de cada pedido (pedido por Lucas 14/11) ──
+const VENDEDORES = ['Lucas','Joaquín','Alexis'];
+const VEND_COLOR = {'Lucas':'#3b8eff','Joaquín':'#f5a623','Alexis':'#a78bfa'};
+let filtroVendedor = '';
+try { filtroVendedor = localStorage.getItem('gonbel_filtro_vend') || ''; } catch(e){}
+function vendedorDeUsuario(){
+  const n = ((currentUser && currentUser.name) || '').toLowerCase();
+  if(n.startsWith('lucas')) return 'Lucas';
+  if(n.startsWith('joaq')) return 'Joaquín';
+  if(n.startsWith('alexis')) return 'Alexis';
+  return '';
+}
+function setFiltroVendedor(v){
+  filtroVendedor = (filtroVendedor === v) ? '' : v;
+  try { localStorage.setItem('gonbel_filtro_vend', filtroVendedor); } catch(e){}
+  renderKanban();
+}
+function pasaVendedor(o){
+  if(!filtroVendedor) return true;
+  if(filtroVendedor === '__sin') return !o.vendedor;
+  return o.vendedor === filtroVendedor;
+}
+function vendChip(o){
+  if(o.vendedor){
+    const c = VEND_COLOR[o.vendedor] || 'var(--t3)';
+    return `<span title="Vendedor" style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:6px;color:${c};background:${c}22;border:1px solid ${c}55;">👤 ${o.vendedor}</span>`;
+  }
+  if(o.estado === 'entregado' || o.estado === 'presupuesto-enviado') return '';
+  return `<span title="Falta elegir el vendedor" style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:6px;color:var(--red);background:rgba(255,77,109,.12);">👤 sin vendedor</span>`;
+}
+function pintarFiltroVendedor(){
+  const box = document.getElementById('vend-filtro'); if(!box) return;
+  const yo = vendedorDeUsuario();
+  const btn = (v, txt, color) => {
+    const on = filtroVendedor === v;
+    return `<button type="button" class="btn btn-ghost" onclick="setFiltroVendedor('${v}')" style="padding:6px 11px;font-size:12px;${on?`background:${color}33;color:${color};border-color:${color};font-weight:800;`:''}">${txt}</button>`;
+  };
+  box.innerHTML = '<span style="font-size:12px;color:var(--t3);margin-right:2px;">Ver pedidos de:</span>'
+    + btn('', 'Todos', '#22d97a')
+    + VENDEDORES.map(v => btn(v, (v===yo?'⭐ ':'') + v, VEND_COLOR[v])).join('')
+    + btn('__sin', 'Sin vendedor', '#ff4d6d');
+}
+
 function renderKanban(){
   const board = document.getElementById('kanban-board');
   board.innerHTML = '';
   let total = 0;
+  try { pintarFiltroVendedor(); } catch(e){}
   COLUMNS.forEach(col => {
-    const colOrders = orders.filter(o => o.estado === col.id && !o.archivado && coincide(o, kBuscar[col.id]));
+    const colOrders = orders.filter(o => o.estado === col.id && !o.archivado && pasaVendedor(o) && coincide(o, kBuscar[col.id]));
     total += colOrders.length;
     const colEl = document.createElement('div');
     colEl.className = 'k-col' + (plegadas[col.id] ? ' plegada' : '');
@@ -8747,6 +8800,7 @@ function renderCard(o, colorClass){
         <div class="card-idrow">
           <span class="card-num">#${numPedido}</span>
           ${clienteId ? `<span class="card-clid">${clienteId}</span>` : ''}
+          ${vendChip(o)}
         </div>
         <div class="card-client">${cliente}</div>
       </div>
@@ -9049,6 +9103,7 @@ function fillModal(o){
   document.getElementById('f-cliente-ciudad').value = o.cliente_ciudad || '';
   document.getElementById('f-cliente-tel').value = o.cliente_tel || '';
   document.getElementById('f-cliente-tipo').value = o.tipo_cliente || '';
+  { const fv = document.getElementById('f-vendedor'); if(fv) fv.value = o.vendedor || ''; }
   document.getElementById('f-cliente-ruc').value = o.cliente_ruc || '';
   document.getElementById('f-marca').value = o.marca || '';
   document.getElementById('f-modelo').value = o.modelo || '';
@@ -9139,6 +9194,7 @@ function clearModal(){
    'f-costo','f-venta','f-costo-envio','f-pagado','f-fecha-pago','f-fecha-cobro','f-tracking','f-fecha-eta']
   .forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   document.getElementById('f-cliente-tipo').value = '';
+  { const fv = document.getElementById('f-vendedor'); if(fv) fv.value = vendedorDeUsuario(); }
   document.getElementById('modal-fecha-tag').textContent = '';
   crCargarDesdePedido(null);
   crClienteSel = null;
@@ -9383,6 +9439,7 @@ async function autoSaveOrder(){
     cliente_ciudad: document.getElementById('f-cliente-ciudad').value,
     cliente_tel: document.getElementById('f-cliente-tel').value,
     tipo_cliente: document.getElementById('f-cliente-tipo').value,
+    vendedor: (document.getElementById('f-vendedor')||{}).value || null,
     cliente_ruc: document.getElementById('f-cliente-ruc').value,
     marca: document.getElementById('f-marca').value,
     modelo: document.getElementById('f-modelo').value,
@@ -9437,6 +9494,8 @@ async function saveOrder(){
   clearTimeout(autoSaveTimer);
   const titulo = document.getElementById('modal-title').value.trim();
   if(!titulo){ showToast('Ingresá un título para el pedido','error'); return; }
+  const fvSel = document.getElementById('f-vendedor');
+  if(fvSel && !fvSel.value){ showToast('Elegí el vendedor del pedido (Lucas, Joaquín o Alexis)','error'); setMTab('resumen'); fvSel.focus(); return; }
   const estado = document.getElementById('modal-estado').value;
   const num = isNewOrder 
     ? '#C' + String(orders.length + 1).padStart(3,'0')
@@ -9459,6 +9518,7 @@ async function saveOrder(){
     cliente_ciudad: document.getElementById('f-cliente-ciudad').value,
     cliente_tel: document.getElementById('f-cliente-tel').value,
     tipo_cliente: document.getElementById('f-cliente-tipo').value,
+    vendedor: (document.getElementById('f-vendedor')||{}).value || null,
     cliente_ruc: document.getElementById('f-cliente-ruc').value,
     marca: document.getElementById('f-marca').value,
     modelo: document.getElementById('f-modelo').value,
@@ -13373,7 +13433,7 @@ function pintarReembolsos(){
   orders.forEach(o=>{
     let items = [];
     try { items = o.piezas_items ? JSON.parse(o.piezas_items) : []; } catch(e){ return; }
-    const items_reemb = items.filter(x=>x.reemb);
+    const items_reemb = items.filter(x=>x.reemb === true);
     if(!items_reemb.length) return;
     const veh = [o.marca,o.modelo,o.año].filter(Boolean).join(' ') || '—';
     items_reemb.forEach(pz=>{
@@ -13383,7 +13443,7 @@ function pintarReembolsos(){
       filas.push(`<div class="cc-item">
         <div class="cc-item-tt" onclick="goKanban();setTimeout(()=>openOrder('${o.id}'),120)">
           <b>${pz.d||'Pieza'}</b>
-          <span>${o.numero||''} ${o.cliente_nombre||''} · ${veh}${f?' · desde '+f.toLocaleDateString('es-PY',{day:'2-digit',month:'short'}):''}</span>
+          <span>${o.numero_pedido||o.numero||''} ${o.cliente_nombre||''} · ${veh}${f?' · desde '+f.toLocaleDateString('es-PY',{day:'2-digit',month:'short'}):''}${pz.reemb_nota?' · '+pz.reemb_nota:''}</span>
         </div>
         <select class="reemb-sel" style="color:${est.c}" onchange="cambiarEstadoReembolso('${o.id}',${idx},this.value)">
           ${Object.keys(REEMB_ESTADOS).map(k=>`<option value="${k}" ${pz.reembEstado===k?'selected':''}>${REEMB_ESTADOS[k].n}</option>`).join('')}
@@ -13405,10 +13465,12 @@ function pintarReembolsos(){
 }
 
 async function cambiarEstadoReembolso(orderId, idx, nuevoEstado){
-  const o = orders.find(x=>x.id===orderId); if(!o) return;
+  const o = orders.find(x=>String(x.id)===String(orderId)); if(!o){ showToast('No encontré el pedido','error'); return; }
   let items = []; try { items = JSON.parse(o.piezas_items); } catch(e){ return; }
   if(!items[idx]) return;
   items[idx].reembEstado = nuevoEstado;
+  // Reembolsado o rechazado = terminado: sale solo de la lista
+  if(nuevoEstado === 'pagado' || nuevoEstado === 'rechazado') items[idx].reemb = false;
   try {
     await sbFetch(`/rest/v1/orders?id=eq.${orderId}`, 'PATCH', {piezas_items: JSON.stringify(items)});
     o.piezas_items = JSON.stringify(items);
@@ -13418,8 +13480,7 @@ async function cambiarEstadoReembolso(orderId, idx, nuevoEstado){
 }
 
 async function quitarReembolso(orderId, idx){
-  if(!confirm('¿Ya se resolvió este reembolso? Se va a sacar de la lista.')) return;
-  const o = orders.find(x=>x.id===orderId); if(!o) return;
+  const o = orders.find(x=>String(x.id)===String(orderId)); if(!o){ showToast('No encontré el pedido','error'); return; }
   let items = []; try { items = JSON.parse(o.piezas_items); } catch(e){ return; }
   if(!items[idx]) return;
   items[idx].reemb = false;
