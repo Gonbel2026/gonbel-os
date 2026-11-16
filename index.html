@@ -2434,6 +2434,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
       </div>
     <div id="cj-billeteras" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px;"></div>
 
@@ -2467,6 +2468,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
       </div>
       <div id="rb-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;"></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:13px;">
@@ -2481,12 +2483,31 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div id="rb-lista"></div>
   </div>
 
+  <div class="page" id="page-fincomisiones">
+      <div class="fin-tabs">
+        <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
+        <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
+      </div>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+        <span style="font-size:12px;color:var(--t3);">Mes:</span>
+        <select class="inp" id="cm-mes" onchange="cmPintar()" style="width:auto;min-width:170px;"></select>
+        <span style="flex:1;"></span>
+        <span style="font-size:11.5px;color:var(--t3);">Comisión: <b>5% sobre la venta</b> para Joaquín y Alexis. Cuenta la fecha de venta (facturado, o fecha del pedido).</span>
+      </div>
+      <div id="cm-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px;"></div>
+      <div id="cm-detalle"></div>
+  </div>
+
   <div class="page" id="page-finanalisis">
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
       </div>
       <div id="an-periodo" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--t3);">Período:</span>
@@ -2518,6 +2539,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
       </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--t3);">Mes:</span>
@@ -12445,7 +12467,7 @@ function abrirFinanzas(tab, el){
   }
   FIN_TAB = tab || 'pedidos';
   if(FIN_TAB === 'empresa') FIN_TAB = 'pedidos';   // Empresa se fusiono con Pedidos
-  const paginas = {pedidos:'financiero', caja:'fincaja', analisis:'finanalisis', reembolsos:'finreembolsos'};
+  const paginas = {pedidos:'financiero', caja:'fincaja', analisis:'finanalisis', reembolsos:'finreembolsos', comisiones:'fincomisiones'};
   const id = paginas[FIN_TAB];
 
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -12468,7 +12490,60 @@ function abrirFinanzas(tab, el){
     if(FIN_TAB === 'caja'){ cjCargar(); }
     if(FIN_TAB === 'analisis'){ renderAnalisis(); }
     if(FIN_TAB === 'reembolsos'){ rbCargar(); }
+    if(FIN_TAB === 'comisiones'){ cmPintar(); }
   } catch(e){ console.error(e); }
+}
+
+// ===== Comisiones por vendedor (pedido por Lucas 16/11: 5% sobre la venta para Joaquín y Alexis) =====
+const COMISION_PCT = {'Joaquín':0.05, 'Alexis':0.05, 'Lucas':0};
+const CM_ESTADOS = ['aprobado','comprado','listo-envio','entregado'];
+function cmFechaVenta(o){ return String(o.fecha_facturado || o.fecha_pedido || o.created_at || '').slice(0,10); }
+function cmLlenarMeses(){
+  const sel = document.getElementById('cm-mes'); if(!sel) return;
+  const prev = sel.value;
+  const meses = new Set();
+  (orders||[]).forEach(o=>{ if(CM_ESTADOS.includes(o.estado)){ const f = cmFechaVenta(o); if(f) meses.add(f.slice(0,7)); } });
+  const hoy = new Date().toISOString().slice(0,7); meses.add(hoy);
+  const lista = [...meses].sort().reverse();
+  sel.innerHTML = lista.map(m=>{ const [a,mm] = m.split('-'); const t = new Date(a, mm-1, 1).toLocaleDateString('es-PY',{month:'long',year:'numeric'}); return '<option value="'+m+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>'; }).join('');
+  sel.value = prev && lista.includes(prev) ? prev : hoy;
+}
+function cmPintar(){
+  cmLlenarMeses();
+  const mes = (document.getElementById('cm-mes')||{}).value || new Date().toISOString().slice(0,7);
+  const ventas = (orders||[]).filter(o => CM_ESTADOS.includes(o.estado) && !o.archivado && cmFechaVenta(o).slice(0,7) === mes && (parseFloat(o.precio_venta)||0) > 0);
+  const grupos = {'Lucas':[], 'Joaquín':[], 'Alexis':[], '':[]};
+  ventas.forEach(o => { (grupos[o.vendedor] || grupos['']).push(o); });
+  const cobrado = o => o.pagado_completo || (parseFloat(o.valor_pagado)||0) >= (parseFloat(o.precio_venta)||0);
+  const tot = l => l.reduce((s,o)=>s+(parseFloat(o.precio_venta)||0),0);
+  const kp = document.getElementById('cm-kpis'), det = document.getElementById('cm-detalle');
+  if(!kp || !det) return;
+  kp.innerHTML = ['Joaquín','Alexis','Lucas'].map(v=>{
+    const l = grupos[v], pct = COMISION_PCT[v]||0, venta = tot(l);
+    const com = Math.round(venta*pct), comCob = Math.round(tot(l.filter(cobrado))*pct);
+    const c = (typeof VEND_COLOR!=='undefined' && VEND_COLOR[v]) || 'var(--t1)';
+    return '<div class="card" style="padding:15px;border-color:'+c+'55;">'
+      + '<div style="font-size:12px;color:'+c+';font-weight:800;">👤 '+v+'</div>'
+      + '<div style="font-size:12px;color:var(--t3);margin-top:6px;">Vendido: <b style="color:var(--t1);">Gs '+fmtNum(venta)+'</b> · '+l.length+' pedido'+(l.length===1?'':'s')+'</div>'
+      + (pct ? '<div style="font-size:21px;font-weight:800;margin-top:6px;color:var(--green, #22d97a);">Gs '+fmtNum(com)+'</div>'
+          + '<div style="font-size:11px;color:var(--t3);margin-top:3px;">Comisión 5% · de pedidos ya cobrados: Gs '+fmtNum(comCob)+'</div>'
+        : '<div style="font-size:11px;color:var(--t3);margin-top:6px;">Sin comisión (dueño)</div>')
+      + '</div>';
+  }).join('') + (grupos[''].length ? '<div class="card" style="padding:15px;border-color:rgba(255,77,109,.5);"><div style="font-size:12px;color:var(--red);font-weight:800;">⚠️ Sin vendedor</div><div style="font-size:21px;font-weight:800;margin-top:6px;color:var(--red);">'+grupos[''].length+' pedido'+(grupos[''].length===1?'':'s')+'</div><div style="font-size:11px;color:var(--t3);margin-top:3px;">Gs '+fmtNum(tot(grupos['']))+' sin asignar — no entran en ninguna comisión</div></div>' : '');
+  const fila = o => {
+    const pct = COMISION_PCT[o.vendedor]||0, v = parseFloat(o.precio_venta)||0;
+    return '<tr style="border-bottom:1px solid var(--brd);">'
+      + '<td style="padding:8px 10px;white-space:nowrap;">'+cmFechaVenta(o).split('-').reverse().join('/')+'</td>'
+      + '<td style="padding:8px 10px;"><a href="javascript:void(0)" onclick="openOrder('+o.id+')" style="color:var(--cyan);">'+(o.numero_pedido||o.numero||('#'+o.id))+'</a> · '+(o.cliente_nombre||'')+'</td>'
+      + '<td style="padding:8px 10px;white-space:nowrap;">Gs '+fmtNum(v)+'</td>'
+      + '<td style="padding:8px 10px;white-space:nowrap;">'+(pct?'Gs '+fmtNum(Math.round(v*pct)):'—')+'</td>'
+      + '<td style="padding:8px 10px;white-space:nowrap;">'+(cobrado(o)?'<span style="color:var(--green, #22d97a);">✅ Cobrado</span>':'<span style="color:var(--amber, #f5a623);">⏳ Falta cobrar</span>')+'</td></tr>';
+  };
+  det.innerHTML = ['Joaquín','Alexis','Lucas',''].filter(v=>grupos[v].length).map(v=>
+    '<div class="card" style="padding:0;margin-bottom:12px;overflow-x:auto;"><div style="padding:11px 13px;font-weight:700;">'+(v?'👤 '+v:'⚠️ Sin vendedor — elegilo en el pedido')+'</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="text-align:left;color:var(--t3);font-size:11px;"><th style="padding:8px 10px;">Fecha</th><th style="padding:8px 10px;">Pedido</th><th style="padding:8px 10px;">Venta</th><th style="padding:8px 10px;">Comisión</th><th style="padding:8px 10px;">Cobro</th></tr></thead><tbody>'
+    + grupos[v].sort((a,b)=>cmFechaVenta(b).localeCompare(cmFechaVenta(a))).map(fila).join('') + '</tbody></table></div>'
+  ).join('') || '<div class="card" style="padding:18px;color:var(--t3);text-align:center;">No hay ventas en este mes</div>';
 }
 
 // ===== Reembolsos (devoluciones de plata de las plataformas) =====
