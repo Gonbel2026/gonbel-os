@@ -5047,13 +5047,27 @@ function renderPiezasItems(){
   calcPiezasTotal();
   if(!cargandoPedido) scheduleAutoSave(700);
 }
-// Detecta si una línea es un precio suelto
+// Regla de Lucas 17/11: un número es PRECIO solo si lleva moneda (Gs, ₲, R$, $, US$, USD, U$S, reales, dólares, guaraníes).
+// Un número SIN moneda es un CÓDIGO de pieza (OEM), ej. "33 32 6 881 781" o "8K0941043".
+const _RX_MON_PRE = '(?:gs\\.?|g\\$|₲|us\\$|u\\$s|u\\$|usd|r\\$|brl|\\$)';
+const _RX_MON_POS = '(?:gs\\.?|g\\$|₲|guaran[ií]es?|usd|us\\$|u\\$s|d[oó]lares?|r\\$|reales?|brl|\\$)';
 function _esPrecio(l){
-  const s = l.trim();
-  if(!s) return false;
-  if(!/\d/.test(s)) return false;
-  // solo dígitos, separadores, moneda y palabras de moneda
-  return /^(gs|g\$|₲|usd|u\$s|\$|r\$|brl)?\s*[\d.,\s]+\s*(gs|guaran[ií]es?|usd|d[oó]lares?|reales?|brl)?\.?$/i.test(s);
+  const s = String(l||'').trim();
+  if(!s || !/\d/.test(s)) return false;
+  return new RegExp('^(?:' + _RX_MON_PRE + '\\s*[\\d.,\\s]*\\d[\\d.,]*|[\\d.,\\s]*\\d[\\d.,]*\\s*' + _RX_MON_POS + ')\\.?$', 'i').test(s);
+}
+function _monedaDe(l){
+  const s = String(l||'').toLowerCase();
+  if(/r\$|brl|real/.test(s)) return 'brl';
+  if(/us\$|u\$s|u\$|usd|d[oó]lar/.test(s) || (/\$/.test(s) && !/g\$/.test(s))) return 'usd';
+  return 'gs';
+}
+function _esCodigo(l){
+  const s = String(l||'').trim();
+  if(!s || _esPrecio(s)) return false;
+  if(!/^[A-Za-z0-9][A-Za-z0-9 .\-\/]*$/.test(s)) return false;
+  if((s.match(/\d/g)||[]).length < 5) return false;
+  return !s.split(/[\s.\-\/]+/).some(t => /^[A-Za-zÀ-ÿ]{3,}$/.test(t));   // sin palabras: es código, no nombre
 }
 function _num(s){
   let t = (s||'').replace(/[^\d.,]/g,'').trim();
@@ -5105,20 +5119,35 @@ function parsearPiezas(txt){
   const out = [];
   // Todo lo que va al desglose y al presupuesto sale en MAYÚSCULAS, sin importar cómo se escribió arriba
   const MAY = s => (s||'').toUpperCase();
+  const limpiarNom = s => MAY(s.trim().replace(/^[\d]+[.)\-]\s+/,''));
+  // ¿Los códigos van ANTES del nombre (código / nombre) o DESPUÉS (nombre / código)?
+  const primero = lineas.find(l => !_esPrecio(l));
+  const codigosPrimero = !!(primero && _esCodigo(primero));
+  let codPendiente = null;
+  const addCod = (it, c) => { it.oem = it.oem ? it.oem + ', ' + c : c; };
   for(let i=0;i<lineas.length;i++){
     let l = lineas[i];
-    // Caso 1: nombre y precio en la misma línea  ->  "Puerta Mercedes - 3.000.000"
-    const m = l.match(/^(.+?)[\s]*[-–—:|]{1,2}[\s]*((?:gs|\$|r\$|usd)?\s*[\d][\d.,\s]*)$/i);
-    if(m && /\d/.test(m[2]) && !_esPrecio(m[1])){
-      out.push({d:MAY(m[1].trim().replace(/^[\d]+[.)\-]\s*/,'')), p:_num(m[2]), c:false});
+    if(_esCodigo(l)){
+      if(codigosPrimero){ codPendiente = codPendiente ? codPendiente + ', ' + l : l; }
+      else if(out.length){ addCod(out[out.length-1], l); }
       continue;
     }
-    // Caso 2: la línea es el nombre y la siguiente es el precio
-    if(!_esPrecio(l)){
-      let precio = 0;
-      if(i+1 < lineas.length && _esPrecio(lineas[i+1])){ precio = _num(lineas[i+1]); i++; }
-      out.push({d:MAY(l.replace(/^[\d]+[.)\-]\s*/,'')), p:precio, c:false});
+    if(_esPrecio(l)){
+      if(out.length && !out[out.length-1].p){ out[out.length-1].p = _num(l); out[out.length-1].mon = _monedaDe(l); }
+      continue;
     }
+    let it = null;
+    // Caso 1: nombre y precio CON MONEDA en la misma línea  ->  "Puerta Mercedes - 3.000.000 Gs"
+    const m = l.match(new RegExp('^(.+?)\\s*[-–—:|]{1,2}\\s*(' + _RX_MON_PRE + '?\\s*\\d[\\d.,\\s]*\\s*' + _RX_MON_POS + '?)$', 'i'));
+    if(m && _esPrecio(m[2])){ it = {d:limpiarNom(m[1]), p:_num(m[2]), mon:_monedaDe(m[2]), c:false}; }
+    // Caso 1b: código y nombre en la misma línea  ->  "33326881781 Soporte de goma"
+    if(!it){
+      const mc = l.match(/^([A-Za-z0-9][A-Za-z0-9.\-\/]*\d[A-Za-z0-9.\-\/]*)\s*[-–—:|]?\s+(.+)$/);
+      if(mc && _esCodigo(mc[1]) && !_esCodigo(mc[2]) && !_esPrecio(mc[2])){ it = {d:limpiarNom(mc[2]), p:0, c:false, oem:mc[1]}; }
+    }
+    if(!it) it = {d:limpiarNom(l), p:0, c:false};
+    if(codigosPrimero && codPendiente){ addCod(it, codPendiente); codPendiente = null; }
+    out.push(it);
   }
   return out;
 }
@@ -5456,6 +5485,9 @@ function bpActualizar(){
     // (así no borra una edición manual de abajo cada vez que tipeás cualquier otra cosa arriba).
     const parseoAnterior = prev?.ultimoParseo ?? null;
     const cambioArriba = x.p > 0 && x.p !== parseoAnterior;
+    // Si antes arriba había un "precio" y ahora ya no (ej. era un código), se borra esa venta fija
+    const sacarArriba = !x.p && parseoAnterior && prev && (prev.ventaOrig === parseoAnterior || prev.ventaManual === parseoAnterior);
+    const monX = x.mon || 'gs';
     // Un precio que viene pegado en la lista de arriba es el precio de VENTA que ya decidiste —
     // no un costo que necesita margen. Lo que cargues pieza por pieza abajo sigue siendo Costo.
     return {
@@ -5466,19 +5498,19 @@ function bpActualizar(){
       calidad: prev?.calidad || null,
       mg: prev?.mg || null,
       sinMargen: prev?.sinMargen || false,
-      modo: cambioArriba ? 'venta' : (prev?.modo || 'costo'),
-      ultimoParseo: x.p || parseoAnterior || null,
+      modo: cambioArriba ? 'venta' : (sacarArriba ? 'costo' : (prev?.modo || 'costo')),
+      ultimoParseo: x.p || (sacarArriba ? null : parseoAnterior) || null,
       resultadosBusqueda: prev?.resultadosBusqueda || null,
       busquedaAbierta: prev?.busquedaAbierta || false,
       historialId: prev?.historialId || null,
       fecha: prev?.fecha || null,
-      ventaManual: cambioArriba ? x.p : (prev?.ventaManual || null),
-      monVenta: cambioArriba ? 'gs' : (prev?.monVenta || 'gs'),
-      ventaOrig: cambioArriba ? x.p : (prev?.ventaOrig ?? null),
+      ventaManual: cambioArriba ? (monX === 'gs' ? x.p : bpConvertirAGs(x.p, monX)) : (sacarArriba ? null : (prev?.ventaManual || null)),
+      monVenta: cambioArriba ? monX : (sacarArriba ? 'gs' : (prev?.monVenta || 'gs')),
+      ventaOrig: cambioArriba ? x.p : (sacarArriba ? null : (prev?.ventaOrig ?? null)),
       proveedorManual: prev?.proveedorManual || null,
       linkCompra: prev?.linkCompra || null,
       proveedorNoAsignar: prev?.proveedorNoAsignar || false,
-      oem: prev?.oem || null,
+      oem: x.oem || prev?.oem || null,
       elegido: prev?.elegido || null
     };
   });
