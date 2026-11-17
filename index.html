@@ -368,6 +368,10 @@ body.role-operador #stats-row, body.role-ventas #stats-row{grid-template-columns
 .bp-gs-eq{font-size:10.5px;color:var(--t3);flex-shrink:0;min-width:98px;}
 .bp-otro-valor{font-size:10.5px;color:var(--t3);background:rgba(255,255,255,.05);padding:3px 8px;border-radius:7px;flex-shrink:0;white-space:nowrap;}
 .bp-calbar{display:flex;gap:3px;flex-shrink:0;}
+.bp-qty{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.bp-qty span{font-size:10.5px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.bp-qty input{width:58px;height:34px;background:rgba(0,0,0,.25);border:1px solid var(--brda);border-radius:9px;color:var(--t1);font-weight:800;font-size:14px;text-align:center;padding:0 4px;}
+.bp-qty-tot{font-size:10.5px;color:var(--green, #22d97a);font-weight:700;flex-shrink:0;}
 .bp-mgrow{width:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px dashed var(--brd);}
 .bp-mg-lbl{font-size:10.5px;color:var(--t4);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:2px;}
 .bp-mg-btn{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid var(--brd);background:rgba(255,255,255,.04);color:var(--t3);cursor:pointer;font-family:'Inter',sans-serif;}
@@ -5130,7 +5134,7 @@ function parsearPiezas(txt){
     if(_esCodigo(l)){
       // "33 30 6 878 037 (6)" → el (6) es la cantidad: se guarda el código limpio y la cantidad va al nombre
       const qm = l.match(/\(\s*x?(\d+)\s*(?:pcs|pzas?|u)?\s*\)$/i);
-      if(qm){ l = l.slice(0, qm.index).trim(); if(codigosPrimero) qtyPendiente = qm[1]; else if(out.length) out[out.length-1].d += ' (' + qm[1] + 'PCS)'; }
+      if(qm){ l = l.slice(0, qm.index).trim(); if(codigosPrimero) qtyPendiente = qm[1]; else if(out.length) out[out.length-1].q = parseInt(qm[1],10); }
       if(codigosPrimero){ codPendiente = codPendiente ? codPendiente + ', ' + l : l; }
       else if(out.length){ addCod(out[out.length-1], l); }
       continue;
@@ -5150,7 +5154,7 @@ function parsearPiezas(txt){
     }
     if(!it) it = {d:limpiarNom(l), p:0, c:false};
     if(codigosPrimero && codPendiente){ addCod(it, codPendiente); codPendiente = null; }
-    if(qtyPendiente){ it.d += ' (' + qtyPendiente + 'PCS)'; qtyPendiente = null; }
+    if(qtyPendiente){ it.q = parseInt(qtyPendiente,10); qtyPendiente = null; }
     out.push(it);
   }
   return out;
@@ -5461,7 +5465,7 @@ function openBigEdit(targetId, title){
   if(fc) fc.style.display = esPiezas ? 'inline-flex' : 'none';
   if(fw) fw.style.display = esPiezas ? 'inline-flex' : 'none';
   if(esPiezas){
-    bpStaging = piezasItems.map(x=>({d:x.d||'', cb: x.cb || x.cr || 0, mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, sinMargen: !!x.sinMargen, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || ((!x.mg && !x.sinMargen && parseFloat(x.p)>0) ? parseFloat(x.p) : null), monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}));
+    bpStaging = piezasItems.map(x=>{ const q = parseInt(x.q,10) || 1; return {d:x.d||'', q, cb: parseFloat(x.cbu) || (q > 1 ? Math.round((parseFloat(x.cb || x.cr) || 0)/q) : (x.cb || x.cr || 0)), mon: x.mon||'gs', valOrig: x.valOrig ?? null, calidad: x.calidad || null, mg: x.mg || null, sinMargen: !!x.sinMargen, modo: x.modo || 'costo', fecha: x.fechaEntrega || null, ultimoParseo: x.cb || null, ventaManual: x.ventaManual || ((!x.mg && !x.sinMargen && parseFloat(x.p)>0) ? Math.round(parseFloat(x.p)/q) : null), monVenta: x.monVenta||'gs', ventaOrig: x.ventaOrig ?? null, proveedorManual: x.proveedorManual || null, linkCompra: x.linkCompra || null, proveedorNoAsignar: x.proveedorNoAsignar || false, oem: x.oem || null, elegido: x.elegido || null, resultadosBusqueda: x.resultadosBusqueda || null}; });
     bpRenderLista();
   }
   document.getElementById('bigedit-overlay').classList.add('open');
@@ -5515,6 +5519,7 @@ function bpActualizar(){
       linkCompra: prev?.linkCompra || null,
       proveedorNoAsignar: prev?.proveedorNoAsignar || false,
       oem: x.oem || prev?.oem || null,
+      q: x.q || prev?.q || 1,
       elegido: prev?.elegido || null
     };
   });
@@ -6704,9 +6709,25 @@ function bpElegirCalidad(i, cal){
 
 const BP_PORCENTAJES = [20,25,30,35,40];
 
+// ── Cantidad por pieza (pedido por Lucas 17/11): el valor cargado es POR UNIDAD; costo y venta se multiplican ──
+function bpQtyTotTxt(it){
+  const q = parseInt(it.q,10) || 1; if(q <= 1) return '';
+  const v = bpVentaFinal(it), c = parseFloat(it.cb) || 0;
+  const partes = [];
+  if(c) partes.push('Costo Gs ' + fmtNum(c*q));
+  if(v) partes.push('Venta Gs ' + fmtNum(v*q));
+  return partes.length ? '× ' + q + ' = ' + partes.join(' · ') : '× ' + q + ' unidades';
+}
+function bpSetQty(i, v){
+  const it = bpStaging[i]; if(!it) return;
+  it.q = Math.max(1, Math.min(999, parseInt(v,10) || 1));
+  const el = document.getElementById('bp-qtot-' + i); if(el) el.textContent = bpQtyTotTxt(it);
+  bpVivo();
+}
 function bpRenderLista(){
   const box = document.getElementById('bp-lista');
   if(!box) return;
+  if(!document.getElementById('bp-dl-qty')){ const dl = document.createElement('datalist'); dl.id = 'bp-dl-qty'; dl.innerHTML = [1,2,3,4,5,6,7,8,9,10].map(n=>'<option value="'+n+'">').join(''); document.body.appendChild(dl); }
   if(!bpStaging.length){
     box.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:10px 0;">Escribí o pegá la lista arriba — acá van a aparecer las piezas, una por una, con su costo.</div>';
     return;
@@ -6746,6 +6767,8 @@ function bpRenderLista(){
         oninput="bpEditarCosto(${i}, this)" onkeydown="bpCostoKeydown(event, ${i})">
       <span class="bp-gs-eq" id="bp-eq-${i}">${monActivo!=='gs' && gsActivo ? '≈ Gs '+fmtNum(gsActivo) : ''}</span>
       ${otroTxt?`<span class="bp-otro-valor">${otroTxt}</span>`:''}
+      <div class="bp-qty" title="Cantidad: el precio de arriba es por unidad; el presupuesto muestra el total"><span>Cant.</span><input type="number" min="1" max="999" list="bp-dl-qty" id="bp-q-${i}" value="${parseInt(it.q,10)||1}" onfocus="this.select()" oninput="bpSetQty(${i}, this.value)" onblur="if(!(parseInt(this.value,10)>0)){this.value=1;bpSetQty(${i},1);}"></div>
+      <span class="bp-qty-tot" id="bp-qtot-${i}">${bpQtyTotTxt(it)}</span>
       <div class="bp-calbar">
         ${BP_CALIDADES.map(c=>`<button type="button" class="bp-cal ${it.calidad===c.k?'on':''}" onclick="bpElegirCalidad(${i},'${c.k}')">${c.n}</button>`).join('')}
       </div>
@@ -7035,7 +7058,8 @@ function bpMostrarPresupuesto(){
     const venta = (x.sinMargen && !x.mg && !x.ventaManual)
       ? (mon==='gs' ? Math.round(ventaGs) : Math.round(bpConvertirDeGs(ventaGs, mon)*100)/100)
       : bpRedondearSalida(bpConvertirDeGs(ventaGs, mon), mon);
-    return {d: x.d, venta, cal: x.calidad ? calMap[x.calidad] : null, fecha: x.fecha||null};
+    const q = parseInt(x.q,10) || 1;
+    return {d: x.d + (q > 1 ? ' (' + q + ' UNIDADES)' : ''), venta: venta * q, cal: x.calidad ? calMap[x.calidad] : null, fecha: x.fecha||null};
   });
   const total = filas.reduce((s,x)=>s+x.venta, 0);
 
@@ -7123,7 +7147,9 @@ function saveBigEdit(){
       const prev = _ant[_i] || {};
       const mg = x.mg || prev.mg || null;
       const ventaManual = x.ventaManual ?? prev.ventaManual ?? null;
-      const venta = bpVentaFinal(x) ?? prev.p ?? 0;
+      const q = parseInt(x.q,10) || 1;
+      const ventaU = bpVentaFinal(x);
+      const venta = ventaU != null ? ventaU * q : (prev.p ?? 0);
       const proveedorManual = x.proveedorManual ?? prev.proveedorManual ?? null;
       const linkCompra = x.linkCompra ?? prev.linkCompra ?? null;
       const proveedorNoAsignar = x.proveedorNoAsignar ?? prev.proveedorNoAsignar ?? false;
@@ -7138,7 +7164,8 @@ function saveBigEdit(){
       // entrar al pedido siga todo ahí y no haya que buscar de nuevo.
       const elegido = x.elegido ?? prev.elegido ?? null;
       const resultadosBusqueda = x.resultadosBusqueda ?? prev.resultadosBusqueda ?? null;
-      return {...prev, d: x.d, cb: x.cb || prev.cb || 0, mg, sinMargen: !!x.sinMargen && !mg, modo: x.modo||'costo',
+      const cbU = x.cb || (q > 1 ? 0 : prev.cb) || 0;
+      return {...prev, d: x.d, q, cbu: cbU || null, pu: ventaU != null ? ventaU : (prev.pu || null), cb: cbU ? cbU * q : (prev.cb || 0), mg, sinMargen: !!x.sinMargen && !mg, modo: x.modo||'costo',
         mon: x.mon||prev.mon||'gs', valOrig: x.valOrig ?? prev.valOrig ?? null,
         ventaManual, monVenta: x.monVenta||prev.monVenta||'gs', ventaOrig: x.ventaOrig ?? prev.ventaOrig ?? null,
         fechaEntrega: x.fecha || prev.fechaEntrega || null, p: venta, calidad: x.calidad || prev.calidad || null,
