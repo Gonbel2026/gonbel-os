@@ -107,6 +107,21 @@ body.role-operador #stat-ingresos{display:none!important;}
 
 /* ── STAT CARDS ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+/* Mi día (pedido por Lucas 17/11): cada vendedor ve arriba solo lo suyo, chico, + tareas/avisos/presupuestos */
+body.role-operador #stats-row > .stat:not(.stat-notif), body.role-ventas #stats-row > .stat:not(.stat-notif){display:none !important;}
+body.role-operador #stats-row, body.role-ventas #stats-row{grid-template-columns:1fr !important;}
+.md-wrap{border:1px solid var(--brd);border-radius:16px;padding:14px 15px;margin-bottom:16px;background:linear-gradient(150deg,rgba(59,142,255,.07),rgba(255,255,255,.02));}
+.md-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.md-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;}
+.md-chip{display:flex;flex-direction:column;min-width:86px;padding:7px 11px;border:1px solid var(--brd);border-radius:11px;background:rgba(255,255,255,.04);cursor:pointer;}
+.md-chip b{font-size:17px;font-family:'Space Grotesk',sans-serif;line-height:1.1;}
+.md-chip span{font-size:10.5px;color:var(--t3);margin-top:2px;}
+.md-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:11px;}
+.md-col{border:1px solid var(--brd);border-radius:13px;padding:10px 11px;background:rgba(0,0,0,.12);min-width:0;}
+.md-col h4{margin:0 0 8px;font-size:13px;font-family:'Space Grotesk',sans-serif;display:flex;justify-content:space-between;align-items:center;}
+.md-row{display:flex;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px;}
+.md-row:last-child{border-bottom:none;}
+.md-vacio{font-size:12px;color:var(--t3);padding:6px 2px;}
 .stat{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;cursor:default;}
 .stat::before{content:'';position:absolute;inset:0;border-radius:16px;pointer-events:none;}
 .stat.s-blue::before{background:radial-gradient(circle at top left,var(--blueg),transparent 60%);}
@@ -1841,6 +1856,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
 
   <!-- PAGE: KANBAN -->
   <div class="page" id="page-kanban">
+    <div id="mi-dia"></div>
     <div class="stats-row" id="stats-row" style="grid-template-columns:repeat(4,1fr);">
       <div class="stat s-blue"><span class="stat-icon">📥</span><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Pedidos activos</div></div>
       <div class="stat s-amber"><span class="stat-icon">🛒</span><div class="stat-val" id="stat-camino">—</div><div class="stat-lbl">En camino</div></div>
@@ -2154,6 +2170,9 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
             <div class="tarea-nueva">
               <input type="text" id="tarea-txt" placeholder="Ej: Llamar a Francis por el faro del BMW..." onkeydown="if(event.key==='Enter')tareaAgregar()">
               <input type="datetime-local" id="tarea-fecha" title="Cuándo avisarte (opcional)">
+              <select id="tarea-para" title="Para quién es la tarea" style="height:38px;background:var(--bg);color:var(--t1);border:1px solid var(--brda);border-radius:9px;padding:0 8px;">
+                <option value="">Para: todos</option><option value="Lucas">Lucas</option><option value="Joaquín">Joaquín</option><option value="Alexis">Alexis</option>
+              </select>
               <button type="button" class="btn btn-primary" onclick="tareaAgregar()" style="height:38px;">+ Agregar</button>
             </div>
             <div id="tareas-lista"></div>
@@ -8855,6 +8874,7 @@ function renderKanban(){
   board.innerHTML = '';
   let total = 0;
   try { pintarFiltroVendedor(); } catch(e){}
+  try { miDiaPintar(); } catch(e){}
   COLUMNS.forEach(col => {
     const colOrders = orders.filter(o => o.estado === col.id && !o.archivado && pasaVendedor(o) && coincide(o, kBuscar[col.id]));
     total += colOrders.length;
@@ -13291,6 +13311,7 @@ function renderControl(){
   pintarReembolsos();
   try { avPintarPanel(); } catch(e){ console.error(e); }
   try { psPintarPanel(); } catch(e){ console.error(e); }
+  try { miDiaPintar(); } catch(e){ console.error(e); }
   buscarMensajesML(false);
   buscarPreguntasML(false);
   // ── v35: pedidos por estado ──
@@ -14604,7 +14625,72 @@ function psPintarPanel(){
     </div>`;
   }).join('') : '<div style="font-size:12.5px;color:var(--t3);padding:8px 2px;">Ningún presupuesto esperando' + (PS_FILTRO?' para este filtro':'') + ' ✅</div>');
 }
-function psRefrescar(){ try { renderKanban(); } catch(e){} try { psPintarPanel(); } catch(e){} }
+function psRefrescar(){ try { renderKanban(); } catch(e){} try { psPintarPanel(); } catch(e){} try { miDiaPintar(); } catch(e){} }
+
+// ══════ MI DÍA (pedido por Lucas 17/11) ══════
+// Joaquín y Alexis ven arriba del Centro de Control solo lo suyo (chico) + sus tareas, avisos y presupuestos a seguir.
+// Lucas lo puede ver con "Ver el día de…".
+let MD_VER = '';
+function miDiaPersona(){
+  if(typeof esAdmin === 'function' && esAdmin()) return (typeof VENDEDORES !== 'undefined' && VENDEDORES.includes(filtroVendedor)) ? filtroVendedor : '';
+  return (typeof vendedorDeUsuario === 'function') ? vendedorDeUsuario() : '';
+}
+function mdVer(v){ MD_VER = (MD_VER === v) ? '' : v; miDiaPintar(); }
+async function mdTareaHecha(id){
+  try { await sbFetch('/rest/v1/tareas?id=eq.'+id, 'PATCH', {hecha:true, hecha_en:new Date().toISOString()}); tareas = (tareas||[]).filter(t=>t.id!==id); renderTareas(); showToast('✓ Hecha','success'); }
+  catch(e){ showToast('No se pudo actualizar','error'); }
+}
+async function mdTareaAgregar(){
+  const inp = document.getElementById('md-tarea-txt'); const texto = (inp && inp.value || '').trim(); const P = miDiaPersona();
+  if(!texto || !P) return;
+  try { await sbFetch('/rest/v1/tareas', 'POST', {texto, asignado_a: P, creado_por: currentUser?.name || P}); inp.value=''; await cargarTareas(); }
+  catch(e){ showToast('No se pudo guardar la tarea','error'); }
+}
+function miDiaPintar(){
+  const box = document.getElementById('mi-dia'); if(!box) return;
+  const admin = (typeof esAdmin === 'function') && esAdmin();
+  const P = miDiaPersona();
+  const verBar = '';
+  if(!P){ box.innerHTML = verBar; return; }
+  const mios = (orders||[]).filter(o => !o.archivado && o.vendedor === P);
+  const cnt = e => mios.filter(o=>o.estado===e).length;
+  const presAbiertos = mios.filter(o=>o.estado==='presupuesto-enviado' && psDias(psEnviado(o)) <= PS_MAX_DIAS).length;
+  const mes = new Date().toISOString().slice(0,7);
+  const ventasMes = mios.filter(o=>['aprobado','comprado','listo-envio','entregado'].includes(o.estado) && cmFechaVenta(o).slice(0,7)===mes);
+  const vendido = ventasMes.reduce((s,o)=>s+(parseFloat(o.precio_venta)||0),0);
+  const pct = (typeof COMISION_PCT!=='undefined' && COMISION_PCT[P]) || 0;
+  const chip = (n, t, onclick) => `<div class="md-chip" ${onclick?`onclick="${onclick}"`:''}><b>${n}</b><span>${t}</span></div>`;
+  const misTareas = (tareas||[]).filter(t => !t.hecha && t.asignado_a === P);
+  const avs = [];
+  mios.forEach(o => avisosDe(o).forEach(a => avs.push({o, a})));
+  avs.sort((x,y)=> (y.a.nivel==='rojo') - (x.a.nivel==='rojo'));
+  const pres = mios.filter(psPendiente).sort((a,b)=> psDias(psEnviado(b)) - psDias(psEnviado(a)));
+  const abrir = id => `goKanban();setTimeout(()=>openOrder('${id}'),120)`;
+  const hoy = new Date().toLocaleDateString('es-PY',{weekday:'long', day:'numeric', month:'long'});
+  box.innerHTML = verBar + `<div class="md-wrap">
+    <div class="md-head"><span style="font-size:20px;">☀️</span><b style="font-family:'Space Grotesk',sans-serif;font-size:16px;">${admin?'Día de '+P:'Tu día, '+P}</b><span style="font-size:12px;color:var(--t3);">${hoy.charAt(0).toUpperCase()+hoy.slice(1)}</span></div>
+    <div class="md-chips">
+      ${chip(presAbiertos,'Presupuestos abiertos')}
+      ${chip(cnt('aprobado'),'Aprobados a comprar')}
+      ${chip(cnt('comprado'),'En camino')}
+      ${chip(cnt('listo-envio'),'Listos para entregar')}
+      ${chip(ventasMes.length,'Ventas del mes')}
+      ${pct ? chip('Gs '+fmtNum(Math.round(vendido*pct)),'Tu comisión del mes (5%)') : ''}
+    </div>
+    <div class="md-grid">
+      <div class="md-col"><h4>📌 Tareas <span style="color:var(--t3);font-weight:600;">${misTareas.length}</span></h4>
+        ${misTareas.length ? misTareas.map(t=>`<div class="md-row"><button type="button" class="tarea-check" onclick="mdTareaHecha(${t.id})" title="Marcar como hecha">○</button><div style="flex:1;min-width:0;">${avEsc(t.texto)}${t.recordar_en?`<div style="font-size:10.5px;color:var(--t3);">⏰ ${new Date(t.recordar_en).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:''}</div>${t.order_id?`<a href="javascript:void(0)" onclick="${abrir(t.order_id)}" style="color:var(--cyan);font-size:11px;">ver</a>`:''}</div>`).join('') : '<div class="md-vacio">Sin tareas pendientes ✅</div>'}
+        <div style="display:flex;gap:6px;margin-top:8px;"><input id="md-tarea-txt" class="inp" placeholder="Anotar una tarea…" onkeydown="if(event.key==='Enter')mdTareaAgregar()" style="flex:1;height:32px;font-size:12px;"><button type="button" class="btn btn-ghost" onclick="mdTareaAgregar()" style="height:32px;padding:0 10px;">+</button></div>
+      </div>
+      <div class="md-col"><h4>⚠️ Avisos <span style="color:${avs.some(x=>x.a.nivel==='rojo')?'var(--red)':'var(--amber)'};">${avs.length}</span></h4>
+        ${avs.length ? avs.slice(0,10).map(x=>`<div class="md-row" style="cursor:pointer;" onclick="${abrir(x.o.id)}"><span>${x.a.ic}</span><div style="flex:1;min-width:0;"><div style="color:${x.a.nivel==='rojo'?'var(--red)':'var(--t1)'};font-weight:600;">${avEsc(x.a.titulo)}</div><div style="font-size:10.5px;color:var(--t3);">${avEsc(x.o.numero_pedido||x.o.numero||'')} · ${avEsc(x.o.cliente_nombre||'')}</div></div></div>`).join('') + (avs.length>10?`<div class="md-vacio">…y ${avs.length-10} más</div>`:'') : '<div class="md-vacio">Sin avisos ✅</div>'}
+      </div>
+      <div class="md-col"><h4>💬 Presupuestos a seguir <span style="color:#25D366;">${pres.length}</span></h4>
+        ${pres.length ? pres.slice(0,10).map(o=>{ const d = psDias(psEnviado(o)), tel = psTel(o.cliente_tel); return `<div class="md-row"><div style="flex:1;min-width:0;cursor:pointer;" onclick="${abrir(o.id)}"><div style="font-weight:600;">${avEsc(o.cliente_nombre||'Sin nombre')}</div><div style="font-size:10.5px;color:${d>=5?'var(--red)':'var(--amber)'};">⏰ ${d} días · ${avEsc([o.marca,o.modelo].filter(Boolean).join(' '))}</div></div>${tel?`<button type="button" class="btn" onclick="psEscribir('${o.id}')" style="background:#25D366;color:#04140a;font-weight:800;padding:5px 10px;font-size:11.5px;">💬</button>`:'<span style="font-size:10.5px;color:var(--red);">sin tel.</span>'}</div>`; }).join('') + (pres.length>10?`<div class="md-vacio">…y ${pres.length-10} más</div>`:'') : '<div class="md-vacio">Nada para seguir hoy ✅</div>'}
+      </div>
+    </div>
+  </div>`;
+}
 
 function _notifDesc(i){
   const it = window._notifItems && window._notifItems[i];
@@ -14634,6 +14720,7 @@ async function cargarTareas(){
   renderTareas();
 }
 function renderTareas(){
+  try { miDiaPintar(); } catch(e){}
   const lista = document.getElementById('tareas-lista');
   const n = document.getElementById('tareas-n');
   if(!lista) return;
@@ -14658,7 +14745,7 @@ function renderTareas(){
       <button type="button" class="tarea-check" onclick="tareaHecha(${t.id})" title="Marcar como hecha">○</button>
       <div class="tarea-txt">
         <span>${t.texto}</span>
-        ${aviso ? `<small style="color:${color};">${aviso}</small>` : ''}
+        ${(t.asignado_a || aviso) ? `<small style="color:${color};">${t.asignado_a ? '👤 ' + t.asignado_a + (aviso ? ' · ' : '') : ''}${aviso}</small>` : ''}
       </div>
       <button type="button" class="bp-mg-x" onclick="tareaBorrar(${t.id})" title="Borrar">✕</button>
     </div>`;
@@ -14669,7 +14756,8 @@ async function tareaAgregar(){
   const fec = document.getElementById('tarea-fecha');
   const texto = (inp?.value||'').trim();
   if(!texto){ showToast('Escribí la tarea primero','error'); return; }
-  const body = {texto, creado_por: currentUser?.nombre || 'Lucas'};
+  const body = {texto, creado_por: currentUser?.name || currentUser?.nombre || 'Lucas'};
+  { const para = document.getElementById('tarea-para'); if(para && para.value) body.asignado_a = para.value; }
   if(fec?.value) body.recordar_en = new Date(fec.value).toISOString();
   try {
     await sbFetch('/rest/v1/tareas', 'POST', body);
