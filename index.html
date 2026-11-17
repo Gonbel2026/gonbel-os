@@ -6060,6 +6060,17 @@ function bpToggleResultados(i){
 }
 
 // Carga el precio elegido (en reales, con flete incluido) directo en el Costo de esa pieza
+// Pedido por Lucas 17/11: al elegir una opción, la calidad (Usado Original / Alternativo Nuevo / Original Nuevo)
+// se marca sola según la condición del anuncio y el título. Si no se puede saber, no se toca.
+function bpCalidadDe(r){
+  const cond = String(r.condicion || '').toLowerCase();
+  const tit = String(r.titulo || '').toLowerCase();
+  if(/used|usad|pre-?owned|seminov|for parts|salvage|desarm/.test(cond) || /\b(used|usad[oa]|pre-?owned|seminov[oa])\b/.test(tit)) return 'usada';
+  if(!/new|nuev|novo|remanufact|recondic|recondit/.test(cond) && !/\b(new|nuev[oa]|novo|nova)\b/.test(tit)) return null;
+  const marcaAlt = /\b(febest|dorman|meyle|lem(f|ph)(o|ö)rder|trw|uro|febi|bilstein|sachs|mapco|moog|delphi|vaico|vemo|corteco|swag|topran|aftermarket|replacement|replaces|compatible|paralel|similar)\b/.test(tit);
+  const genuino = /\b(genuine|original|orig\.?|oem bmw|bmw oem|genu[ií]n[oa]|origem)\b/.test(tit);
+  return (genuino && !marcaAlt && !/remanufact/.test(cond)) ? 'nueva_orig' : 'nueva_alt';
+}
 function bpElegirOpcion(i, ri){
   const it = bpStaging[i]; if(!it || !it.resultadosBusqueda) return;
   const r = it.resultadosBusqueda[ri]; if(!r) return;
@@ -6085,9 +6096,18 @@ function bpElegirOpcion(i, ri){
   };
   if(!it.linkCompra && r.link) it.linkCompra = r.link;
   it.busquedaAbierta = false;
+  const calAuto = bpCalidadDe(r);
+  if(calAuto){
+    it.calidad = calAuto;
+    try {
+      const pz = (typeof piezasItems!=='undefined') ? (piezasItems[i] && (piezasItems[i].d||'').trim()===(it.d||'').trim() ? piezasItems[i] : piezasItems.find(x=>(x.d||'').trim()===(it.d||'').trim())) : null;
+      if(pz){ pz.calidad = calAuto; if(!cargandoPedido) scheduleAutoSave(700); }
+    } catch(e){}
+  }
   bpRenderLista();
   bpVivo();
-  showToast('✓ Cargado R$ '+Number(total).toFixed(2)+' — ahora elegí calidad y margen','success');
+  const calTxt = calAuto ? ' · ' + ((BP_CALIDADES.find(c=>c.k===calAuto)||{}).n || '') : '';
+  showToast('✓ Cargado ' + (esEbay ? 'US$ ' : 'R$ ') + Number(total).toFixed(2) + calTxt + (calAuto ? ' — revisá y elegí el margen' : ' — ahora elegí calidad y margen'),'success');
 
   // Avisa qué se eligió, para que el sistema aprenda con el tiempo (no bloqueante)
   bpFeedback(i, 'elegido', r, ri, null);
