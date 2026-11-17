@@ -2097,7 +2097,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
             <div class="cc-panel-ic" style="background:rgba(167,139,250,.16);color:var(--purple);">🔄</div>
             <div class="cc-panel-tt">
               <b>Reembolsos y devoluciones</b>
-              <span>Marcá el avance de cada uno</span>
+              <span><span id="reemb-sync-info">Se actualiza solo con Mercado Livre</span> · <a href="javascript:void(0)" onclick="event.stopPropagation();rbSync(true)" style="color:var(--purple);font-weight:700;">🔄 Actualizar</a></span>
             </div>
             <div class="cc-panel-n" id="reemb-n" style="color:var(--purple);">0</div>
             <span class="cc-panel-fl" id="reemb-fl">▾</span>
@@ -2469,6 +2469,10 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <button type="button" class="btn btn-primary" id="rb-sync-btn" onclick="rbSync(true)" style="padding:8px 14px;font-size:13px;">🔄 Actualizar ahora</button>
+        <span id="rb-sync-info" style="font-size:12px;color:var(--t3);">Se actualiza solo cada 30 minutos con Mercado Livre</span>
       </div>
       <div id="rb-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;"></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:13px;">
@@ -3556,6 +3560,7 @@ function arrancarDatos(){
   datosArrancados = true;
   // Los datos arrancan ya; la configuración y Mercado Livre van por su cuenta.
   loadAll();
+  setTimeout(()=>{ try { rbSyncSiHaceFalta(); } catch(e){} }, 4000);
   if(typeof initDB === 'function'){ try { initDB(); } catch(e){} }
 }
 
@@ -12489,7 +12494,7 @@ function abrirFinanzas(tab, el){
     if(FIN_TAB === 'pedidos'){ fpSimple(); try { renderGonbelFin(); } catch(e){ console.error(e); } }
     if(FIN_TAB === 'caja'){ cjCargar(); }
     if(FIN_TAB === 'analisis'){ renderAnalisis(); }
-    if(FIN_TAB === 'reembolsos'){ rbCargar(); }
+    if(FIN_TAB === 'reembolsos'){ rbCargar(); rbSyncSiHaceFalta(); }
     if(FIN_TAB === 'comisiones'){ cmPintar(); }
   } catch(e){ console.error(e); }
 }
@@ -12548,6 +12553,57 @@ function cmPintar(){
 
 // ===== Reembolsos (devoluciones de plata de las plataformas) =====
 let RB_LISTA = [];
+// ── Sincronización automática con Mercado Livre (pedido por Lucas 17/11: que siempre esté actualizado) ──
+// La función ml-reembolsos corre sola cada 30 min; acá se ve cuándo fue la última y se puede forzar.
+let RB_SYNC_AT = null, RB_SYNC_CORRIENDO = false;
+function rbHace(iso){
+  if(!iso) return 'nunca';
+  const m = Math.round((Date.now() - new Date(iso).getTime())/60000);
+  if(m < 1) return 'recién'; if(m < 60) return 'hace ' + m + ' min';
+  const h = Math.round(m/60); return h < 24 ? 'hace ' + h + ' h' : new Date(iso).toLocaleDateString('es-PY');
+}
+function rbPintarSyncInfo(txt){
+  const t = txt || ('Actualizado con Mercado Livre ' + rbHace(RB_SYNC_AT));
+  ['rb-sync-info','reemb-sync-info'].forEach(id=>{ const el = document.getElementById(id); if(el) el.textContent = t; });
+}
+async function rbLeerSyncInfo(){
+  try { const r = await sbFetch('/rest/v1/tienda_config?clave=eq.reemb_sync&select=valor'); const v = r && r[0] && JSON.parse(r[0].valor||'{}'); RB_SYNC_AT = v && v.at || null; } catch(e){}
+  rbPintarSyncInfo();
+  return RB_SYNC_AT;
+}
+async function rbSync(manual){
+  if(RB_SYNC_CORRIENDO) return;
+  RB_SYNC_CORRIENDO = true;
+  const btn = document.getElementById('rb-sync-btn'); if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando…'; }
+  rbPintarSyncInfo('Consultando Mercado Livre…');
+  try {
+    const r = await fetch(SB_URL + '/functions/v1/ml-reembolsos', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const j = await r.json();
+    RB_SYNC_AT = j.sincronizado || new Date().toISOString();
+    if(manual){
+      const partes = [];
+      if(j.reembolsos_nuevos && j.reembolsos_nuevos.length) partes.push(j.reembolsos_nuevos.length + ' reembolso(s) nuevo(s)');
+      if(j.reclamos_nuevos && j.reclamos_nuevos.length) partes.push(j.reclamos_nuevos.length + ' reclamo(s) nuevo(s)');
+      if(j.cerrados && j.cerrados.length) partes.push(j.cerrados.length + ' reclamo(s) cerrado(s)');
+      showToast(j.ok ? ('✅ Actualizado' + (partes.length ? ': ' + partes.join(', ') : ' — sin novedades')) : 'No se pudo actualizar del todo', j.ok ? 'success' : 'error');
+    }
+    try { await loadAll(); } catch(e){}
+    try { if(typeof FIN_TAB !== 'undefined' && FIN_TAB === 'reembolsos') await rbCargar(); } catch(e){}
+  } catch(e){
+    if(manual) showToast('No se pudo conectar con Mercado Livre','error');
+  } finally {
+    RB_SYNC_CORRIENDO = false;
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 Actualizar ahora'; }
+    rbPintarSyncInfo();
+  }
+}
+// Si la última actualización tiene más de 15 min, se actualiza sola al entrar
+async function rbSyncSiHaceFalta(){
+  const at = await rbLeerSyncInfo();
+  if(!at || (Date.now() - new Date(at).getTime()) > 15*60000) rbSync(false);
+}
+setInterval(()=>{ try { rbPintarSyncInfo(); } catch(e){} }, 60000);
+
 async function rbCargar(){
   try { RB_LISTA = await sbFetch('/rest/v1/reembolsos?order=fecha_reembolso.desc.nullslast,id.desc&limit=1000') || []; }
   catch(e){ console.error(e); RB_LISTA = []; }
