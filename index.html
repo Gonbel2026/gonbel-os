@@ -2101,6 +2101,19 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
           <div class="cc-panel-body" id="avisos-lista"></div>
         </div>
 
+        <div class="cc-panel" id="presu-box">
+          <div class="cc-panel-h" onclick="ccPanelToggle('presu')">
+            <div class="cc-panel-ic" style="background:rgba(37,211,102,.14);color:#25D366;">💬</div>
+            <div class="cc-panel-tt">
+              <b>Presupuestos sin respuesta</b>
+              <span>2 días o más sin contestar — escribile con un toque</span>
+            </div>
+            <div class="cc-panel-n" id="presu-n" style="color:#25D366;">0</div>
+            <span class="cc-panel-fl" id="presu-fl">▾</span>
+          </div>
+          <div class="cc-panel-body" id="presu-lista"></div>
+        </div>
+
         <div class="cc-panel solo-admin" id="cobrar-box">
           <div class="cc-panel-h" onclick="ccPanelToggle('cobrar')">
             <div class="cc-panel-ic" style="background:rgba(245,166,35,.16);color:var(--amber);">💵</div>
@@ -8697,7 +8710,33 @@ function avisosDe(o){
     if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env && /demorad|no entregado/i.test(est)){
       av.push({nivel:'amarillo', ic:'🐢', tipo:'envio', titulo:'Problema con el envío: ' + (it.d||'pieza'), detalle: est});
     }
+    // Plazo vencido hace 3+ días y la pieza no llegó (si pasó por Miami, cuenta la regla martes/miércoles)
+    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env){
+      let lim = null;
+      try { lim = it.mia ? etaDesdeMiami(it.fmia || it.trk_at) : ((it.lim || it.eta) ? new Date(String(it.lim || it.eta).length === 10 ? (it.lim || it.eta) + 'T12:00:00' : (it.lim || it.eta)) : null); } catch(e){}
+      if(lim && !isNaN(lim)){
+        const dv = Math.floor((Date.now() - lim.getTime())/86400000);
+        if(dv >= 3) av.push({nivel:'rojo', ic:'⏰', tipo:'vencido', titulo:'Plazo vencido hace ' + dv + ' días: ' + (it.d||'pieza'),
+          detalle: (it.mia ? 'Pasó por Miami — tenía que estar en CDE el ' : 'Tenía que llegar el ') + lim.toLocaleDateString('es-PY') + (it.nc ? ' · ' + it.nc : '') + ' · revisar y ver si hay que abrir reclamo'});
+      }
+    }
+    // Pieza comprada (o pedido ya en camino) sin dónde se compró / cuánto costó
+    if(['comprado','listo-envio'].includes(o.estado) || (o.estado === 'aprobado' && it.c === true)){
+      const sinPr = !(String(it.pr||it.proveedorManual||it.nc||'').trim());
+      const sinCo = !(parseFloat(it.cb)>0 || parseFloat(it.cbrl)>0 || parseFloat(it.cr)>0);
+      if(sinPr || sinCo) av.push({nivel:'amarillo', ic:'🧾', tipo:'datos', titulo:'Falta cargar ' + [sinPr?'dónde se compró':'', sinCo?'cuánto costó':''].filter(Boolean).join(' y ') + ': ' + (it.d||'pieza'),
+        detalle:'Abrí el pedido y completalo en la pieza (si salió del stock, poné "Stock")'});
+    }
   });
+  // Plata: seña y margen (solo pedidos vendidos que todavía no se entregaron)
+  if(['aprobado','comprado','listo-envio'].includes(o.estado)){
+    const v = parseFloat(o.precio_venta)||0, co = parseFloat(o.precio_costo)||0, pg = parseFloat(o.valor_pagado)||0;
+    if(v > 0 && !o.pagado_completo && pg < v*0.5)
+      av.push({nivel:'amarillo', ic:'💵', tipo:'sena', titulo:'Sin seña del 50%' + (pg>0 ? ' (pagó Gs ' + fmtNum(pg) + ')' : ''), detalle:'Venta Gs ' + fmtNum(v) + ' — falta cobrar Gs ' + fmtNum(v - pg)});
+    const minM = /final/i.test(o.tipo_cliente||'') ? 0.4 : 0.3;
+    if(v > 0 && co > 0 && (v - co)/co < minM)
+      av.push({nivel:'amarillo', ic:'📉', tipo:'margen', titulo:'Margen bajo: ' + Math.round((v-co)/co*100) + '% (mínimo ' + Math.round(minM*100) + '%)', detalle:'Venta Gs ' + fmtNum(v) + ' · costo Gs ' + fmtNum(co)});
+  }
   AV_ML.filter(a => String(a.order_id) === String(o.id)).forEach(a=>{
     if(cerrado) return;
     av.push({nivel:'amarillo', ic: a.tipo==='reclamo' ? '⏳' : '🐢', tipo:'ml', id:a.id,
@@ -8714,7 +8753,7 @@ function avChipCard(o){
   const av = avisosDe(o); if(!av.length) return '';
   const rojo = av.some(a=>a.nivel==='rojo');
   const tit = av.map(a=>a.titulo).join('\n').replace(/"/g,'&quot;');
-  return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (av[0].tipo==='cancelada'?'Cancelada':av[0].tipo==='reembolso'?'Reembolso':av[0].tipo==='reclamo'?'Reclamo':'Demora') : av.length + ' avisos'}</span>`;
+  return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (({cancelada:'Cancelada',reembolso:'Reembolso',reclamo:'Reclamo',vencido:'Plazo vencido',datos:'Faltan datos',sena:'Sin seña',margen:'Margen bajo'})[av[0].tipo]||'Demora') : av.length + ' avisos'}</span>`;
 }
 function avItemHTML(a, conAccion){
   let accion = '';
@@ -8952,7 +8991,7 @@ function renderCard(o, colorClass){
     ondragend="dragEnd(event)"
     onclick="openOrder('${o.id}')">
     ${dotColor ? `<div class="card-dot" style="background:${dotColor};"></div>` : ''}
-    ${avChipCard(o)}${alertaFinanciera ? `<div style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-bottom:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
+    ${avChipCard(o)}${psChipCard(o)}${alertaFinanciera ? `<div style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-bottom:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
     <div class="card-head">
       <div>
         <div class="card-idrow">
@@ -9113,6 +9152,19 @@ function _pedidoSinProveedor(order){
   }catch(e){ return true; }
 }
 
+// ── Puerta de datos de compra (pedido por Lucas 17/11) ──
+// No se puede pasar a Comprado / Listo / Entregado si alguna pieza no tiene de dónde se compró y cuánto costó.
+// Así cada compra queda registrada (sirve para el ranking de proveedores y el margen real).
+function gateCompraDatos(estadoNuevo, estadoViejo, items){
+  if(!['comprado','listo-envio','entregado'].includes(estadoNuevo) || estadoNuevo === estadoViejo) return null;
+  items = items || [];
+  if(!items.length) return 'Cargá las piezas del pedido con su proveedor y costo antes de pasarlo a ese estado.';
+  const falt = items.filter(it => !(String(it.pr||it.proveedorManual||it.nc||'').trim()) || !(parseFloat(it.cb)>0 || parseFloat(it.cbrl)>0 || parseFloat(it.cr)>0));
+  if(!falt.length) return null;
+  const nom = falt.slice(0,3).map(it => '• ' + (it.d||'pieza') + ' — falta ' + [!(String(it.pr||it.proveedorManual||it.nc||'').trim()) ? 'dónde se compró' : '', !(parseFloat(it.cb)>0 || parseFloat(it.cbrl)>0 || parseFloat(it.cr)>0) ? 'cuánto costó' : ''].filter(Boolean).join(' y ')).join('<br>');
+  return 'Antes de mover el pedido cargá en cada pieza <b>dónde se compró</b> (proveedor / plataforma) y <b>cuánto costó</b>:<br><br>' + nom + (falt.length > 3 ? '<br>…y ' + (falt.length-3) + ' más' : '') + '<br><br>Si salió del stock, poné "Stock" como proveedor.';
+}
+
 async function drop(e, colId){
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
@@ -9123,6 +9175,10 @@ async function drop(e, colId){
   order.estado = colId;
 
   const patch = {estado: colId};
+
+  { let _itG = []; try { _itG = order.piezas_items ? JSON.parse(order.piezas_items) : []; } catch(e){}
+    const _msgG = gateCompraDatos(colId, estadoAnterior, _itG);
+    if(_msgG){ order.estado = estadoAnterior; renderKanban(); dragId = null; invModal('Faltan datos de la compra','<div class="pg-err" style="padding:14px;font-size:13px;line-height:1.5;">'+_msgG+'</div>',null); return; } }
 
   // Puerta COMPRADO: todas las piezas deben tener costo
   if(colId === 'comprado'){
@@ -9630,6 +9686,11 @@ async function autoSaveOrder(){
     fecha_eta: document.getElementById('f-fecha-eta').value||null,
   };
 
+  if(gateCompraDatos(data.estado, currentOrder.estado, piezasItems)){
+    data.estado = currentOrder.estado;
+    try { document.getElementById('modal-estado').value = currentOrder.estado; } catch(e){}
+    showToast('No se cambió el estado: falta dónde se compró y cuánto costó cada pieza','error');
+  }
   try {
     const cambios = buildDiff(currentOrder, data);
     await sbFetch(`/rest/v1/orders?id=eq.${currentOrder.id}`, 'PATCH', data);
@@ -9700,6 +9761,8 @@ async function saveOrder(){
     fecha_pedido: document.getElementById('f-fecha-pedido').value||null,
     fecha_eta: document.getElementById('f-fecha-eta').value||null,
   };
+  { const _msgG = gateCompraDatos(estado, isNewOrder ? 'entrante' : (currentOrder && currentOrder.estado), piezasItems);
+    if(_msgG){ showToast('Falta cargar dónde se compró y cuánto costó cada pieza','error'); try { invModal('Faltan datos de la compra','<div class="pg-err" style="padding:14px;font-size:13px;line-height:1.5;">'+_msgG+'</div>',null); } catch(e){} return; } }
   try {
     if(isNewOrder){
       const res = await sbFetch('/rest/v1/orders', 'POST', data);
@@ -13227,6 +13290,7 @@ function renderControl(){
   pintarCoordinar();
   pintarReembolsos();
   try { avPintarPanel(); } catch(e){ console.error(e); }
+  try { psPintarPanel(); } catch(e){ console.error(e); }
   buscarMensajesML(false);
   buscarPreguntasML(false);
   // ── v35: pedidos por estado ──
@@ -14452,6 +14516,96 @@ function _notifIr(i){
   document.getElementById('cc-notif-panel')?.classList.remove('on');
   if(it && it.ir) it.ir();
 }
+// ══════ PRESUPUESTOS SIN RESPUESTA (pedido por Lucas 17/11) ══════
+// Presupuesto enviado hace 2+ días sin respuesta → aparece acá con WhatsApp y mensaje ya armado.
+// Al tocar WhatsApp queda anotado el seguimiento: vuelve a aparecer a los 3 días con un 2º mensaje; después de 2 seguimientos se oculta.
+const PS_DIAS = 2, PS_MAX_DIAS = 20, PS_REPITE = 3;
+let PS_FILTRO = '';
+try { PS_FILTRO = localStorage.getItem('gonbel_ps_filtro') || ''; } catch(e){}
+function psEnviado(o){ return o.presupuesto_enviado_en || o.created_at || null; }
+function psDias(iso){ return iso ? Math.floor((Date.now() - new Date(iso).getTime())/86400000) : 0; }
+function psPendiente(o){
+  if(!o || o.archivado || o.estado !== 'presupuesto-enviado') return false;
+  const d = psDias(psEnviado(o));
+  if(d < PS_DIAS || d > PS_MAX_DIAS) return false;
+  const n = parseInt(o.seguimiento_n)||0;
+  if(n >= 2) return false;
+  if(o.seguimiento_en && psDias(o.seguimiento_en) < PS_REPITE) return false;
+  return true;
+}
+function psTel(t){
+  let d = String(t||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('595') || d.startsWith('55')) return d.length >= 11 ? d : '';
+  if(d.startsWith('0')) d = d.slice(1);
+  return d.length >= 8 ? '595' + d : '';
+}
+function psSaludo(){ const h = new Date().getHours(); return h < 12 ? 'Muy buenos días' : (h < 19 ? 'Muy buenas tardes' : 'Muy buenas noches'); }
+function psPiezas(o){
+  let items = []; try { items = o.piezas_items ? (typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items) : o.piezas_items) : []; } catch(e){}
+  const l = (items||[]).map(i=>String(i.d||'').trim()).filter(Boolean);
+  if(l.length) return l.length > 2 ? l.slice(0,2).join(', ') + ' y más' : l.join(' y ');
+  const t = String(o.titulo||'').split('—'); return t.length > 2 ? t.slice(2).join('—').trim() : '';
+}
+function psMensaje(o){
+  const nom = String(o.cliente_nombre||'').trim().split(/\s+/)[0] || '';
+  const veh = [o.marca, o.modelo, o['año']].filter(Boolean).join(' ');
+  const pz = psPiezas(o);
+  const que = 'el presupuesto' + (pz ? ' de ' + pz : '') + (veh ? ' para su ' + veh : '');
+  const saludo = psSaludo() + (nom ? ', ' + nom.charAt(0).toUpperCase() + nom.slice(1).toLowerCase() : ', señor') + '.';
+  if((parseInt(o.seguimiento_n)||0) >= 1)
+    return saludo + ' Le escribimos de Gonbel Imports. ¿Pudo ver ' + que + '? Si quiere lo ajustamos o le aclaramos cualquier duda. ¡Quedamos atentos!';
+  return saludo + ' Le escribimos de Gonbel Imports. ¿Qué le pareció ' + que + '? ¿Desea proseguir con la compra?';
+}
+function psChipCard(o){
+  if(!psPendiente(o)) return '';
+  const d = psDias(psEnviado(o));
+  return `<span class="card-aviso amarillo" style="color:#25D366;border-color:rgba(37,211,102,.45);background:rgba(37,211,102,.1);" title="Presupuesto sin respuesta">💬 ${d} días sin respuesta</span>`;
+}
+async function psEscribir(id){
+  const o = (orders||[]).find(x=>String(x.id)===String(id)); if(!o) return;
+  const tel = psTel(o.cliente_tel);
+  if(!tel){ showToast('Este pedido no tiene teléfono del cliente','error'); return; }
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(psMensaje(o)), '_blank');
+  const n = (parseInt(o.seguimiento_n)||0) + 1, ahora = new Date().toISOString();
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.' + o.id, 'PATCH', {seguimiento_en: ahora, seguimiento_n: n});
+    o.seguimiento_en = ahora; o.seguimiento_n = n;
+    logHistory(o.id, '💬 Seguimiento de presupuesto por WhatsApp (' + n + 'º)');
+  } catch(e){}
+  psRefrescar();
+}
+async function psOcultar(id){
+  const o = (orders||[]).find(x=>String(x.id)===String(id)); if(!o) return;
+  try { await sbFetch('/rest/v1/orders?id=eq.' + o.id, 'PATCH', {seguimiento_n: 9}); o.seguimiento_n = 9; showToast('Listo, no aparece más','success'); } catch(e){ showToast('No se pudo guardar','error'); }
+  psRefrescar();
+}
+function psSetFiltro(v){ PS_FILTRO = (PS_FILTRO === v) ? '' : v; try { localStorage.setItem('gonbel_ps_filtro', PS_FILTRO); } catch(e){} psPintarPanel(); }
+function psPintarPanel(){
+  const lista = document.getElementById('presu-lista'); if(!lista) return;
+  const todos = (orders||[]).filter(psPendiente);
+  const n = document.getElementById('presu-n'); if(n) n.textContent = todos.length;
+  const filas = todos.filter(o => PS_FILTRO === '__sin' ? !o.vendedor : (!PS_FILTRO || o.vendedor === PS_FILTRO))
+    .sort((a,b)=> psDias(psEnviado(a)) - psDias(psEnviado(b)));
+  const yo = (typeof vendedorDeUsuario === 'function') ? vendedorDeUsuario() : '';
+  const chip = (v, txt) => `<button type="button" class="btn btn-ghost" onclick="event.stopPropagation();psSetFiltro('${v}')" style="padding:4px 10px;font-size:11.5px;${PS_FILTRO===v?'background:rgba(37,211,102,.18);color:#25D366;border-color:#25D366;font-weight:800;':''}">${txt}</button>`;
+  const filtros = `<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0 10px;"><span style="font-size:11.5px;color:var(--t3);">Ver:</span>${chip('','Todos')}${['Lucas','Joaquín','Alexis'].map(v=>chip(v,(v===yo?'⭐ ':'')+v)).join('')}${chip('__sin','Sin vendedor')}</div>`;
+  lista.innerHTML = filtros + (filas.length ? filas.map(o=>{
+    const d = psDias(psEnviado(o)), veh = [o.marca, o.modelo, o['año']].filter(Boolean).join(' ');
+    const tel = psTel(o.cliente_tel), seg = parseInt(o.seguimiento_n)||0;
+    return `<div style="border:1px solid var(--brd);border-radius:12px;padding:10px 12px;margin-bottom:9px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;cursor:pointer;" onclick="goKanban();setTimeout(()=>openOrder('${o.id}'),120)">
+        <b style="font-size:13.5px;">${avEsc(o.numero_pedido||o.numero||'')} · ${avEsc(o.cliente_nombre||'Sin nombre')}</b>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:2px;">${avEsc(veh)}${o.precio_venta?' · Gs '+fmtNum(o.precio_venta):''}${o.vendedor?' · 👤 '+avEsc(o.vendedor):''}</div>
+        <div style="font-size:11.5px;color:${d>=5?'var(--red)':'var(--amber)'};margin-top:2px;font-weight:700;">⏰ ${d} días sin respuesta${seg?' · ya se le escribió '+seg+' vez':''}</div>
+      </div>
+      ${tel ? `<button type="button" class="btn" onclick="psEscribir('${o.id}')" style="background:#25D366;color:#04140a;font-weight:800;padding:7px 13px;font-size:12.5px;white-space:nowrap;">💬 Escribirle</button>` : `<span style="font-size:11.5px;color:var(--red);">Sin teléfono</span>`}
+      <button type="button" class="btn btn-ghost" onclick="psOcultar('${o.id}')" title="Ya respondió o no hace falta seguir" style="font-size:11px;padding:6px 10px;">✕</button>
+    </div>`;
+  }).join('') : '<div style="font-size:12.5px;color:var(--t3);padding:8px 2px;">Ningún presupuesto esperando' + (PS_FILTRO?' para este filtro':'') + ' ✅</div>');
+}
+function psRefrescar(){ try { renderKanban(); } catch(e){} try { psPintarPanel(); } catch(e){} }
+
 function _notifDesc(i){
   const it = window._notifItems && window._notifItems[i];
   if(it && it.desc) it.desc();
@@ -14459,7 +14613,7 @@ function _notifDesc(i){
 
 // Colapsa/expande los paneles principales del Centro de Control (Foz, Falta enviar, Compras ML, Reembolsos)
 function ccPanelToggle(clave){
-  const map = {avisos:['avisos-lista','avisos-fl'], foz:['foz-lista','foz-fl'], enlocal:['cc-enlocal','enlocal-fl'], mlc:['cc-compras-ml','mlc-fl'], reemb:['reemb-lista','reemb-fl'], fc:['cc-faltacomprar','fc-fl'], ext:['ext-lista','ext-fl'], tareas:['tareas-body','tareas-fl'], cobrar:['cobrar-lista','cobrar-fl'], transito:['transito-lista','transito-fl']};
+  const map = {avisos:['avisos-lista','avisos-fl'], presu:['presu-lista','presu-fl'], foz:['foz-lista','foz-fl'], enlocal:['cc-enlocal','enlocal-fl'], mlc:['cc-compras-ml','mlc-fl'], reemb:['reemb-lista','reemb-fl'], fc:['cc-faltacomprar','fc-fl'], ext:['ext-lista','ext-fl'], tareas:['tareas-body','tareas-fl'], cobrar:['cobrar-lista','cobrar-fl'], transito:['transito-lista','transito-fl']};
   const [listId, flId] = map[clave] || [];
   if(!listId) return;
   const box = document.getElementById(listId);
