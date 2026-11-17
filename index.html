@@ -9543,7 +9543,28 @@ function clearModal(){
   cargandoPedido = false;
 }
 
+// Pedido nuevo con datos cargados: antes se perdía todo al cerrar (pasó con el X7 de Lucas 17/11).
+// Ahora al cerrar se guarda solo; si falta el vendedor, avisa y no cierra.
+function nuevoTieneDatos(){
+  if(!isNewOrder) return false;
+  const v = id => ((document.getElementById(id)||{}).value||'').trim();
+  return !!(v('modal-title') || v('f-cliente-nombre') || v('f-cliente-tel') || v('f-piezas') || (piezasItems && piezasItems.some(x=>(x.d||'').trim())));
+}
+window.addEventListener('beforeunload', e=>{
+  try { if(document.getElementById('modal-overlay').classList.contains('open') && nuevoTieneDatos()){ e.preventDefault(); e.returnValue = ''; } } catch(_){}
+});
 async function closeModal(){
+  if(nuevoTieneDatos() && document.getElementById('modal-overlay').classList.contains('open')){
+    const t = document.getElementById('modal-title');
+    if(t && !t.value.trim()){
+      const cli = ((document.getElementById('f-cliente-nombre')||{}).value||'').trim();
+      const veh = [((document.getElementById('f-marca')||{}).value||'').trim(), ((document.getElementById('f-modelo')||{}).value||'').trim()].filter(Boolean).join(' ');
+      t.value = [cli || 'Sin nombre', veh].filter(Boolean).join(' — ');
+    }
+    showToast('💾 Guardando el pedido nuevo para que no se pierda…','success');
+    await saveOrder();
+    return;
+  }
   if(autoSaveTimer && !isNewOrder && currentOrder){
     clearTimeout(autoSaveTimer);
     setAutoSaveIndicator('saving');
@@ -9883,6 +9904,7 @@ async function saveOrder(){
         orders.unshift(res[0]);
         logHistory(res[0].id, 'Pedido creado');
       }
+      isNewOrder = false; currentOrder = (res && res[0]) || currentOrder;   // ya existe: al cerrar no se vuelve a crear
       showToast('✅ Pedido creado');
     } else {
       const cambios = buildDiff(currentOrder, data);
