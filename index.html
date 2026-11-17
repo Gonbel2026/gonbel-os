@@ -174,6 +174,15 @@ body.role-operador #stat-ingresos{display:none!important;}
 .card-clid{font-size:11px;color:var(--t4);}
 .card-client{font-size:15.5px;font-weight:600;color:var(--t1);margin-top:2px;line-height:1.3;}
 .card-badge{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;margin-top:3px;}
+.card-aviso{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;margin-bottom:6px;margin-right:4px;cursor:pointer;}
+.card-aviso.amarillo{color:#f5a623;background:rgba(245,166,35,.16);border:1px solid rgba(245,166,35,.45);}
+.card-aviso.rojo{color:#ff4d6d;background:rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.45);}
+.av-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;margin-bottom:7px;}
+.av-item.amarillo{background:rgba(245,166,35,.09);border:1px solid rgba(245,166,35,.35);}
+.av-item.rojo{background:rgba(255,77,109,.09);border:1px solid rgba(255,77,109,.35);}
+.av-ic{font-size:18px;line-height:1;}
+.av-tt{font-size:13.5px;font-weight:700;color:var(--t1);}
+.av-dt{font-size:12px;color:var(--t2);margin-top:3px;line-height:1.4;}
 .card-vehicle{font-size:12.5px;font-weight:500;color:#8fa5c2;margin-bottom:2px;}
 .card-piece{font-size:11.5px;color:var(--t3);margin-bottom:10px;}
 .card-tl{display:flex;align-items:center;margin:9px 0 3px;}
@@ -2079,6 +2088,19 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="cc-col">
         <div class="cc-col-tt">DINERO Y PENDIENTES</div>
 
+        <div class="cc-panel" id="avisos-box">
+          <div class="cc-panel-h" onclick="ccPanelToggle('avisos')">
+            <div class="cc-panel-ic" style="background:rgba(245,166,35,.16);color:var(--amber);">⚠️</div>
+            <div class="cc-panel-tt">
+              <b>Avisos</b>
+              <span>Compras canceladas, demoras, reclamos y reembolsos por pedido</span>
+            </div>
+            <div class="cc-panel-n" id="avisos-n" style="color:var(--amber);">0</div>
+            <span class="cc-panel-fl" id="avisos-fl">▾</span>
+          </div>
+          <div class="cc-panel-body" id="avisos-lista"></div>
+        </div>
+
         <div class="cc-panel solo-admin" id="cobrar-box">
           <div class="cc-panel-h" onclick="ccPanelToggle('cobrar')">
             <div class="cc-panel-ic" style="background:rgba(245,166,35,.16);color:var(--amber);">💵</div>
@@ -3054,6 +3076,8 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div id="modal-linea-tiempo" style="margin-top:14px;"></div>
     </div>
 
+    <div id="modal-avisos" style="display:none;margin:0 0 4px;"></div>
+
     <!-- Cliente -->
     <div class="modal-section mtab-pane" data-tab="resumen">
       <div class="modal-sec-title">👤 Datos del Cliente</div>
@@ -3810,7 +3834,8 @@ async function loadAll(){
     cargarPagosPendientes(),
     cargarComprasExternas(),
     cargarTareas(),
-    waCargarAtencion()
+    waCargarAtencion(),
+    avCargar()
   ];
 
   try {
@@ -8637,6 +8662,112 @@ function plegarTodas(valor){
   renderKanban();
 }
 
+// ══════ AVISOS POR PEDIDO (pedido por Lucas 17/11) ══════
+// Cada pedido muestra ⚠️ en el tablero si tiene algo para atender: compra cancelada (volver a comprar),
+// reclamo o devolución en curso, envío demorado o un reembolso a la tarjeta que todavía no entró.
+// Se calcula de los datos reales (piezas, alertas de Mercado Livre y tabla de reembolsos), así que cuando
+// se resuelve (se recompra, entra la plata, llega el paquete) el aviso desaparece solo.
+let AV_ML = [], AV_RB = [], AV_FILTRO = '';
+try { AV_FILTRO = localStorage.getItem('gonbel_av_filtro') || ''; } catch(e){}
+async function avCargar(){
+  try {
+    const [ml, rb] = await Promise.all([
+      sbFetch('/rest/v1/ml_alertas?vista=eq.false&tipo=in.(demora,reclamo)&order_id=not.is.null&select=id,order_id,pieza,estado,tipo,created_at&order=created_at.desc&limit=200'),
+      sbFetch('/rest/v1/reembolsos?estado=neq.acreditado&order_id=not.is.null&select=id,order_id,pieza,monto,moneda,fecha_reembolso,compra_id,nota')
+    ]);
+    AV_ML = ml || []; AV_RB = rb || [];
+  } catch(e){ AV_ML = []; AV_RB = []; }
+}
+function avEsc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function avisosDe(o){
+  if(!o || o.archivado) return [];
+  const av = [];
+  let items = []; try { items = o.piezas_items ? (typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items) : o.piezas_items) : []; } catch(e){}
+  const cerrado = ['entregado','devolucion','cancelado','perdido'].includes(o.estado);
+  (items||[]).forEach((it, idx)=>{
+    const est = String(it.est||'');
+    if(!cerrado && it.c !== true && it.c !== 'true' && /volver a comprar|cancelad/i.test(est)){
+      av.push({nivel:'rojo', ic:'⛔', tipo:'cancelada', titulo:'Compra cancelada — hay que volver a comprar: ' + (it.d||'pieza'),
+        detalle: [est, it.nota, it.nc_cancelado ? 'Compra anterior: ' + it.nc_cancelado : ''].filter(Boolean).join(' · ')});
+    }
+    if(it.reemb === true){
+      const lab = (typeof REEMB_ESTADOS !== 'undefined' && REEMB_ESTADOS[it.reembEstado]) ? REEMB_ESTADOS[it.reembEstado].n : 'En curso';
+      av.push({nivel:'amarillo', ic:'⚖️', tipo:'reclamo', titulo:'Reclamo / devolución en curso: ' + (it.d||'pieza'), detalle: [lab, it.reemb_nota].filter(Boolean).join(' · ')});
+    }
+    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env && /demorad|no entregado/i.test(est)){
+      av.push({nivel:'amarillo', ic:'🐢', tipo:'envio', titulo:'Problema con el envío: ' + (it.d||'pieza'), detalle: est});
+    }
+  });
+  AV_ML.filter(a => String(a.order_id) === String(o.id)).forEach(a=>{
+    if(cerrado) return;
+    av.push({nivel:'amarillo', ic: a.tipo==='reclamo' ? '⏳' : '🐢', tipo:'ml', id:a.id,
+      titulo: (a.tipo==='reclamo' ? 'Plazo de reclamo: ' : 'Envío demorado: ') + (a.pieza||'pieza'), detalle: a.estado||''});
+  });
+  AV_RB.filter(r => String(r.order_id) === String(o.id)).forEach(r=>{
+    av.push({nivel:'amarillo', ic:'💳', tipo:'reembolso', id:r.id,
+      titulo:'Reembolso pendiente: ' + (r.moneda==='BRL'?'R$ ':'') + Number(r.monto||0).toLocaleString('es-PY',{minimumFractionDigits:2,maximumFractionDigits:2}) + (r.pieza ? ' · ' + r.pieza : ''),
+      detalle: (r.nota || 'Falta confirmar que entró la plata') + (r.fecha_reembolso ? ' · devuelto ' + String(r.fecha_reembolso).slice(0,10).split('-').reverse().join('/') : '')});
+  });
+  return av;
+}
+function avChipCard(o){
+  const av = avisosDe(o); if(!av.length) return '';
+  const rojo = av.some(a=>a.nivel==='rojo');
+  const tit = av.map(a=>a.titulo).join('\n').replace(/"/g,'&quot;');
+  return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (av[0].tipo==='cancelada'?'Cancelada':av[0].tipo==='reembolso'?'Reembolso':av[0].tipo==='reclamo'?'Reclamo':'Demora') : av.length + ' avisos'}</span>`;
+}
+function avItemHTML(a, conAccion){
+  let accion = '';
+  if(conAccion && a.tipo==='ml') accion = `<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="event.stopPropagation();avResolverML(${a.id})">✓ Ya lo resolví</button>`;
+  if(conAccion && a.tipo==='reembolso') accion = `<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="event.stopPropagation();avReembolsoEntro(${a.id})">💰 Ya entró</button>`;
+  return `<div class="av-item ${a.nivel}"><div class="av-ic">${a.ic}</div><div style="flex:1;min-width:0;"><div class="av-tt">${avEsc(a.titulo)}</div>${a.detalle?`<div class="av-dt">${avEsc(a.detalle)}</div>`:''}</div>${accion}</div>`;
+}
+function avPintarModal(o){
+  const box = document.getElementById('modal-avisos'); if(!box) return;
+  const av = avisosDe(o);
+  if(!av.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = `<div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:800;color:${av.some(a=>a.nivel==='rojo')?'var(--red)':'var(--amber)'};margin:2px 0 8px;">⚠️ Avisos de este pedido</div>` + av.map(a=>avItemHTML(a, true)).join('');
+}
+function avSetFiltro(v){ AV_FILTRO = (AV_FILTRO === v) ? '' : v; try { localStorage.setItem('gonbel_av_filtro', AV_FILTRO); } catch(e){} avPintarPanel(); }
+function avPintarPanel(){
+  const lista = document.getElementById('avisos-lista'); if(!lista) return;
+  const filas = [];
+  let total = 0;
+  (orders||[]).forEach(o=>{
+    const av = avisosDe(o); if(!av.length) return;
+    total += av.length;
+    if(AV_FILTRO === '__sin' ? !!o.vendedor : (AV_FILTRO && o.vendedor !== AV_FILTRO)) return;
+    filas.push({o, av, rojo: av.some(a=>a.nivel==='rojo')});
+  });
+  filas.sort((a,b)=> (b.rojo - a.rojo) || (b.av.length - a.av.length));
+  const n = document.getElementById('avisos-n'); if(n) n.textContent = total;
+  const yo = (typeof vendedorDeUsuario === 'function') ? vendedorDeUsuario() : '';
+  const chip = (v, txt) => `<button type="button" class="btn btn-ghost" onclick="event.stopPropagation();avSetFiltro('${v}')" style="padding:4px 10px;font-size:11.5px;${AV_FILTRO===v?'background:rgba(245,166,35,.2);color:var(--amber);border-color:var(--amber);font-weight:800;':''}">${txt}</button>`;
+  const filtros = `<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0 10px;"><span style="font-size:11.5px;color:var(--t3);">Ver:</span>${chip('','Todos')}${['Lucas','Joaquín','Alexis'].map(v=>chip(v,(v===yo?'⭐ ':'')+v)).join('')}${chip('__sin','Sin vendedor')}</div>`;
+  lista.innerHTML = filtros + (filas.length ? filas.map(f=>{
+    const veh = [f.o.marca, f.o.modelo, f.o['año']].filter(Boolean).join(' ');
+    return `<div style="border:1px solid var(--brd);border-radius:12px;padding:10px 12px;margin-bottom:9px;cursor:pointer;" onclick="goKanban();setTimeout(()=>openOrder('${f.o.id}'),120)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+        <b style="font-size:13.5px;">${avEsc(f.o.numero_pedido||f.o.numero||'')} · ${avEsc(f.o.cliente_nombre||'')}</b>
+        <span style="font-size:11.5px;color:var(--t3);">${avEsc(veh)}${f.o.vendedor?' · 👤 '+avEsc(f.o.vendedor):''}</span>
+      </div>${f.av.map(a=>avItemHTML(a, true)).join('')}</div>`;
+  }).join('') : '<div style="font-size:12.5px;color:var(--t3);padding:8px 2px;">Sin avisos' + (AV_FILTRO?' para este filtro':'') + ' ✅</div>');
+}
+async function avResolverML(id){
+  try { await sbFetch('/rest/v1/ml_alertas?id=eq.'+id, 'PATCH', {vista:true}); AV_ML = AV_ML.filter(a=>a.id!==id); avRefrescar(); showToast('✅ Aviso resuelto','success'); }
+  catch(e){ showToast('No se pudo guardar','error'); }
+}
+async function avReembolsoEntro(id){
+  try { await sbFetch('/rest/v1/reembolsos?id=eq.'+id, 'PATCH', {estado:'acreditado', acreditado_en:new Date().toISOString().slice(0,10)}); AV_RB = AV_RB.filter(r=>r.id!==id); avRefrescar(); showToast('💰 Marcado como devuelto','success'); }
+  catch(e){ showToast('No se pudo guardar','error'); }
+}
+function avRefrescar(){
+  try { renderKanban(); } catch(e){}
+  try { avPintarPanel(); } catch(e){}
+  try { if(currentOrder) avPintarModal(currentOrder); } catch(e){}
+}
+
 // ── Vendedor de cada pedido (pedido por Lucas 14/11) ──
 const VENDEDORES = ['Lucas','Joaquín','Alexis'];
 const VEND_COLOR = {'Lucas':'#3b8eff','Joaquín':'#f5a623','Alexis':'#a78bfa'};
@@ -8821,7 +8952,7 @@ function renderCard(o, colorClass){
     ondragend="dragEnd(event)"
     onclick="openOrder('${o.id}')">
     ${dotColor ? `<div class="card-dot" style="background:${dotColor};"></div>` : ''}
-    ${alertaFinanciera ? `<div style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-bottom:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
+    ${avChipCard(o)}${alertaFinanciera ? `<div style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-bottom:6px;color:${alertaFinanciera.col};background:${alertaFinanciera.bg};">${alertaFinanciera.txt}</div>` : ''}
     <div class="card-head">
       <div>
         <div class="card-idrow">
@@ -9131,6 +9262,7 @@ function fillModal(o){
   document.getElementById('f-cliente-tel').value = o.cliente_tel || '';
   document.getElementById('f-cliente-tipo').value = o.tipo_cliente || '';
   { const fv = document.getElementById('f-vendedor'); if(fv) fv.value = o.vendedor || ''; }
+  try { avPintarModal(o); } catch(e){ console.error(e); }
   document.getElementById('f-cliente-ruc').value = o.cliente_ruc || '';
   document.getElementById('f-marca').value = o.marca || '';
   document.getElementById('f-modelo').value = o.modelo || '';
@@ -9222,6 +9354,7 @@ function clearModal(){
   .forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   document.getElementById('f-cliente-tipo').value = '';
   { const fv = document.getElementById('f-vendedor'); if(fv) fv.value = vendedorDeUsuario(); }
+  { const ma = document.getElementById('modal-avisos'); if(ma){ ma.style.display = 'none'; ma.innerHTML = ''; } }
   document.getElementById('modal-fecha-tag').textContent = '';
   crCargarDesdePedido(null);
   crClienteSel = null;
@@ -13093,6 +13226,7 @@ function renderControl(){
   pintarFoz();
   pintarCoordinar();
   pintarReembolsos();
+  try { avPintarPanel(); } catch(e){ console.error(e); }
   buscarMensajesML(false);
   buscarPreguntasML(false);
   // ── v35: pedidos por estado ──
@@ -14325,7 +14459,7 @@ function _notifDesc(i){
 
 // Colapsa/expande los paneles principales del Centro de Control (Foz, Falta enviar, Compras ML, Reembolsos)
 function ccPanelToggle(clave){
-  const map = {foz:['foz-lista','foz-fl'], enlocal:['cc-enlocal','enlocal-fl'], mlc:['cc-compras-ml','mlc-fl'], reemb:['reemb-lista','reemb-fl'], fc:['cc-faltacomprar','fc-fl'], ext:['ext-lista','ext-fl'], tareas:['tareas-body','tareas-fl'], cobrar:['cobrar-lista','cobrar-fl'], transito:['transito-lista','transito-fl']};
+  const map = {avisos:['avisos-lista','avisos-fl'], foz:['foz-lista','foz-fl'], enlocal:['cc-enlocal','enlocal-fl'], mlc:['cc-compras-ml','mlc-fl'], reemb:['reemb-lista','reemb-fl'], fc:['cc-faltacomprar','fc-fl'], ext:['ext-lista','ext-fl'], tareas:['tareas-body','tareas-fl'], cobrar:['cobrar-lista','cobrar-fl'], transito:['transito-lista','transito-fl']};
   const [listId, flId] = map[clave] || [];
   if(!listId) return;
   const box = document.getElementById(listId);
