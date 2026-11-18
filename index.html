@@ -2280,6 +2280,10 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
             <div style="font-size:11px;color:var(--t3);margin-top:2px;">Aparece pendiente todos los meses (día 1) hasta que lo marques pagado</div>
           </div>
         </label>
+        <label style="display:flex;align-items:center;gap:10px;background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:10px 14px;cursor:pointer;">
+          <input type="checkbox" id="gf-new-variable" style="width:18px;height:18px;accent-color:#f5a623;cursor:pointer;">
+          <div><div style="font-size:13px;font-weight:600;color:var(--amber);">〰️ Monto variable</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">Ej: luz. Al marcarlo pagado te pregunta cuánto se pagó ese mes</div></div>
+        </label>
         <div id="gf-cuotas-box" style="display:none;background:rgba(0,198,255,.04);border:1px solid rgba(0,198,255,.15);border-radius:12px;padding:14px;">
           <div class="field" style="margin-bottom:12px;"><label>📅 Día fijo de pago cada mes (1–31)</label><input id="gf-new-dia" type="number" min="1" max="31" placeholder="Ej: 5 → se paga el día 5 de cada mes"></div>
           <div style="font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:10px;">💳 ¿Tiene cuotas definidas? (opcional — ej: préstamos)</div>
@@ -18180,9 +18184,34 @@ async function loadFinData(){
   } catch(e){ console.error('Error fin data:', e); finCuentas = []; finPagos = []; }
 }
 
+// Monto del mes visible (Lucas 18/11): comisiones se calculan del sistema (5% de lo vendido ese mes),
+// pagos en reales se convierten con la cotización del día, el resto usa el monto cargado.
+function gfMontoGs(c){
+  if(c.calc && String(c.calc).startsWith('comision:')){
+    const v = String(c.calc).slice(9), mes = gfMesStr(gfMes);
+    const pct = (typeof COMISION_PCT!=='undefined' && COMISION_PCT[v]) || 0.05;
+    const vendido = (orders||[]).filter(o=>o.vendedor===v && !o.archivado && ['aprobado','comprado','listo-envio','entregado'].includes(o.estado) && cmFechaVenta(o).slice(0,7)===mes).reduce((s,o)=>s+(parseFloat(o.precio_venta)||0),0);
+    return Math.round(vendido*pct);
+  }
+  if(c.moneda === 'BRL' && c.monto_orig) return Math.round(parseFloat(c.monto_orig) * (BRL_GS ? BRL_GS + 50 : 1131));
+  return parseFloat(c.monto)||0;
+}
+function gfPagosDe(c){
+  // Recurrentes: solo cuentan los pagos del mes visible (antes sumaba todos los meses)
+  const mes = gfMesStr(gfMes);
+  return finPagos.filter(p=>p.cuenta_id===c.id && (!c.recurrente || String(p.fecha||'').slice(0,7)===mes));
+}
 function gfSaldoCuenta(c){
-  const abonado = finPagos.filter(p=>p.cuenta_id===c.id).reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
-  return { total: parseFloat(c.monto)||0, abonado, restante: Math.max(0,(parseFloat(c.monto)||0)-abonado) };
+  const total = gfMontoGs(c);
+  const abonado = gfPagosDe(c).reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+  return { total, abonado, restante: Math.max(0, total-abonado) };
+}
+function gfEtiqueta(c){
+  const t = [];
+  if(c.calc && String(c.calc).startsWith('comision:')) t.push('<span style="color:var(--amber);">Variable · 5% de lo vendido en el mes</span>');
+  else if(c.variable) t.push('<span style="color:var(--amber);">Variable · ref. Gs '+fmtNum(parseFloat(c.monto)||0)+'</span>');
+  if(c.moneda === 'BRL' && c.monto_orig) t.push('R$ '+Number(c.monto_orig).toLocaleString('es-PY'));
+  return t.length ? ' · '+t.join(' · ') : '';
 }
 
 async function renderGonbelFin(){
@@ -18311,7 +18340,7 @@ async function renderGonbelFin(){
     else if(!fechaTxt){ fechaTxt = 'Sin fecha definida'; }
     pagosHTML += `<div onclick="gfOpenDetalle(${c.id})" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:12px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--brda)'" onmouseout="this.style.borderColor='var(--brd)'">
       <div><div style="font-size:13px;font-weight:600;">${c.recurrente?'🔁 ':''}${c.nombre}</div>
-      <div style="font-size:10px;color:var(--t3);margin-top:2px;">${fechaTxt}${s.abonado>0?' · abonado Gs '+fmtNum(s.abonado):''}</div></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:2px;">${fechaTxt}${gfEtiqueta(c)}${s.abonado>0?' · abonado Gs '+fmtNum(s.abonado):''}</div></div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--red);">Gs ${fmtNum(s.restante)}</div>
     </div>`;
   });
@@ -18321,7 +18350,7 @@ async function renderGonbelFin(){
     pagosHTML += `<div onclick="gfOpenDetalle(${c.id})" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(34,217,122,.04);border:1px solid rgba(34,217,122,.15);border-radius:12px;opacity:.65;cursor:pointer;transition:all .15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.65'">
       <div><div style="font-size:13px;font-weight:600;text-decoration:line-through;">${c.recurrente?'🔁 ':''}${c.nombre}</div>
       <div style="font-size:10px;color:var(--green);margin-top:2px;">✓ Pagado · clic para ver o corregir</div></div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--green);">Gs ${fmtNum(parseFloat(c.monto)||0)}</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--green);">Gs ${fmtNum((c.recurrente && gfSaldoCuenta(c).abonado) || gfMontoGs(c))}</div>
     </div>`;
   });
 
@@ -18349,6 +18378,7 @@ function gfOpenNew(tipo){
   document.getElementById('gf-new-title').textContent = tipo==='cobrar'?'Nuevo cobro pendiente':'Nuevo pago pendiente';
   ['gf-new-nombre','gf-new-concepto','gf-new-monto','gf-new-vence','gf-new-cuotas-total','gf-new-cuotas-pagadas','gf-new-dia'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('gf-new-recurrente').checked = false;
+  try { document.getElementById('gf-new-variable').checked = false; } catch(e){}
   document.getElementById('gf-cuotas-box').style.display = 'none';
   document.getElementById('gf-modal-new').classList.add('open');
 }
@@ -18367,6 +18397,7 @@ async function gfSaveNew(){
     recurrente: esRecurrente,
     pagado: false,
     pagado_hasta: null,
+    variable: !!(document.getElementById('gf-new-variable')||{}).checked,
     dia_pago: esRecurrente ? (parseInt(document.getElementById('gf-new-dia').value)||null) : null,
     cuotas_total: esRecurrente ? (parseInt(document.getElementById('gf-new-cuotas-total').value)||null) : null,
     cuotas_pagadas: esRecurrente ? (parseInt(document.getElementById('gf-new-cuotas-pagadas').value)||0) : 0
@@ -18536,7 +18567,22 @@ async function gfUpdateVence(){
 
 async function gfMarkPaid(){
   if(!gfCuentaActual) return;
-  await gfCompletarCuenta(gfCuentaActual);
+  const c = gfCuentaActual;
+  if(c.variable){
+    const s = gfSaldoCuenta(c);
+    const sug = s.restante || gfMontoGs(c) || (parseFloat(c.monto)||0);
+    const r = prompt('\u00bfCu\u00e1nto se pag\u00f3 de "' + c.nombre + '" este mes? (Gs)', fmtNum(sug));
+    if(r === null) return;
+    const val = parseFloat(String(r).replace(/[^\d]/g,'')) || 0;
+    if(val <= 0){ showToast('Monto inv\u00e1lido','error'); return; }
+    try {
+      const mes = gfMesStr(gfMes), hoyIso = new Date().toISOString().slice(0,10);
+      const fecha = hoyIso.slice(0,7) === mes ? hoyIso : mes + '-28';
+      await sbFetch('/rest/v1/fin_pagos', 'POST', {cuenta_id: c.id, monto: Math.max(0, val - s.abonado) || val, fecha});
+      if(!c.calc) await sbFetch('/rest/v1/fin_cuentas?id=eq.' + c.id, 'PATCH', {monto: val});
+    } catch(e){ showToast('No se pudo guardar el monto','error'); return; }
+  }
+  await gfCompletarCuenta(c);
   document.getElementById('gf-modal-det').classList.remove('open');
   renderGonbelFin();
 }
