@@ -2510,10 +2510,49 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
     <div id="inv-lista"></div>
   </div>
 
+  <div class="page" id="page-fingastos">
+      <div class="fin-tabs">
+        <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
+        <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div id="gs-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;flex:1;min-width:280px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-ghost" onclick="gfChangeMonth(-1)">‹</button>
+          <div id="gs-mes-label" style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;min-width:130px;text-align:center;"></div>
+          <button class="btn btn-ghost" onclick="gfChangeMonth(1)">›</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;">
+        <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="font-size:13px;font-weight:700;">📤 Pagos fijos del mes</h3>
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gfOpenNew('pagar')">+ Agregar pago fijo</button>
+          </div>
+          <div id="gf-pagos-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:14px;"><div id="gf-pagos-bar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--amber));width:0%;transition:width .4s;"></div></div>
+          <div id="gf-pagos-pct" style="font-size:11px;color:var(--t3);margin-top:8px;"></div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <h3 style="font-size:13px;font-weight:700;">🧾 Gastos de la empresa</h3>
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gsNuevoGasto()">+ Registrar gasto</button>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Cinta, cajas, embalaje, combustible, delivery, etc. Se descuenta de la billetera que elijas en Caja.</div>
+          <div id="gs-lista" style="display:flex;flex-direction:column;gap:7px;"></div>
+        </div>
+      </div>
+  </div>
+
   <div class="page" id="page-fincaja">
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2548,6 +2587,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2573,6 +2613,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2591,6 +2632,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2623,6 +2665,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2658,8 +2701,8 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
     </div>
 
     <!-- Dos columnas -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="gf-cols">
-      <!-- COBROS -->
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;" class="gf-cols">
+      <!-- COBROS (los pagos fijos se mudaron a la pestaña 💸 Gastos — Lucas 18/11) -->
       <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
           <h3 style="font-size:13px;font-weight:700;">📥 Próximos cobros</h3>
@@ -2668,16 +2711,6 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <div id="gf-cobros-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:14px;"><div id="gf-cobros-bar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--green),var(--cyan));width:0%;transition:width .4s;"></div></div>
         <div id="gf-cobros-pct" style="font-size:11px;color:var(--t3);margin-top:8px;"></div>
-      </div>
-      <!-- PAGOS -->
-      <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <h3 style="font-size:13px;font-weight:700;">📤 Próximos pagos</h3>
-          <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gfOpenNew('pagar')">+ Agregar pago</button>
-        </div>
-        <div id="gf-pagos-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-        <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:14px;"><div id="gf-pagos-bar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--amber));width:0%;transition:width .4s;"></div></div>
-        <div id="gf-pagos-pct" style="font-size:11px;color:var(--t3);margin-top:8px;"></div>
       </div>
     </div>
 
@@ -12291,6 +12324,7 @@ async function cjCargar(){
   cjLlenarFiltros();
   cjPintarMovs();
   cjCargarBandeja();
+  try { gsPintar(); } catch(e){}
 }
 
 // ══════ BANDEJA DE AVISOS DEL BANCO ══════
@@ -12483,6 +12517,43 @@ function cjBillMesHTML(b){
   }
   if(r.tot) h += '<div style="font-size:10px;color:var(--t3);margin-top:2px;">\u2193 entr\u00f3 ' + cjMill(r.ent) + ' \u00b7 \u2191 sali\u00f3 ' + cjMill(r.sal) + '</div>';
   return h + '</div>';
+}
+
+// ══════ GASTOS (pestaña nueva, Lucas 18/11) ══════
+// Pagos fijos (fin_cuentas tipo pagar) + gastos variables de la empresa (salidas de Caja que no son mercadería ni retiro personal).
+const GS_EXCLUIR = /mercader|retiro personal|flete internacional|impuestos y aduana/i;
+function gsEsGasto(m){
+  if(m.tipo !== 'salida') return false;
+  const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id);
+  return !(cat && GS_EXCLUIR.test(cat.nombre));
+}
+function gsNuevoGasto(){
+  if(!(CJ_CAT||[]).length || !(CJ_BILL||[]).length){ cjCargar().then(()=>cjEditarMov(null,'salida')); return; }
+  cjEditarMov(null, 'salida');
+}
+function gsPintar(){
+  const lista = document.getElementById('gs-lista'), kp = document.getElementById('gs-kpis');
+  if(!lista && !kp) return;
+  const mes = gfMesStr(gfMes);
+  const gastos = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m));
+  const totVar = gastos.reduce((s,m)=>s+Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)),0);
+  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && c.recurrente && !(c.pagado && c.cuotas_total));
+  const totFijo = fijas.reduce((s,c)=>s+gfSaldoCuenta(c).total,0);
+  const pagadoFijo = fijas.filter(c=>c.pagado_hasta===mes).reduce((s,c)=>s+(gfSaldoCuenta(c).abonado || gfSaldoCuenta(c).total),0);
+  if(kp){
+    const k = (t,v,col)=>'<div class="card" style="padding:12px 14px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;">'+t+'</div><div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;color:'+col+';margin-top:3px;">Gs '+fmtNum(Math.round(v))+'</div></div>';
+    kp.innerHTML = k('Pagos fijos del mes', totFijo, 'var(--t1)') + k('Fijos ya pagados', pagadoFijo, 'var(--green)') + k('Fijos por pagar', Math.max(0, totFijo-pagadoFijo), 'var(--red)') + k('Gastos variables', totVar, 'var(--amber)') + k('Total gastos del mes', totFijo + totVar, 'var(--purple)');
+  }
+  if(lista){
+    lista.innerHTML = gastos.length ? gastos.map(m=>{
+      const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id), b = (CJ_BILL||[]).find(x=>x.id===m.billetera_id);
+      const gs = Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion));
+      return '<div onclick="cjEditarMov('+m.id+')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:11px;cursor:pointer;">'
+        + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+avEsc(m.concepto || (cat?cat.nombre:'Gasto'))+'</div>'
+        + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">'+new Date(m.fecha+'T12:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'short'})+(cat?' · '+avEsc(cat.nombre):'')+(b?' · '+avEsc(b.nombre):'')+'</div></div>'
+        + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;">Gs '+fmtNum(Math.round(gs))+'</div></div>';
+    }).join('') : '<div style="text-align:center;color:var(--t3);font-size:12px;padding:18px;">Sin gastos registrados este mes</div>';
+  }
 }
 
 // Orden de las cuentas (pedido por Lucas 18/11): arrastrar una tarjeta sobre otra, o con las flechas ◀ ▶
@@ -13019,7 +13090,7 @@ function abrirFinanzas(tab, el){
   }
   FIN_TAB = tab || 'pedidos';
   if(FIN_TAB === 'empresa') FIN_TAB = 'pedidos';   // Empresa se fusiono con Pedidos
-  const paginas = {pedidos:'financiero', caja:'fincaja', analisis:'finanalisis', reembolsos:'finreembolsos', comisiones:'fincomisiones'};
+  const paginas = {pedidos:'financiero', caja:'fincaja', gastos:'fingastos', analisis:'finanalisis', reembolsos:'finreembolsos', comisiones:'fincomisiones'};
   const id = paginas[FIN_TAB];
 
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -13040,6 +13111,7 @@ function abrirFinanzas(tab, el){
   try {
     if(FIN_TAB === 'pedidos'){ fpSimple(); try { renderGonbelFin(); } catch(e){ console.error(e); } }
     if(FIN_TAB === 'caja'){ cjCargar(); }
+    if(FIN_TAB === 'gastos'){ renderGonbelFin(); cjCargar(); }
     if(FIN_TAB === 'analisis'){ renderAnalisis(); }
     if(FIN_TAB === 'reembolsos'){ rbCargar(); rbSyncSiHaceFalta(); }
     if(FIN_TAB === 'comisiones'){ cmPintar(); }
@@ -18218,6 +18290,7 @@ async function renderGonbelFin(){
   await loadFinData();
   const mesActual = gfMesStr(gfMes);
   document.getElementById('gf-mes-label').textContent = MESES_ES[gfMes.getMonth()]+' '+gfMes.getFullYear();
+  try { const l2 = document.getElementById('gs-mes-label'); if(l2) l2.textContent = MESES_ES[gfMes.getMonth()]+' '+gfMes.getFullYear(); } catch(e){}
   pintarPeriodos('gg');
 
   // ── COBROS: pedidos pendientes + cuentas manuales tipo cobrar ──
@@ -18362,6 +18435,7 @@ async function renderGonbelFin(){
   const pctPagos = totalPagosMes>0 ? Math.round((pagadoMes/totalPagosMes)*100) : 0;
   document.getElementById('gf-pagos-bar').style.width = pctPagos+'%';
   document.getElementById('gf-pagos-pct').textContent = pctPagos+'% de los pagos del mes realizados';
+  try { gsPintar(); } catch(e){ console.error(e); }
 
   const totalCobrosTeorico = pedidosPend.reduce((s,o)=>s+(parseFloat(o.precio_venta)||0),0) + cobrosManuales.reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
   const cobradoTotal = pedidosPend.reduce((s,o)=>s+(parseFloat(o.valor_pagado)||0),0) + cobrosManuales.reduce((s,c)=>s+gfSaldoCuenta(c).abonado,0);
