@@ -8807,6 +8807,8 @@ function avisosDe(o){
   if(!o || o.archivado) return [];
   const fPed = o.fecha_pedido || o.created_at;
   const av = [];
+  if(o.estado === 'devolucion' && !o.devolucion_descartada)
+    av.push({nivel:'rojo', ic:'↩️', tipo:'devolucion', titulo:'Devolución sin resolver', detalle:'Elegí en el Centro de Control: 🔁 Volví a comprar, 💰 Reembolso o 📦 A inventario' + (o.devolucion_limite ? ' · límite ' + new Date(o.devolucion_limite+'T00:00:00').toLocaleDateString('es-PY') : '')});
   let items = []; try { items = o.piezas_items ? (typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items) : o.piezas_items) : []; } catch(e){}
   const cerrado = ['entregado','devolucion','cancelado','perdido'].includes(o.estado);
   (items||[]).forEach((it, idx)=>{
@@ -8865,7 +8867,7 @@ function avChipCard(o){
   const av = avisosDe(o); if(!av.length) return '';
   const rojo = av.some(a=>a.nivel==='rojo');
   const tit = av.map(a=>a.titulo).join('\n').replace(/"/g,'&quot;');
-  return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (({cancelada:'Cancelada',reembolso:'Reembolso',reclamo:'Reclamo',vencido:'Plazo vencido',datos:'Faltan datos',sena:'Sin seña',margen:'Margen bajo'})[av[0].tipo]||'Demora') : av.length + ' avisos'}</span>`;
+  return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (({devolucion:'Devolución',cancelada:'Cancelada',reembolso:'Reembolso',reclamo:'Reclamo',vencido:'Plazo vencido',datos:'Faltan datos',sena:'Sin seña',margen:'Margen bajo'})[av[0].tipo]||'Demora') : av.length + ' avisos'}</span>`;
 }
 function avItemHTML(a, conAccion){
   let accion = '';
@@ -11499,15 +11501,106 @@ function renderDevoluciones(){
         + aviso + '</div>'
       + '<div style="display:flex;gap:6px;">'
         + '<button class="inv-b" onclick="devFecha(' + o.id + ')">\uD83D\uDCC5 Fecha l\u00edmite</button>'
+        + '<button class="inv-b" onclick="dvVolviAComprar(' + o.id + ')" style="background:rgba(59,142,255,.14);color:var(--blue,#3b8eff);font-weight:700;" title="Se compró otra pieza para reemplazar la devuelta">\uD83D\uDD01 Volví a comprar</button>'
         + '<button class="inv-b" onclick="invDesdeDevolucion(' + o.id + ')">\uD83D\uDCE6 A inventario</button>'
         + '<button class="inv-b" onclick="devRegistrarReembolso(' + o.id + ')" style="background:rgba(34,197,94,.12);color:var(--green);" title="Registrar reembolso recibido">\uD83D\uDCB0 Reembolso</button>'
         + '<button class="inv-b" onclick="openOrder(' + o.id + ')">Abrir</button>'
-        + '<button class="inv-b" onclick="devDescartar(' + o.id + ')" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>'
+        + ((typeof esAdmin === 'function' && esAdmin()) ? '<button class="inv-b" onclick="devDescartar(' + o.id + ')" style="background:rgba(239,68,68,.15);color:var(--red);font-weight:800;font-size:15px;padding:3px 10px;" title="Descartar este aviso">&times;</button>' : '')
       + '</div>'
     + '</div>';
   }).join('');
 }
 
+
+// ══════ VOLVÍ A COMPRAR (pedido por Lucas 18/11) ══════
+// Una pieza devuelta se reemplaza con otra compra: se elige qué piezas, de dónde y cuánto costó.
+// La compra anterior queda guardada en la pieza (compras_anteriores) y el pedido vuelve a "Comprado".
+const DV_PROVS = ['Mercado Livre','eBay','AliExpress','Alibaba','Proveedor local','Stock','Otro'];
+function dvDetectar(txt){
+  const t = String(txt||'').toLowerCase().trim();
+  if(!t) return null;
+  if(/mercadoli[vb]re|mercadolibre|\bmlb-?\d/.test(t) || /^2000\d{12}$/.test(t)) return {prov:'Mercado Livre', mon:'brl'};
+  if(/ebay\./.test(t) || /^\d{2}-\d{5}-\d{5}$/.test(t)) return {prov:'eBay', mon:'usd'};
+  if(/aliexpress/.test(t) || /^\d{16}$/.test(t)) return {prov:'AliExpress', mon:'usd'};
+  if(/alibaba/.test(t) || /^\d{18}$/.test(t)) return {prov:'Alibaba', mon:'usd'};
+  return null;
+}
+function dvAutodetectar(i){
+  const v = (document.getElementById('dv-ref-'+i)||{}).value || '';
+  const d = dvDetectar(v); if(!d) return;
+  const sp = document.getElementById('dv-prov-'+i), sm = document.getElementById('dv-mon-'+i);
+  if(sp) sp.value = d.prov; if(sm) sm.value = d.mon;
+}
+function dvToggle(i){
+  const on = (document.getElementById('dv-chk-'+i)||{}).checked;
+  const b = document.getElementById('dv-box-'+i); if(b) b.style.display = on ? 'grid' : 'none';
+}
+function dvVolviAComprar(orderId){
+  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o) return;
+  let items = []; try { items = JSON.parse(o.piezas_items||'[]'); } catch(e){}
+  if(!items.length){ showToast('Este pedido no tiene piezas cargadas','error'); return; }
+  const sel = (id, opts, v) => '<select class="inp" id="'+id+'">' + opts.map(x=>'<option value="'+x[0]+'"'+(x[0]===v?' selected':'')+'>'+x[1]+'</option>').join('') + '</select>';
+  const html = '<div style="font-size:13px;color:var(--t2);margin-bottom:13px;line-height:1.5;">Marcá las piezas que volviste a comprar y cargá de dónde y cuánto costó. Pegá el link o el número de compra: Mercado Livre, eBay, AliExpress y Alibaba se reconocen solos. La compra anterior queda guardada en el registro de la pieza.</div>'
+    + items.map((it,i)=>{
+      return '<div style="border:1px solid var(--brd);border-radius:11px;padding:10px 12px;margin-bottom:9px;">'
+        + '<label style="display:flex;gap:9px;align-items:center;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--t1);"><input type="checkbox" id="dv-chk-'+i+'" onchange="dvToggle('+i+')" style="width:17px;height:17px;"> '+avEsc(it.d||'Pieza')
+          + '<span style="font-weight:500;font-size:11.5px;color:var(--t3);">'+(it.pr||it.proveedorManual?' · antes: '+avEsc(it.pr||it.proveedorManual):'')+(it.cb?' · Gs '+fmtNum(it.cb):'')+'</span></label>'
+        + '<div id="dv-box-'+i+'" style="display:none;grid-template-columns:2fr 1.2fr 1fr .8fr;gap:8px;margin-top:9px;">'
+          + '<div><label class="lbl">Link o n° de compra</label><input class="inp" id="dv-ref-'+i+'" placeholder="https://… o 2000…" oninput="dvAutodetectar('+i+')"></div>'
+          + '<div><label class="lbl">Dónde se compró</label>' + sel('dv-prov-'+i, DV_PROVS.map(x=>[x,x]), '') + '</div>'
+          + '<div><label class="lbl">Costo</label><input class="inp" id="dv-costo-'+i+'" type="number" step="0.01" min="0" placeholder="0"></div>'
+          + '<div><label class="lbl">Moneda</label>' + sel('dv-mon-'+i, [['brl','R$'],['usd','US$'],['gs','Gs']], 'brl') + '</div>'
+        + '</div></div>';
+    }).join('');
+  invModal('🔁 Volví a comprar · ' + (o.numero_pedido || ('#'+o.id)), html, async ()=>{
+    const ahora = new Date().toISOString();
+    let cambios = 0, difCosto = 0;
+    for(let i=0;i<items.length;i++){
+      if(!(document.getElementById('dv-chk-'+i)||{}).checked) continue;
+      const ref = (document.getElementById('dv-ref-'+i).value||'').trim();
+      const prov = document.getElementById('dv-prov-'+i).value;
+      const costo = parseFloat(document.getElementById('dv-costo-'+i).value) || 0;
+      const mon = document.getElementById('dv-mon-'+i).value;
+      if(!prov || !(costo > 0)){ showToast('Falta dónde se compró o el costo de: ' + (items[i].d||'pieza'),'error'); return false; }
+      const it = items[i];
+      const anterior = {nc: it.nc||null, pr: it.pr||it.proveedorManual||null, linkCompra: it.linkCompra||null, cb: it.cb||0, cbrl: it.cbrl||null, valOrig: it.valOrig??null, mon: it.mon||null, fcompra: it.fcompra||null, est: it.est||null, motivo:'devolución', reemplazada_en: ahora};
+      it.compras_anteriores = [...(it.compras_anteriores||[]), anterior];
+      let cbNuevo = mon === 'gs' ? Math.round(costo) : Math.round(bpConvertirAGs(costo, mon) || 0);
+      if(!(cbNuevo > 0)) cbNuevo = Math.round(costo * (mon === 'brl' ? 1131 : 6488));   // por si la cotización no cargó
+      difCosto += cbNuevo - (parseFloat(it.cb)||0);
+      const esLink = /^https?:\/\//i.test(ref);
+      const num = esLink ? ((ref.match(/MLB-?\d+|\d{2}-\d{5}-\d{5}|\d{12,18}/)||[''])[0]) : ref;
+      Object.assign(it, {
+        pr: prov, proveedorManual: null,
+        nc: num ? ((prov==='Mercado Livre'?'ML ':prov==='eBay'?'eBay ':prov==='AliExpress'?'AliExpress ':prov==='Alibaba'?'Alibaba ':'') + num + ' (recompra)') : null,
+        nc_cancelado: anterior.nc || it.nc_cancelado || null,
+        linkCompra: esLink ? ref : (it.linkCompra && anterior.linkCompra !== it.linkCompra ? it.linkCompra : null),
+        mon, valOrig: costo, cb: cbNuevo, cbrl: mon === 'brl' ? costo : null,
+        c: true, fcompra: ahora, recomprada_en: ahora,
+        est: 'Recomprada tras devolución — en camino',
+        ll: false, loc: false, env: false, ret: false, mia: false,
+        flete_requerido: !['Proveedor local','Stock'].includes(prov)
+      });
+      cambios++;
+    }
+    if(!cambios){ showToast('Marcá al menos una pieza','error'); return false; }
+    const patch = {
+      piezas_items: JSON.stringify(items),
+      estado: 'comprado',
+      devolucion_resultado: 'recomprado',
+      devolucion_resuelta_en: ahora,
+      precio_costo: Math.max(0, Math.round((parseFloat(o.precio_costo)||0) + difCosto))
+    };
+    try {
+      await sbFetch('/rest/v1/orders?id=eq.' + o.id, 'PATCH', patch);
+      Object.assign(o, patch);
+      try { logHistory(o.id, '🔁 Devolución resuelta: se volvió a comprar ' + cambios + ' pieza(s)'); } catch(e){}
+      renderDevoluciones(); try { renderKanban(); } catch(e){} try { avPintarPanel(); } catch(e){}
+      showToast('✓ Recompra registrada — el pedido volvió a Comprado','success');
+      return true;
+    } catch(e){ showToast('No se pudo guardar','error'); return false; }
+  });
+}
 
 async function devDescartar(orderId){
   const o = (orders||[]).find(x=>x.id===orderId); if(!o) return;
