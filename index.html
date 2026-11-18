@@ -9519,6 +9519,7 @@ function fillModal(o){
 }
 
 function clearModal(){
+  try { opRender([]); } catch(e){}
   ['modal-title','f-cliente-id','f-cliente-nombre','f-cliente-ciudad','f-cliente-tel','f-cliente-ruc',
    'f-marca','f-modelo','f-año','f-vin','f-motor','f-piezas','f-notas',
    'f-costo','f-venta','f-costo-envio','f-pagado','f-fecha-pago','f-fecha-cobro','f-tracking','f-fecha-eta']
@@ -9847,7 +9848,8 @@ async function autoSaveOrder(){
   }
 }
 
-async function saveOrder(){
+async function saveOrder(opts){
+  const sinCerrar = !!(opts && opts.sinCerrar);   // registrar pago en un pedido nuevo: se guarda sin cerrar
   clearTimeout(autoSaveTimer);
   const titulo = document.getElementById('modal-title').value.trim();
   if(!titulo){ showToast('Ingresá un título para el pedido','error'); return; }
@@ -9907,6 +9909,12 @@ async function saveOrder(){
         logHistory(res[0].id, 'Pedido creado');
       }
       isNewOrder = false; currentOrder = (res && res[0]) || currentOrder;   // ya existe: al cerrar no se vuelve a crear
+      if(sinCerrar && currentOrder){
+        try { document.getElementById('modal-num').textContent = currentOrder.numero || ''; document.getElementById('btn-delete-order').style.display = 'inline-flex'; } catch(e){}
+        renderKanban(); updateStats();
+        showToast('✅ Pedido guardado');
+        return true;
+      }
       showToast('✅ Pedido creado');
     } else {
       const cambios = buildDiff(currentOrder, data);
@@ -18951,7 +18959,7 @@ function opMetodoCambio(){
   if(lbl) lbl.textContent = m==='Efectivo' ? 'Comprobante (opcional en efectivo)' : 'Foto de la transferencia *';
 }
 async function opAgregarComprobante(pagoId){
-  if(!currentOrder) return;
+  if(!currentOrder || !currentOrder.id) return;
   invModal('Subir comprobante','<div style="display:grid;gap:10px;">'
     +'<input class="inp" id="op-comp" type="file" accept="image/*" onchange="opPrevComprobante(this)">'
     +'<div id="op-comp-prev"></div></div>', async function(){
@@ -18966,7 +18974,12 @@ async function opAgregarComprobante(pagoId){
   });
 }
 async function opNuevo(montoSugerido, conceptoSugerido, onDone){
-  if(!currentOrder) return;
+  // Pedido nuevo todavía sin guardar: primero se guarda (cada pedido tiene sus propios pagos)
+  if(isNewOrder || !currentOrder || !currentOrder.id){
+    const ok = await saveOrder({sinCerrar:true});
+    if(!ok || !currentOrder || !currentOrder.id){ showToast('Guardá el pedido (con vendedor) antes de registrar el pago','error'); return; }
+    opRender([]);
+  }
   if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?activa=is.true&order=orden.asc&limit=20')||[];}catch(e){} }
   var opts=_opBilleteras.map(function(b){return '<option value="'+b.id+'">'+b.nombre+'</option>';}).join('');
   var montoIni = (typeof montoSugerido==='number' && montoSugerido>0) ? Math.round(montoSugerido).toLocaleString('es-PY') : '';
