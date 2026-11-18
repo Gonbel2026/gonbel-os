@@ -5535,8 +5535,9 @@ const BP_CALIDADES = [
 // Convierte lo que se escribió (en la moneda elegida) a guaraníes
 function bpConvertirAGs(valor, moneda){
   if(!valor) return 0;
-  if(moneda === 'brl') return Math.round(valor * (BRL_GS ? BRL_GS + (CFG.brl_ajuste ?? 50) : 0));
-  if(moneda === 'usd') return Math.round(valor * (USD_GS ? USD_GS + 50 : 0));  // dolar = cotizacion + 50, siempre
+  // Si la cotización no cargó (La Moneda caída), usa tasas de respaldo en vez de dejar el costo en 0
+  if(moneda === 'brl') return Math.round(valor * (BRL_GS ? BRL_GS + (CFG.brl_ajuste ?? 50) : 1131));
+  if(moneda === 'usd') return Math.round(valor * (USD_GS ? USD_GS + 50 : 6488));  // dolar = cotizacion + 50, siempre
   return Math.round(valor);
 }
 // Convierte el precio Gs con margen aplicado si corresponde. Si hay una Venta manual cargada,
