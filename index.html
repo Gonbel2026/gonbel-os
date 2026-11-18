@@ -122,6 +122,25 @@ body.role-operador #stats-row, body.role-ventas #stats-row{grid-template-columns
 .md-row{display:flex;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px;}
 .md-row:last-child{border-bottom:none;}
 .md-vacio{font-size:12px;color:var(--t3);padding:6px 2px;}
+/* Mi día v2 (Lucas 18/11): más limpio — números escondidos, avisos agrupados con acciones, sin presupuestos */
+.md-wrap{background:linear-gradient(160deg,rgba(59,142,255,.10),rgba(255,255,255,.015) 60%);}
+.md-head b.md-tit{font-family:'Space Grotesk',sans-serif;font-size:17px;letter-spacing:.2px;}
+.md-num-btn{margin-left:auto;font-size:11.5px;padding:5px 11px;border-radius:9px;border:1px solid var(--brd);background:rgba(255,255,255,.04);color:var(--t2);cursor:pointer;}
+.md-num-btn.on{background:rgba(59,142,255,.16);border-color:rgba(59,142,255,.5);color:var(--t1);}
+.md-grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:12px;}
+@media(max-width:900px){.md-grid2{grid-template-columns:1fr;}}
+.md-grp{margin:2px 0 10px;}
+.md-grp-h{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--t3);font-weight:800;padding:6px 2px 3px;display:flex;gap:6px;align-items:center;}
+.md-grp-h span{background:rgba(255,255,255,.07);border-radius:8px;padding:0 6px;color:var(--t2);}
+.md-av{display:flex;gap:9px;align-items:center;padding:8px 9px;margin:4px 0;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);font-size:12.5px;}
+.md-av.rojo{border-left:3px solid var(--red);}
+.md-av.amarillo{border-left:3px solid var(--amber);}
+.md-av-acc{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+.md-av-acc button{font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--brd);background:rgba(255,255,255,.05);color:var(--t1);cursor:pointer;white-space:nowrap;}
+.md-av-acc button.ok{border-color:rgba(34,217,122,.45);color:var(--green);}
+.md-av-acc button.ir{color:var(--cyan);}
+.md-tk{width:24px;height:24px;flex-shrink:0;border-radius:7px;border:1.5px solid rgba(34,217,122,.5);background:transparent;color:var(--green);cursor:pointer;font-size:13px;font-weight:800;}
+.md-tk:hover{background:rgba(34,217,122,.15);}
 .stat{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;cursor:default;}
 .stat::before{content:'';position:absolute;inset:0;border-radius:16px;pointer-events:none;}
 .stat.s-blue::before{background:radial-gradient(circle at top left,var(--blueg),transparent 60%);}
@@ -8822,16 +8841,16 @@ function avisosDe(o){
       const lab = (typeof REEMB_ESTADOS !== 'undefined' && REEMB_ESTADOS[it.reembEstado]) ? REEMB_ESTADOS[it.reembEstado].n : 'En curso';
       av.push({nivel:'amarillo', ic:'⚖️', tipo:'reclamo', titulo:'Reclamo / devolución en curso: ' + (it.d||'pieza'), detalle: [lab, it.reemb_nota].filter(Boolean).join(' · ')});
     }
-    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env && /demorad|no entregado/i.test(est) && avReciente(it.trk_at, it.fcompra, fPed)){
-      av.push({nivel:'amarillo', ic:'🐢', tipo:'envio', titulo:'Problema con el envío: ' + (it.d||'pieza'), detalle: est});
+    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env && !it.ok_envio && /demorad|no entregado/i.test(est) && avReciente(it.trk_at, it.fcompra, fPed)){
+      av.push({nivel:'amarillo', ic:'🐢', tipo:'envio', idx, titulo:'Problema con el envío: ' + (it.d||'pieza'), detalle: est});
     }
     // Plazo vencido hace 3+ días y la pieza no llegó (si pasó por Miami, cuenta la regla martes/miércoles)
-    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env){
+    if(!cerrado && it.c === true && !it.ll && !it.ret && !it.loc && !it.env && !it.ok_vencido){
       let lim = null;
       try { lim = it.mia ? etaDesdeMiami(it.fmia || it.trk_at) : ((it.lim || it.eta) ? new Date(String(it.lim || it.eta).length === 10 ? (it.lim || it.eta) + 'T12:00:00' : (it.lim || it.eta)) : null); } catch(e){}
       if(lim && !isNaN(lim)){
         const dv = Math.floor((Date.now() - lim.getTime())/86400000);
-        if(dv >= 3 && lim.getTime() + 3*86400000 >= AV_DESDE) av.push({nivel:'rojo', ic:'⏰', tipo:'vencido', titulo:'Plazo vencido hace ' + dv + ' días: ' + (it.d||'pieza'),
+        if(dv >= 3 && lim.getTime() + 3*86400000 >= AV_DESDE) av.push({nivel:'rojo', ic:'⏰', tipo:'vencido', idx, titulo:'Plazo vencido hace ' + dv + ' días: ' + (it.d||'pieza'),
           detalle: (it.mia ? 'Pasó por Miami — tenía que estar en CDE el ' : 'Tenía que llegar el ') + lim.toLocaleDateString('es-PY') + (it.nc ? ' · ' + it.nc : '') + ' · revisar y ver si hay que abrir reclamo'});
       }
     }
@@ -14864,12 +14883,57 @@ async function mdTareaAgregar(){
   try { await sbFetch('/rest/v1/tareas', 'POST', {texto, asignado_a: P, creado_por: currentUser?.name || P}); inp.value=''; await cargarTareas(); }
   catch(e){ showToast('No se pudo guardar la tarea','error'); }
 }
+let MD_NUM = false; try { MD_NUM = localStorage.getItem('gonbel_md_num') === '1'; } catch(e){}
+function mdToggleNum(){ MD_NUM = !MD_NUM; try { localStorage.setItem('gonbel_md_num', MD_NUM?'1':'0'); } catch(e){} miDiaPintar(); }
+// Marca un aviso de pieza (envío demorado / plazo vencido) como ya revisado — queda guardado en la pieza
+async function mdAvisoOk(orderId, idx, tipo){
+  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o) return;
+  let items = []; try { items = typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items) : (o.piezas_items||[]); } catch(e){ return; }
+  if(!items[idx]) return;
+  items[idx]['ok_'+tipo] = new Date().toISOString();
+  items[idx]['ok_'+tipo+'_por'] = currentUser?.name || '';
+  try {
+    await sbFetch('/rest/v1/orders?id=eq.'+o.id, 'PATCH', {piezas_items: JSON.stringify(items)});
+    o.piezas_items = JSON.stringify(items);
+    try { logHistory(o.id, '✓ Aviso revisado (' + tipo + '): ' + (items[idx].d||'pieza')); } catch(e){}
+    avRefrescar(); miDiaPintar(); showToast('✓ Marcado como revisado','success');
+  } catch(e){ showToast('No se pudo guardar','error'); }
+}
+async function mdDevResuelta(orderId){
+  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o) return;
+  try {
+    const patch = {devolucion_descartada:true, devolucion_resuelta_en:new Date().toISOString(), devolucion_resultado: o.devolucion_resultado || 'resuelta'};
+    await sbFetch('/rest/v1/orders?id=eq.'+o.id, 'PATCH', patch); Object.assign(o, patch);
+    try { logHistory(o.id, '✓ Devolución marcada como resuelta'); } catch(e){}
+    try { renderDevoluciones(); } catch(e){} avRefrescar(); miDiaPintar(); showToast('✓ Devolución resuelta','success');
+  } catch(e){ showToast('No se pudo guardar','error'); }
+}
+const MD_GRUPOS = [
+  {k:'comprar', n:'🛒 Volver a comprar', tipos:['cancelada']},
+  {k:'dev', n:'↩️ Devoluciones y reclamos', tipos:['devolucion','reclamo']},
+  {k:'envio', n:'🚚 Envíos', tipos:['vencido','envio','ml']},
+  {k:'plata', n:'💰 Plata', tipos:['reembolso','sena','margen']},
+  {k:'datos', n:'🧾 Datos para completar', tipos:['datos']}
+];
+function mdAccionesAviso(o, a){
+  const id = "'" + o.id + "'";
+  const b = [];
+  if(a.tipo==='devolucion'){
+    b.push(`<button type="button" onclick="event.stopPropagation();devFecha(${id})" title="Fecha límite para devolver">📅 ${o.devolucion_limite ? new Date(o.devolucion_limite+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'}) : 'Fecha'}</button>`);
+    b.push(`<button type="button" onclick="event.stopPropagation();dvVolviAComprar(${id})">🔁 Volví a comprar</button>`);
+    b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdDevResuelta(${id})">✓ Resuelta</button>`);
+  }
+  if((a.tipo==='envio' || a.tipo==='vencido') && a.idx != null) b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdAvisoOk(${id},${a.idx},'${a.tipo}')" title="Ya lo revisé / ya se resolvió">✓ Listo</button>`);
+  if(a.tipo==='ml') b.push(`<button type="button" class="ok" onclick="event.stopPropagation();avResolverML(${a.id})">✓ Listo</button>`);
+  if(a.tipo==='reembolso') b.push(`<button type="button" class="ok" onclick="event.stopPropagation();avReembolsoEntro(${a.id})">💰 Ya entró</button>`);
+  b.push(`<button type="button" class="ir" onclick="event.stopPropagation();goKanban();setTimeout(()=>openOrder('${o.id}'),120)">Ir al pedido →</button>`);
+  return `<div class="md-av-acc">${b.join('')}</div>`;
+}
 function miDiaPintar(){
   const box = document.getElementById('mi-dia'); if(!box) return;
   const admin = (typeof esAdmin === 'function') && esAdmin();
   const P = miDiaPersona();
-  const verBar = '';
-  if(!P){ box.innerHTML = verBar; return; }
+  if(!P){ box.innerHTML = ''; return; }
   const mios = (orders||[]).filter(o => !o.archivado && o.vendedor === P);
   const cnt = e => mios.filter(o=>o.estado===e).length;
   const presAbiertos = mios.filter(o=>o.estado==='presupuesto-enviado' && psDias(psEnviado(o)) <= PS_MAX_DIAS).length;
@@ -14877,35 +14941,34 @@ function miDiaPintar(){
   const ventasMes = mios.filter(o=>['aprobado','comprado','listo-envio','entregado'].includes(o.estado) && cmFechaVenta(o).slice(0,7)===mes);
   const vendido = ventasMes.reduce((s,o)=>s+(parseFloat(o.precio_venta)||0),0);
   const pct = (typeof COMISION_PCT!=='undefined' && COMISION_PCT[P]) || 0;
-  const chip = (n, t, onclick) => `<div class="md-chip" ${onclick?`onclick="${onclick}"`:''}><b>${n}</b><span>${t}</span></div>`;
+  const chip = (n, t) => `<div class="md-chip"><b>${n}</b><span>${t}</span></div>`;
   const misTareas = (tareas||[]).filter(t => !t.hecha && t.asignado_a === P);
   const avs = [];
   mios.forEach(o => avisosDe(o).forEach(a => avs.push({o, a})));
-  avs.sort((x,y)=> (y.a.nivel==='rojo') - (x.a.nivel==='rojo'));
-  const pres = mios.filter(psPendiente).sort((a,b)=> psDias(psEnviado(b)) - psDias(psEnviado(a)));
   const abrir = id => `goKanban();setTimeout(()=>openOrder('${id}'),120)`;
   const hoy = new Date().toLocaleDateString('es-PY',{weekday:'long', day:'numeric', month:'long'});
-  box.innerHTML = verBar + `<div class="md-wrap">
-    <div class="md-head"><span style="font-size:20px;">☀️</span><b style="font-family:'Space Grotesk',sans-serif;font-size:16px;">${admin?'Día de '+P:'Tu día, '+P}</b><span style="font-size:12px;color:var(--t3);">${hoy.charAt(0).toUpperCase()+hoy.slice(1)}</span></div>
-    <div class="md-chips">
+  const grupos = MD_GRUPOS.map(g => ({g, filas: avs.filter(x => g.tipos.includes(x.a.tipo)).sort((x,y)=>(y.a.nivel==='rojo')-(x.a.nivel==='rojo'))})).filter(x=>x.filas.length);
+  const avHTML = grupos.length ? grupos.map(({g, filas}) => `<div class="md-grp"><div class="md-grp-h">${g.n} <span>${filas.length}</span></div>`
+      + filas.slice(0,8).map(x=>`<div class="md-av ${x.a.nivel}"><span style="font-size:15px;">${x.a.ic}</span><div style="flex:1;min-width:0;cursor:pointer;" onclick="${abrir(x.o.id)}"><div style="font-weight:700;color:${x.a.nivel==='rojo'?'var(--red)':'var(--t1)'};">${avEsc(x.a.titulo)}</div><div style="font-size:10.5px;color:var(--t3);margin-top:1px;">${avEsc(x.o.numero_pedido||x.o.numero||'')} · ${avEsc(x.o.cliente_nombre||'')}${x.a.detalle?' · '+avEsc(String(x.a.detalle).slice(0,90)):''}</div></div>${mdAccionesAviso(x.o, x.a)}</div>`).join('')
+      + (filas.length>8?`<div class="md-vacio">…y ${filas.length-8} más</div>`:'') + `</div>`).join('')
+    : '<div class="md-vacio">Sin avisos ✅</div>';
+  box.innerHTML = `<div class="md-wrap">
+    <div class="md-head"><span style="font-size:19px;">☀️</span><b class="md-tit">${admin?'Hoy · '+P:'Hola '+P+', esto es lo tuyo de hoy'}</b><span style="font-size:12px;color:var(--t3);">${hoy.charAt(0).toUpperCase()+hoy.slice(1)}</span>
+      <button type="button" class="md-num-btn ${MD_NUM?'on':''}" onclick="mdToggleNum()">📊 ${MD_NUM?'Ocultar mis números':'Mis números'}</button></div>
+    ${MD_NUM ? `<div class="md-chips">
       ${chip(presAbiertos,'Presupuestos abiertos')}
       ${chip(cnt('aprobado'),'Aprobados a comprar')}
       ${chip(cnt('comprado'),'En camino')}
       ${chip(cnt('listo-envio'),'Listos para entregar')}
       ${chip(ventasMes.length,'Ventas del mes')}
-      ${pct ? chip('Gs '+fmtNum(Math.round(vendido*pct)),'Tu comisión del mes (5%)') : ''}
-    </div>
-    <div class="md-grid">
+      ${pct ? chip('Gs '+fmtNum(Math.round(vendido*pct)),'Comisión del mes ('+Math.round(pct*100)+'%)') : ''}
+    </div>` : ''}
+    <div class="md-grid2">
       <div class="md-col"><h4>📌 Tareas <span style="color:var(--t3);font-weight:600;">${misTareas.length}</span></h4>
-        ${misTareas.length ? misTareas.map(t=>`<div class="md-row"><button type="button" class="tarea-check" onclick="mdTareaHecha(${t.id})" title="Marcar como hecha">○</button><div style="flex:1;min-width:0;">${avEsc(t.texto)}${t.recordar_en?`<div style="font-size:10.5px;color:var(--t3);">⏰ ${new Date(t.recordar_en).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:''}</div>${t.order_id?`<a href="javascript:void(0)" onclick="${abrir(t.order_id)}" style="color:var(--cyan);font-size:11px;">ver</a>`:''}</div>`).join('') : '<div class="md-vacio">Sin tareas pendientes ✅</div>'}
-        <div style="display:flex;gap:6px;margin-top:8px;"><input id="md-tarea-txt" class="inp" placeholder="Anotar una tarea…" onkeydown="if(event.key==='Enter')mdTareaAgregar()" style="flex:1;height:32px;font-size:12px;"><button type="button" class="btn btn-ghost" onclick="mdTareaAgregar()" style="height:32px;padding:0 10px;">+</button></div>
+        ${misTareas.length ? misTareas.map(t=>`<div class="md-row"><button type="button" class="md-tk" onclick="mdTareaHecha(${t.id})" title="Marcar como hecha">✓</button><div style="flex:1;min-width:0;">${avEsc(t.texto)}<div style="font-size:10.5px;color:var(--t3);">${t.creado_por?'de '+avEsc(t.creado_por):''}${t.recordar_en?' · ⏰ '+new Date(t.recordar_en).toLocaleString('es-PY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div></div>${t.order_id?`<a href="javascript:void(0)" onclick="${abrir(t.order_id)}" style="color:var(--cyan);font-size:11px;white-space:nowrap;">Ir →</a>`:''}</div>`).join('') : '<div class="md-vacio">Sin tareas pendientes ✅</div>'}
+        <div style="display:flex;gap:6px;margin-top:8px;"><input id="md-tarea-txt" class="inp" placeholder="${admin?'Pedirle una tarea a '+avEsc(P)+'…':'Anotar una tarea…'}" onkeydown="if(event.key==='Enter')mdTareaAgregar()" style="flex:1;height:32px;font-size:12px;"><button type="button" class="btn btn-ghost" onclick="mdTareaAgregar()" style="height:32px;padding:0 10px;">+</button></div>
       </div>
-      <div class="md-col"><h4>⚠️ Avisos <span style="color:${avs.some(x=>x.a.nivel==='rojo')?'var(--red)':'var(--amber)'};">${avs.length}</span></h4>
-        ${avs.length ? avs.slice(0,10).map(x=>`<div class="md-row" style="cursor:pointer;" onclick="${abrir(x.o.id)}"><span>${x.a.ic}</span><div style="flex:1;min-width:0;"><div style="color:${x.a.nivel==='rojo'?'var(--red)':'var(--t1)'};font-weight:600;">${avEsc(x.a.titulo)}</div><div style="font-size:10.5px;color:var(--t3);">${avEsc(x.o.numero_pedido||x.o.numero||'')} · ${avEsc(x.o.cliente_nombre||'')}</div></div></div>`).join('') + (avs.length>10?`<div class="md-vacio">…y ${avs.length-10} más</div>`:'') : '<div class="md-vacio">Sin avisos ✅</div>'}
-      </div>
-      <div class="md-col"><h4>💬 Presupuestos a seguir <span style="color:#25D366;">${pres.length}</span></h4>
-        ${pres.length ? pres.slice(0,10).map(o=>{ const d = psDias(psEnviado(o)), tel = psTel(o.cliente_tel); return `<div class="md-row"><div style="flex:1;min-width:0;cursor:pointer;" onclick="${abrir(o.id)}"><div style="font-weight:600;">${avEsc(o.cliente_nombre||'Sin nombre')}</div><div style="font-size:10.5px;color:${d>=5?'var(--red)':'var(--amber)'};">⏰ ${d} días · ${avEsc([o.marca,o.modelo].filter(Boolean).join(' '))}</div></div>${tel?`<button type="button" class="btn" onclick="psEscribir('${o.id}')" style="background:#25D366;color:#04140a;font-weight:800;padding:5px 10px;font-size:11.5px;">💬</button>`:'<span style="font-size:10.5px;color:var(--red);">sin tel.</span>'}</div>`; }).join('') + (pres.length>10?`<div class="md-vacio">…y ${pres.length-10} más</div>`:'') : '<div class="md-vacio">Nada para seguir hoy ✅</div>'}
-      </div>
+      <div class="md-col"><h4>⚠️ Avisos <span style="color:${avs.some(x=>x.a.nivel==='rojo')?'var(--red)':'var(--amber)'};">${avs.length}</span></h4>${avHTML}</div>
     </div>
   </div>`;
 }
