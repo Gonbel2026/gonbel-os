@@ -141,6 +141,7 @@ body.role-operador #stats-row, body.role-ventas #stats-row{grid-template-columns
 .md-av-acc button.ir{color:var(--cyan);}
 .md-tk{width:24px;height:24px;flex-shrink:0;border-radius:7px;border:1.5px solid rgba(34,217,122,.5);background:transparent;color:var(--green);cursor:pointer;font-size:13px;font-weight:800;}
 .md-tk:hover{background:rgba(34,217,122,.15);}
+.cj-bill.cj-drop{outline:2px dashed var(--cyan);outline-offset:2px;}
 .stat{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;cursor:default;}
 .stat::before{content:'';position:absolute;inset:0;border-radius:16px;pointer-events:none;}
 .stat.s-blue::before{background:radial-gradient(circle at top left,var(--blueg),transparent 60%);}
@@ -12417,12 +12418,12 @@ function cjPintarBilleteras(){
   if(!cont) return;
   const activas = CJ_BILL.filter(b=>b.activa !== false);
   let totalGs = 0;
-  const html = activas.map(b=>{
+  const html = activas.map((b, ix)=>{
     const s = cjSaldo(b.id);
     totalGs += cjEnGs(s, b.moneda);
     const ico = b.tipo === 'efectivo' ? '\uD83D\uDCB5' : (b.tipo === 'digital' ? '\uD83D\uDCF1' : (b.tipo === 'tarjeta' ? '\uD83D\uDCB3' : '\uD83C\uDFE6'));
-    return '<div class="cj-bill">'
-      + '<div class="cj-bill-n">' + ico + ' ' + b.nombre + '</div>'
+    return '<div class="cj-bill" draggable="true" data-bid="' + b.id + '" ondragstart="cjBillDragStart(event,' + b.id + ')" ondragover="cjBillDragOver(event)" ondragleave="this.classList.remove(\'cj-drop\')" ondrop="cjBillDrop(event,' + b.id + ')" ondragend="cjBillDragEnd()" style="cursor:grab;" title="Arrastrá para cambiar el orden">'
+      + '<div class="cj-bill-n"><span style="color:var(--t3);margin-right:4px;">\u2807</span>' + ico + ' ' + b.nombre + '</div>'
       + '<div class="cj-bill-s" style="color:' + (s < 0 ? 'var(--red)' : 'var(--t1)') + '">' + cjMonto(s, b.moneda) + '</div>'
       + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\u2248 Gs ' + fmtNum(cjEnGs(s, b.moneda)) + '</div>' : '')
       + (b.identificador ? '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">Alias: ' + b.identificador + '</div>' : '')
@@ -12430,6 +12431,10 @@ function cjPintarBilleteras(){
       + '<div style="display:flex;gap:6px;margin-top:9px;">'
         + '<button type="button" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="cjExtracto(' + b.id + ')">Extracto</button>'
         + '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjEditarBilletera(' + b.id + ')">Editar</button>'
+        + '<span style="margin-left:auto;display:flex;gap:3px;">'
+          + (ix > 0 ? '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 7px;" title="Mover a la izquierda" onclick="cjBillMover(' + b.id + ',-1)">\u25C0</button>' : '')
+          + (ix < activas.length-1 ? '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 7px;" title="Mover a la derecha" onclick="cjBillMover(' + b.id + ',1)">\u25B6</button>' : '')
+        + '</span>'
       + '</div>'
     + '</div>';
   }).join('');
@@ -12440,6 +12445,37 @@ function cjPintarBilleteras(){
       + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+tB.toLocaleString('en-US')+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+tU.toLocaleString('en-US')+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
       + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
     + '</div>';
+}
+
+// Orden de las cuentas (pedido por Lucas 18/11): arrastrar una tarjeta sobre otra, o con las flechas ◀ ▶
+let CJ_BILL_DRAG = null;
+function cjBillDragStart(ev, id){ CJ_BILL_DRAG = id; try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(id)); } catch(e){} ev.currentTarget.style.opacity = '.45'; }
+function cjBillDragOver(ev){ if(CJ_BILL_DRAG == null) return; ev.preventDefault(); ev.currentTarget.classList.add('cj-drop'); }
+function cjBillDragEnd(){ CJ_BILL_DRAG = null; document.querySelectorAll('.cj-bill').forEach(el=>{ el.style.opacity=''; el.classList.remove('cj-drop'); }); }
+function cjBillDrop(ev, destinoId){
+  ev.preventDefault();
+  const origen = CJ_BILL_DRAG; cjBillDragEnd();
+  if(origen == null || origen === destinoId) return;
+  const act = CJ_BILL.filter(b=>b.activa !== false).map(b=>b.id);
+  const from = act.indexOf(origen), to = act.indexOf(destinoId);
+  if(from < 0 || to < 0) return;
+  act.splice(from, 1); act.splice(to, 0, origen);
+  cjBillGuardarOrden(act);
+}
+function cjBillMover(id, dir){
+  const act = CJ_BILL.filter(b=>b.activa !== false).map(b=>b.id);
+  const i = act.indexOf(id), j = i + dir;
+  if(i < 0 || j < 0 || j >= act.length) return;
+  [act[i], act[j]] = [act[j], act[i]];
+  cjBillGuardarOrden(act);
+}
+async function cjBillGuardarOrden(ids){
+  const cambios = [];
+  ids.forEach((id, k)=>{ const b = CJ_BILL.find(x=>x.id===id); if(b && b.orden !== k+1){ b.orden = k+1; cambios.push(b); } });
+  CJ_BILL.sort((a,b)=> (a.activa===false) - (b.activa===false) || (a.orden||999) - (b.orden||999));
+  cjPintarBilleteras();
+  try { await Promise.all(cambios.map(b=>sbFetch('/rest/v1/fin_billeteras?id=eq.' + b.id, 'PATCH', {orden: b.orden}))); }
+  catch(e){ showToast('No se pudo guardar el orden','error'); }
 }
 
 function cjPintarPendientes(){ cjAlertaPendientes(); }
