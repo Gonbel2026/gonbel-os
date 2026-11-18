@@ -12428,6 +12428,7 @@ function cjPintarBilleteras(){
       + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\u2248 Gs ' + fmtNum(cjEnGs(s, b.moneda)) + '</div>' : '')
       + (b.identificador ? '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">Alias: ' + b.identificador + '</div>' : '')
       + (b.numero_cuenta ? '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">Cta. N\u00ba ' + b.numero_cuenta + '</div>' : '')
+      + cjBillMesHTML(b)
       + '<div style="display:flex;gap:6px;margin-top:9px;">'
         + '<button type="button" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="cjExtracto(' + b.id + ')">Extracto</button>'
         + '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjEditarBilletera(' + b.id + ')">Editar</button>'
@@ -12445,6 +12446,39 @@ function cjPintarBilleteras(){
       + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+tB.toLocaleString('en-US')+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+tU.toLocaleString('en-US')+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
       + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
     + '</div>';
+}
+
+// Movido en el mes por cuenta (pedido por Lucas 18/11): entradas + salidas + transferencias, en Gs.
+// Si la cuenta tiene límite mensual (BASA y Familiar: Gs 50M), barra de uso para repartir entre cuentas.
+function cjBillMes(id){
+  const mes = new Date().toISOString().slice(0,7);
+  let ent = 0, sal = 0;
+  (CJ_MOV||[]).forEach(m=>{
+    if(String(m.fecha||'').slice(0,7) !== mes) return;
+    const gs = Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion));
+    if(m.tipo === 'transferencia'){
+      if(m.billetera_destino_id === id) ent += gs;
+      if(m.billetera_id === id) sal += gs;
+    } else if(m.billetera_id === id){
+      if(m.tipo === 'entrada') ent += gs; else sal += gs;
+    }
+  });
+  return {ent, sal, tot: ent + sal};
+}
+function cjMill(v){ return v >= 1e6 ? (Math.round(v/1e5)/10).toLocaleString('es-PY') + ' M' : fmtNum(Math.round(v)); }
+function cjBillMesHTML(b){
+  const r = cjBillMes(b.id), lim = parseFloat(b.limite_mensual) || 0;
+  const mesN = new Date().toLocaleDateString('es-PY',{month:'long'});
+  let h = '<div style="margin-top:8px;padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.04);">'
+    + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);"><span>Movido en ' + mesN + '</span><b style="color:var(--t1);font-size:12px;">Gs ' + cjMill(r.tot) + (lim ? ' <span style="color:var(--t3);font-weight:600;">/ ' + cjMill(lim) + '</span>' : '') + '</b></div>';
+  if(lim){
+    const pct = Math.min(100, Math.round(r.tot / lim * 100));
+    const col = pct >= 90 ? 'var(--red)' : (pct >= 70 ? 'var(--amber)' : 'var(--green)');
+    h += '<div style="height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';"></div></div>'
+      + '<div style="font-size:10px;color:' + col + ';margin-top:3px;">' + pct + '% del l\u00edmite \u00b7 quedan Gs ' + cjMill(Math.max(0, lim - r.tot)) + '</div>';
+  }
+  if(r.tot) h += '<div style="font-size:10px;color:var(--t3);margin-top:2px;">\u2193 entr\u00f3 ' + cjMill(r.ent) + ' \u00b7 \u2191 sali\u00f3 ' + cjMill(r.sal) + '</div>';
+  return h + '</div>';
 }
 
 // Orden de las cuentas (pedido por Lucas 18/11): arrastrar una tarjeta sobre otra, o con las flechas ◀ ▶
@@ -12762,6 +12796,7 @@ function cjEditarBilletera(id){
     + '<div><label class="lbl">Titular</label><input class="inp" id="cb-titular" value="' + v('titular') + '"></div>'
     + '<div><label class="lbl">Alias</label><input class="inp" id="cb-ident" value="' + v('identificador') + '" placeholder="Ej: 6616665 (C.I.) o alias"></div>'
     + '<div><label class="lbl">N\u00famero de cuenta</label><input class="inp" id="cb-ncta" value="' + v('numero_cuenta') + '" placeholder="Ej: 1234567890"></div>'
+    + '<div><label class="lbl">L\u00edmite mensual (Gs, opcional)</label><input class="inp" type="number" id="cb-lim" value="' + v('limite_mensual') + '" placeholder="Ej: 50000000"></div>'
     + '<div><label class="lbl">Saldo inicial</label><input class="inp" type="number" step="0.01" id="cb-saldo" value="' + v('saldo_inicial','0') + '"></div>'
     + '<div><label class="lbl">Desde qu\u00e9 fecha</label><input class="inp" type="date" id="cb-fecha" value="' + (b && b.fecha_inicial ? b.fecha_inicial : new Date().toISOString().slice(0,10)) + '"></div>'
     + '</div>'
@@ -12777,6 +12812,7 @@ function cjEditarBilletera(id){
       titular: g('titular').value.trim() || null,
       identificador: g('ident').value.trim() || null,
       numero_cuenta: g('ncta').value.trim() || null,
+      limite_mensual: parseFloat(g('lim').value) || null,
       saldo_inicial: parseFloat(g('saldo').value) || 0,
       fecha_inicial: g('fecha').value || null
     };
