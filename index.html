@@ -12727,7 +12727,8 @@ function cjEditarBilletera(id){
     + '<div><label class="lbl">Saldo inicial</label><input class="inp" type="number" step="0.01" id="cb-saldo" value="' + v('saldo_inicial','0') + '"></div>'
     + '<div><label class="lbl">Desde qu\u00e9 fecha</label><input class="inp" type="date" id="cb-fecha" value="' + (b && b.fecha_inicial ? b.fecha_inicial : new Date().toISOString().slice(0,10)) + '"></div>'
     + '</div>'
-    + '<div style="font-size:11.5px;color:var(--t3);margin-top:11px;">El saldo inicial es lo que hab\u00eda el d\u00eda que empez\u00e1s a registrar. De ah\u00ed en adelante el sistema suma y resta solo.</div>';
+    + '<div style="font-size:11.5px;color:var(--t3);margin-top:11px;">El saldo inicial es lo que hab\u00eda el d\u00eda que empez\u00e1s a registrar. De ah\u00ed en adelante el sistema suma y resta solo.</div>'
+    + (id ? '<div style="margin-top:16px;padding-top:13px;border-top:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-size:11.5px;color:var(--t3);">Si tiene movimientos, se oculta (no se pierde el historial).</span><button type="button" class="btn btn-ghost" style="color:var(--red);border-color:rgba(255,80,80,.45);" onclick="cjBorrarBilletera(' + id + ')">\uD83D\uDDD1\uFE0F Borrar billetera</button></div>' : '');
 
   invModal(id ? 'Editar billetera' : 'Nueva billetera', html, async ()=>{
     const g = k => document.getElementById('cb-'+k);
@@ -12748,6 +12749,21 @@ function cjEditarBilletera(id){
       return true;
     } catch(e){ showToast('No se pudo guardar','error'); return false; }
   });
+}
+
+// Borrar billetera (pedido por Lucas 18/11): sin movimientos se borra; con movimientos se oculta (activa=false)
+async function cjBorrarBilletera(id){
+  const b = CJ_BILL.find(x=>x.id===id); if(!b) return;
+  let tieneMov = CJ_MOV.some(m=>m.billetera_id===id || m.billetera_destino_id===id);
+  if(!tieneMov){ try { const r = await sbFetch('/rest/v1/fin_movimientos?select=id&limit=1&or=(billetera_id.eq.'+id+',billetera_destino_id.eq.'+id+')'); tieneMov = !!(r && r.length); } catch(e){ tieneMov = true; } }
+  const msg = tieneMov ? '\u00bfBorrar "' + b.nombre + '"?\n\nTiene movimientos cargados: se va a OCULTAR de la lista (el historial queda guardado).' : '\u00bfBorrar "' + b.nombre + '"? No tiene movimientos.';
+  if(!confirm(msg)) return;
+  try {
+    if(tieneMov) await sbFetch('/rest/v1/fin_billeteras?id=eq.' + id, 'PATCH', {activa:false});
+    else await sbFetch('/rest/v1/fin_billeteras?id=eq.' + id, 'DELETE');
+    invCerrarModal(); await cjCargar();
+    showToast(tieneMov ? '\u2713 Billetera ocultada' : '\u2713 Billetera borrada','success');
+  } catch(e){ showToast('No se pudo borrar','error'); }
 }
 
 // ── Pendientes ──
