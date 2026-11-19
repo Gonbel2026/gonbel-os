@@ -2510,11 +2510,50 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
     <div id="inv-lista"></div>
   </div>
 
+  <div class="page" id="page-finparticular">
+      <div class="fin-tabs">
+        <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
+        <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
+        <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
+        <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
+        <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
+        <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--t3);margin:-6px 0 12px;">🔒 Gastos personales — separados de la empresa. No tocan Caja ni los números de Gonbel.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div id="gp-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;flex:1;min-width:280px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-ghost" onclick="gfChangeMonth(-1)">‹</button>
+          <div id="gp-mes-label" style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;min-width:130px;text-align:center;"></div>
+          <button class="btn btn-ghost" onclick="gfChangeMonth(1)">›</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;">
+        <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="font-size:13px;font-weight:700;">📤 Pagos fijos particulares</h3>
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gfOpenNew('pagar','particular')">+ Agregar pago fijo</button>
+          </div>
+          <div id="gp-pagos-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <h3 style="font-size:13px;font-weight:700;">🧾 Gastos variables particulares</h3>
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gpEditar(null)">+ Registrar gasto</button>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Mismo nombre = se suman en la misma línea. Tocá la línea para ver cada pago.</div>
+          <div id="gp-lista" style="display:flex;flex-direction:column;gap:7px;"></div>
+        </div>
+      </div>
+  </div>
+
   <div class="page" id="page-fingastos">
       <div class="fin-tabs">
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2553,6 +2592,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2588,6 +2628,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2614,6 +2655,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2633,6 +2675,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -2666,6 +2709,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <button type="button" class="fin-tab" id="ftab-pedidos" onclick="abrirFinanzas('pedidos')">📦 Pedidos y empresa</button>
         <button type="button" class="fin-tab" id="ftab-caja" onclick="abrirFinanzas('caja')">💵 Caja</button>
         <button type="button" class="fin-tab" id="ftab-gastos" onclick="abrirFinanzas('gastos')">💸 Gastos</button>
+        <button type="button" class="fin-tab" id="ftab-particular" onclick="abrirFinanzas('particular')">💸 Particular</button>
         <button type="button" class="fin-tab" id="ftab-analisis" onclick="abrirFinanzas('analisis')">📊 Análisis</button>
         <button type="button" class="fin-tab" id="ftab-reembolsos" onclick="abrirFinanzas('reembolsos')">↩️ Reembolsos</button>
         <button type="button" class="fin-tab" id="ftab-comisiones" onclick="abrirFinanzas('comisiones')">🧑‍💼 Comisiones</button>
@@ -12537,7 +12581,7 @@ function gsPintar(){
   const mes = gfMesStr(gfMes);
   const gastos = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m));
   const totVar = gastos.reduce((s,m)=>s+Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)),0);
-  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && c.recurrente && !(c.pagado && c.cuotas_total) && !(c.desde && mes < String(c.desde).slice(0,7)));
+  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && (c.ambito||'empresa')==='empresa' && c.recurrente && !(c.pagado && c.cuotas_total) && !(c.desde && mes < String(c.desde).slice(0,7)));
   const totFijo = fijas.reduce((s,c)=>s+gfSaldoCuenta(c).total,0);
   const pagadoFijo = fijas.filter(c=>c.pagado_hasta===mes).reduce((s,c)=>s+(gfSaldoCuenta(c).abonado || gfSaldoCuenta(c).total),0);
   if(kp){
@@ -12595,6 +12639,76 @@ function gsAgregarA(kEsc){
     const mo = document.getElementById('cm-monto'); if(mo) mo.focus();
   }, 60);
   GS_ABIERTO.add(k);
+}
+
+// ══════ PARTICULAR (pestaña nueva, Lucas 19/11): pagos fijos (fin_cuentas ambito=particular) + gastos variables (fin_gastos_particulares) ══════
+let GP_GASTOS = [];
+const GP_ABIERTO = new Set();
+async function gpCargar(){
+  try { GP_GASTOS = await sbFetch('/rest/v1/fin_gastos_particulares?order=fecha.desc,id.desc&limit=2000') || []; } catch(e){ GP_GASTOS = []; console.error(e); }
+  gpPintar();
+}
+function gpPintar(){
+  const lista = document.getElementById('gp-lista'), kp = document.getElementById('gp-kpis');
+  if(!lista && !kp) return;
+  const mes = gfMesStr(gfMes);
+  const gastos = (GP_GASTOS||[]).filter(g=>String(g.fecha||'').slice(0,7)===mes);
+  const totVar = gastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && c.ambito==='particular' && !(c.pagado && c.cuotas_total) && !(c.desde && mes < String(c.desde).slice(0,7)) && (c.recurrente || !c.pagado || true));
+  const totFijo = fijas.reduce((s,c)=>s+gfSaldoCuenta(c).total,0);
+  const pagadoFijo = fijas.filter(c=>c.recurrente ? c.pagado_hasta===mes : c.pagado).reduce((s,c)=>s+(gfSaldoCuenta(c).abonado || gfSaldoCuenta(c).total),0);
+  if(kp){
+    const k = (t,v,col)=>'<div class="card" style="padding:12px 14px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;">'+t+'</div><div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;color:'+col+';margin-top:3px;">Gs '+fmtNum(Math.round(v))+'</div></div>';
+    kp.innerHTML = k('Pagos fijos del mes', totFijo, 'var(--t1)') + k('Fijos ya pagados', pagadoFijo, 'var(--green)') + k('Fijos por pagar', Math.max(0, totFijo-pagadoFijo), 'var(--red)') + k('Gastos variables', totVar, 'var(--amber)') + k('Total particular del mes', totFijo + totVar, 'var(--purple)');
+  }
+  if(lista){
+    const grupos = {};
+    gastos.forEach(g=>{ const k = gsClave(g.concepto); if(!grupos[k]) grupos[k] = {k, nombre:g.concepto, movs:[], tot:0}; grupos[k].movs.push(g); grupos[k].tot += parseFloat(g.monto)||0; });
+    const arr = Object.values(grupos).sort((a,b)=>b.tot-a.tot);
+    const fd = f => new Date(f+'T12:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'short'});
+    lista.innerHTML = arr.length ? arr.map(g=>{
+      const ab = GP_ABIERTO.has(g.k), kEsc = encodeURIComponent(g.k);
+      return '<div style="background:rgba(255,255,255,.03);border:1px solid '+(ab?'var(--brda)':'var(--brd)')+';border-radius:11px;">'
+        + '<div onclick="gpToggle(\''+kEsc+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;">'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+(ab?'▾ ':'▸ ')+avEsc(g.nombre)+(g.movs.length>1?' <span style="font-size:10.5px;color:var(--cyan);font-weight:700;">· '+g.movs.length+' pagos</span>':'')+'</div>'
+          + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">Último: '+fd(g.movs[0].fecha)+'</div></div>'
+          + '<div style="display:flex;align-items:center;gap:8px;"><div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;">Gs '+fmtNum(Math.round(g.tot))+'</div>'
+          + '<button type="button" class="btn btn-ghost" title="Agregar otro pago" style="padding:3px 9px;font-size:13px;font-weight:800;" onclick="event.stopPropagation();gpEditar(null,\''+kEsc+'\')">+</button></div>'
+        + '</div>'
+        + (ab ? '<div style="border-top:1px solid var(--brd);padding:6px 12px 10px;">' + g.movs.map(m=>'<div onclick="gpEditar('+m.id+')" style="display:flex;justify-content:space-between;gap:10px;padding:6px 4px;font-size:12px;cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.05);"><span style="color:var(--t2);">'+fd(m.fecha)+(m.notas?' <span style="color:var(--t3);">· '+avEsc(m.notas)+'</span>':'')+'</span><b style="font-family:\'Space Grotesk\',sans-serif;">Gs '+fmtNum(Math.round(parseFloat(m.monto)||0))+'</b></div>').join('')
+          + '<button type="button" class="btn btn-ghost" style="margin-top:8px;font-size:11.5px;padding:5px 12px;" onclick="gpEditar(null,\''+kEsc+'\')">+ Agregar pago a '+avEsc(g.nombre)+'</button></div>' : '')
+        + '</div>';
+    }).join('') : '<div style="text-align:center;color:var(--t3);font-size:12px;padding:18px;">Sin gastos particulares este mes</div>';
+  }
+}
+function gpToggle(kEsc){ const k = decodeURIComponent(kEsc); GP_ABIERTO.has(k) ? GP_ABIERTO.delete(k) : GP_ABIERTO.add(k); gpPintar(); }
+function gpEditar(id, kEsc){
+  const m = id ? GP_GASTOS.find(x=>x.id===id) : null;
+  const k = kEsc ? decodeURIComponent(kEsc) : null;
+  const base = k ? GP_GASTOS.find(x=>gsClave(x.concepto)===k) : null;
+  const esc = v => String(v==null?'':v).replace(/"/g,'&quot;');
+  const nombres = [...new Set(GP_GASTOS.map(x=>x.concepto))].slice(0,80);
+  const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">'
+    + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="gp-concepto" list="gp-dl" value="' + esc(m ? m.concepto : (base ? base.concepto : '')) + '" placeholder="Ej: Supermercado, Colegio, Nafta auto"><datalist id="gp-dl">' + nombres.map(n=>'<option value="'+esc(n)+'">').join('') + '</datalist></div>'
+    + '<div><label class="lbl">Monto (Gs)</label><input class="inp" type="number" id="gp-monto" value="' + esc(m ? m.monto : '') + '"></div>'
+    + '<div><label class="lbl">Fecha</label><input class="inp" type="date" id="gp-fecha" value="' + (m ? m.fecha : new Date().toISOString().slice(0,10)) + '"></div>'
+    + '<div style="grid-column:1/-1;"><label class="lbl">Notas (opcional)</label><input class="inp" id="gp-notas" value="' + esc(m ? m.notas : '') + '"></div>'
+    + '</div>'
+    + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="gpBorrar(' + m.id + ')">🗑️ Borrar este pago</button></div>' : '');
+  invModal(m ? 'Editar gasto particular' : 'Registrar gasto particular', html, async ()=>{
+    const data = {concepto: document.getElementById('gp-concepto').value.trim(), monto: parseFloat(document.getElementById('gp-monto').value)||0, fecha: document.getElementById('gp-fecha').value || new Date().toISOString().slice(0,10), notas: document.getElementById('gp-notas').value.trim() || null};
+    if(!data.concepto || data.monto <= 0){ showToast('Completá concepto y monto','error'); return false; }
+    try {
+      if(m) await sbFetch('/rest/v1/fin_gastos_particulares?id=eq.' + m.id, 'PATCH', data);
+      else { data.creado_por = currentUser?.name || null; await sbFetch('/rest/v1/fin_gastos_particulares', 'POST', data); }
+      GP_ABIERTO.add(gsClave(data.concepto)); await gpCargar(); showToast('✓ Guardado','success');
+    } catch(e){ showToast('No se pudo guardar','error'); return false; }
+  });
+  setTimeout(()=>{ const el = document.getElementById(k ? 'gp-monto' : 'gp-concepto'); if(el) el.focus(); }, 60);
+}
+async function gpBorrar(id){
+  if(!confirm('¿Borrar este pago particular?')) return;
+  try { await sbFetch('/rest/v1/fin_gastos_particulares?id=eq.' + id, 'DELETE'); invCerrarModal(); await gpCargar(); showToast('Pago borrado','success'); } catch(e){ showToast('No se pudo borrar','error'); }
 }
 
 // Orden de las cuentas (pedido por Lucas 18/11): arrastrar una tarjeta sobre otra, o con las flechas ◀ ▶
@@ -13131,7 +13245,7 @@ function abrirFinanzas(tab, el){
   }
   FIN_TAB = tab || 'pedidos';
   if(FIN_TAB === 'empresa') FIN_TAB = 'pedidos';   // Empresa se fusiono con Pedidos
-  const paginas = {pedidos:'financiero', caja:'fincaja', gastos:'fingastos', analisis:'finanalisis', reembolsos:'finreembolsos', comisiones:'fincomisiones'};
+  const paginas = {pedidos:'financiero', caja:'fincaja', gastos:'fingastos', particular:'finparticular', analisis:'finanalisis', reembolsos:'finreembolsos', comisiones:'fincomisiones'};
   const id = paginas[FIN_TAB];
 
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -13153,6 +13267,7 @@ function abrirFinanzas(tab, el){
     if(FIN_TAB === 'pedidos'){ fpSimple(); try { renderGonbelFin(); } catch(e){ console.error(e); } }
     if(FIN_TAB === 'caja'){ cjCargar(); }
     if(FIN_TAB === 'gastos'){ renderGonbelFin(); cjCargar(); }
+    if(FIN_TAB === 'particular'){ renderGonbelFin(); gpCargar(); }
     if(FIN_TAB === 'analisis'){ renderAnalisis(); }
     if(FIN_TAB === 'reembolsos'){ rbCargar(); rbSyncSiHaceFalta(); }
     if(FIN_TAB === 'comisiones'){ cmPintar(); }
@@ -18331,7 +18446,7 @@ async function renderGonbelFin(){
   await loadFinData();
   const mesActual = gfMesStr(gfMes);
   document.getElementById('gf-mes-label').textContent = MESES_ES[gfMes.getMonth()]+' '+gfMes.getFullYear();
-  try { const l2 = document.getElementById('gs-mes-label'); if(l2) l2.textContent = MESES_ES[gfMes.getMonth()]+' '+gfMes.getFullYear(); } catch(e){}
+  try { ['gs-mes-label','gp-mes-label'].forEach(id=>{ const l2 = document.getElementById(id); if(l2) l2.textContent = MESES_ES[gfMes.getMonth()]+' '+gfMes.getFullYear(); }); } catch(e){}
   pintarPeriodos('gg');
 
   // ── COBROS: pedidos pendientes + cuentas manuales tipo cobrar ──
@@ -18354,13 +18469,14 @@ async function renderGonbelFin(){
   const pagosMes = finCuentas.filter(c=>{
     if(c.tipo!=='pagar') return false;
     if(c.desde && mesActual < String(c.desde).slice(0,7)) return false; // todavía no empezó (ej: préstamo financiera desde 13/12)
+    if((c.ambito||'empresa') !== 'empresa') return false; // los particulares van en su pestaña
     if(c.recurrente) return c.pagado_hasta !== mesActual;
     if(c.pagado) return false;
     return true;
   });
 
   // Pagados este mes (recurrentes ya marcados + no recurrentes pagados este mes)
-  const pagosHechosMes = finCuentas.filter(c=>c.tipo==='pagar' && ((c.recurrente && c.pagado_hasta===mesActual) || (!c.recurrente && c.pagado)));
+  const pagosHechosMes = finCuentas.filter(c=>c.tipo==='pagar' && (c.ambito||'empresa')==='empresa' && ((c.recurrente && c.pagado_hasta===mesActual) || (!c.recurrente && c.pagado)));
 
   // Totales
   let totalCobrar = pedidosPend.reduce((s,o)=>s+((parseFloat(o.precio_venta)||0)-(parseFloat(o.valor_pagado)||0)),0);
@@ -18430,8 +18546,14 @@ async function renderGonbelFin(){
 
   cobrosList.innerHTML = cobrosHTML || '<div style="text-align:center;color:var(--t3);font-size:12px;padding:20px;">Sin cobros pendientes 🎉</div>';
 
-  // ── Lista pagos ──
-  const pagosList = document.getElementById('gf-pagos-list');
+  // ── Lista pagos (empresa en 💸 Gastos, particulares en 💸 Particular) ──
+  const PAG_TODOS = finCuentas.filter(c=>c.tipo==='pagar' && !(c.desde && mesActual < String(c.desde).slice(0,7)) && (c.recurrente ? c.pagado_hasta !== mesActual : !c.pagado));
+  const HECHOS_TODOS = finCuentas.filter(c=>c.tipo==='pagar' && ((c.recurrente && c.pagado_hasta===mesActual) || (!c.recurrente && c.pagado)));
+  for(const [AMB, LISTA_ID] of [['empresa','gf-pagos-list'],['particular','gp-pagos-list']]){
+  const pagosMes = PAG_TODOS.filter(c=>(c.ambito||'empresa')===AMB);
+  const pagosHechosMes = HECHOS_TODOS.filter(c=>(c.ambito||'empresa')===AMB);
+  const pagosList = document.getElementById(LISTA_ID);
+  if(!pagosList) continue;
   let pagosHTML = '';
   pagosMes.sort((a,b)=>{
     const va = gfVenceEfectivo(a), vb = gfVenceEfectivo(b);
@@ -18470,6 +18592,8 @@ async function renderGonbelFin(){
   });
 
   pagosList.innerHTML = pagosHTML || '<div style="text-align:center;color:var(--t3);font-size:12px;padding:20px;">Sin pagos pendientes 🎉</div>';
+  }
+  try { gpPintar(); } catch(e){ console.error(e); }
 
   // ── Barras de progreso mensual ──
   const totalPagosMes = [...pagosMes, ...pagosHechosMes].reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
@@ -18488,8 +18612,10 @@ async function renderGonbelFin(){
 
 // ── Nueva cuenta manual ──
 let gfNewTipo = 'cobrar';
+let gfNewAmbito = 'empresa';
 function gfOpenNew(tipo){
   gfNewTipo = tipo;
+  gfNewAmbito = (arguments[1] === 'particular') ? 'particular' : 'empresa';
   document.getElementById('gf-new-icon').textContent = tipo==='cobrar'?'📥':'📤';
   document.getElementById('gf-new-title').textContent = tipo==='cobrar'?'Nuevo cobro pendiente':'Nuevo pago pendiente';
   ['gf-new-nombre','gf-new-concepto','gf-new-monto','gf-new-vence','gf-new-cuotas-total','gf-new-cuotas-pagadas','gf-new-dia'].forEach(id=>document.getElementById(id).value='');
@@ -18514,6 +18640,7 @@ async function gfSaveNew(){
     pagado: false,
     pagado_hasta: null,
     variable: !!(document.getElementById('gf-new-variable')||{}).checked,
+    ambito: gfNewAmbito,
     dia_pago: esRecurrente ? (parseInt(document.getElementById('gf-new-dia').value)||null) : null,
     cuotas_total: esRecurrente ? (parseInt(document.getElementById('gf-new-cuotas-total').value)||null) : null,
     cuotas_pagadas: esRecurrente ? (parseInt(document.getElementById('gf-new-cuotas-pagadas').value)||0) : 0
