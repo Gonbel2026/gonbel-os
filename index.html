@@ -12537,7 +12537,7 @@ function gsPintar(){
   const mes = gfMesStr(gfMes);
   const gastos = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m));
   const totVar = gastos.reduce((s,m)=>s+Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)),0);
-  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && c.recurrente && !(c.pagado && c.cuotas_total));
+  const fijas = (finCuentas||[]).filter(c=>c.tipo==='pagar' && c.recurrente && !(c.pagado && c.cuotas_total) && !(c.desde && mes < String(c.desde).slice(0,7)));
   const totFijo = fijas.reduce((s,c)=>s+gfSaldoCuenta(c).total,0);
   const pagadoFijo = fijas.filter(c=>c.pagado_hasta===mes).reduce((s,c)=>s+(gfSaldoCuenta(c).abonado || gfSaldoCuenta(c).total),0);
   if(kp){
@@ -18312,6 +18312,7 @@ async function renderGonbelFin(){
 
   const pagosMes = finCuentas.filter(c=>{
     if(c.tipo!=='pagar') return false;
+    if(c.desde && mesActual < String(c.desde).slice(0,7)) return false; // todavía no empezó (ej: préstamo financiera desde 13/12)
     if(c.recurrente) return c.pagado_hasta !== mesActual;
     if(c.pagado) return false;
     return true;
