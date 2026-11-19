@@ -6791,6 +6791,7 @@ function bpEditarCosto(i, elInput){
   } else {
     it.valOrig = val;
     it.cb = bpConvertirAGs(val, it.mon||'gs');
+    it.costoEditado = true; // si lo dejan vacío, al guardar el costo queda en 0 (antes volvía el viejo)
     gsActivo = it.cb;
   }
   // Actualiza el equivalente en Gs sin re-renderizar todo (así no pierde el foco mientras escribe)
@@ -7266,7 +7267,7 @@ function saveBigEdit(){
     const _ant = emparejarPrevios(piezasItems, _stag);
     const proveedoresNuevos = []; // piezas con proveedor local recién cargado, para alimentar la base
     piezasItems = _stag.map((x,_i)=>{
-      const prev = _ant[_i] || {};
+      let prev = _ant[_i] || {};
       const mg = x.mg || prev.mg || null;
       const ventaManual = x.ventaManual ?? prev.ventaManual ?? null;
       const q = parseInt(x.q,10) || 1;
@@ -7286,8 +7287,10 @@ function saveBigEdit(){
       // entrar al pedido siga todo ahí y no haya que buscar de nuevo.
       const elegido = x.elegido ?? prev.elegido ?? null;
       const resultadosBusqueda = x.resultadosBusqueda ?? prev.resultadosBusqueda ?? null;
-      const cbU = x.cb || (q > 1 ? 0 : prev.cb) || 0;
-      return {...prev, d: x.d, q, cbu: cbU || null, pu: ventaU != null ? ventaU : (prev.pu || null), cb: cbU ? cbU * q : (prev.cb || 0), mg, sinMargen: !!x.sinMargen && !mg, modo: x.modo||'costo',
+      const cbU = x.costoEditado ? (x.cb || 0) : (x.cb || (q > 1 ? 0 : prev.cb) || 0);
+      const cbBorrado = x.costoEditado && !cbU;
+      if(cbBorrado){ prev = {...prev, cbrl: null, valOrig: null}; }
+      return {...prev, d: x.d, q, cbu: cbU || null, pu: ventaU != null ? ventaU : (prev.pu || null), cb: cbBorrado ? 0 : (cbU ? cbU * q : (prev.cb || 0)), mg, sinMargen: !!x.sinMargen && !mg, modo: x.modo||'costo',
         mon: x.mon||prev.mon||'gs', valOrig: x.valOrig ?? prev.valOrig ?? null,
         ventaManual, monVenta: x.monVenta||prev.monVenta||'gs', ventaOrig: x.ventaOrig ?? prev.ventaOrig ?? null,
         fechaEntrega: x.fecha || prev.fechaEntrega || null, p: venta, calidad: x.calidad || prev.calidad || null,
