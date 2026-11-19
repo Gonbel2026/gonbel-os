@@ -12502,11 +12502,12 @@ function cjSaldo(billeteraId){
 function cjPintarBilleteras(){
   const cont = document.getElementById('cj-billeteras');
   if(!cont) return;
-  const activas = CJ_BILL.filter(b=>b.activa !== false);
+  // Lucas 19/11: arriba las cuentas con plata; abajo "Pendientes de pago" (tarjetas / deudas, en negativo)
+  const todas = CJ_BILL.filter(b=>b.activa !== false);
+  const esDeuda = b => b.tipo === 'tarjeta';
   let totalGs = 0;
-  const html = activas.map((b, ix)=>{
+  const tarjetaHTML = (activas) => activas.map((b, ix)=>{
     const s = cjSaldo(b.id);
-    totalGs += cjEnGs(s, b.moneda);
     const ico = b.tipo === 'efectivo' ? '\uD83D\uDCB5' : (b.tipo === 'digital' ? '\uD83D\uDCF1' : (b.tipo === 'tarjeta' ? '\uD83D\uDCB3' : '\uD83C\uDFE6'));
     return '<div class="cj-bill" draggable="true" data-bid="' + b.id + '" ondragstart="cjBillDragStart(event,' + b.id + ')" ondragover="cjBillDragOver(event)" ondragleave="this.classList.remove(\'cj-drop\')" ondrop="cjBillDrop(event,' + b.id + ')" ondragend="cjBillDragEnd()" style="cursor:grab;" title="Arrastrá para cambiar el orden">'
       + '<div class="cj-bill-n"><span style="color:var(--t3);margin-right:4px;">\u2807</span>' + ico + ' ' + b.nombre + '</div>'
@@ -12525,13 +12526,27 @@ function cjPintarBilleteras(){
       + '</div>'
     + '</div>';
   }).join('');
-  cont.innerHTML = html
+  const cuentas = todas.filter(b=>!esDeuda(b)), deudas = todas.filter(esDeuda);
+  const suma = arr => arr.reduce((t,b)=>t+cjEnGs(cjSaldo(b.id), b.moneda),0);
+  const totCuentas = suma(cuentas), totDeuda = suma(deudas);
+  const subMon = arr => { let tB=0,tU=0; arr.forEach(b=>{ const s=cjSaldo(b.id); if(b.moneda==='BRL') tB+=s; else if(b.moneda==='USD') tU+=s; }); let o=''; if(tB) o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+tB.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'; if(tU) o+='<div style="font-size:11px;color:var(--t3);">USD '+tU.toLocaleString('en-US')+'</div>'; return o; };
+  const titulo = t => '<div style="grid-column:1/-1;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:4px 2px 0;">'+t+'</div>';
+  cont.innerHTML = titulo('\uD83C\uDFE6 Cuentas bancarias')
+    + tarjetaHTML(cuentas)
     + '<div class="cj-bill" style="border-style:dashed;border-color:var(--blue);">'
-      + '<div class="cj-bill-n">\uD83D\uDCB0 Total general</div>'
-      + '<div class="cj-bill-s" style="color:var(--cyan)">Gs ' + fmtNum(totalGs) + '</div>'
-      + (function(){var tB=0,tU=0;CJ_BILL.filter(function(b){return b.activa!==false;}).forEach(function(b){var s=cjSaldo(b.id);if(b.moneda==='BRL')tB+=s;else if(b.moneda==='USD')tU+=s;});var o='';if(tB!==0)o+='<div style="font-size:11px;color:var(--t3);margin-top:2px;">R$ '+tB.toLocaleString('en-US')+'</div>';if(tU!==0)o+='<div style="font-size:11px;color:var(--t3);">USD '+tU.toLocaleString('en-US')+'</div>';return o;})()+ '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">todas las billeteras juntas</div>'
+      + '<div class="cj-bill-n">\uD83D\uDCB0 Total disponible</div>'
+      + '<div class="cj-bill-s" style="color:var(--cyan)">Gs ' + fmtNum(totCuentas) + '</div>'
+      + subMon(cuentas) + '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">cuentas y efectivo, sin deudas</div>'
       + '<div style="margin-top:9px;"><button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cjNuevaBilletera()">🏦 + Nueva cuenta</button></div>'
-    + '</div>';
+    + '</div>'
+    + (deudas.length ? '<div style="grid-column:1/-1;height:1px;background:var(--brd);margin:6px 0 2px;"></div>' + titulo('\uD83D\uDCB3 Pendientes de pago')
+      + tarjetaHTML(deudas)
+      + '<div class="cj-bill" style="border-style:dashed;border-color:var(--red);">'
+        + '<div class="cj-bill-n">\uD83D\uDCB3 Total deuda</div>'
+        + '<div class="cj-bill-s" style="color:var(--red)">Gs ' + fmtNum(totDeuda) + '</div>'
+        + subMon(deudas)
+        + '<div style="font-size:10.5px;color:var(--t3);margin-top:6px;">Neto (disponible − deuda): <b style="color:' + ((totCuentas+totDeuda)<0?'var(--red)':'var(--green)') + ';">Gs ' + fmtNum(totCuentas + totDeuda) + '</b></div>'
+      + '</div>' : '');
 }
 
 // Movido en el mes por cuenta (pedido por Lucas 18/11): entradas + salidas + transferencias, en Gs.
@@ -12732,7 +12747,10 @@ function cjBillDrop(ev, destinoId){
 }
 function cjBillMover(id, dir){
   const act = CJ_BILL.filter(b=>b.activa !== false).map(b=>b.id);
-  const i = act.indexOf(id), j = i + dir;
+  const yo = CJ_BILL.find(b=>b.id===id); const grupo = b => (b && b.tipo==='tarjeta') ? 'd' : 'c';
+  const i = act.indexOf(id);
+  let j = i + dir;
+  while(j >= 0 && j < act.length && grupo(CJ_BILL.find(b=>b.id===act[j])) !== grupo(yo)) j += dir; // mueve dentro de su grupo (cuentas / deudas)
   if(i < 0 || j < 0 || j >= act.length) return;
   [act[i], act[j]] = [act[j], act[i]];
   cjBillGuardarOrden(act);
@@ -13023,7 +13041,7 @@ function cjEditarBilletera(id){
   const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">'
     + '<div style="grid-column:1/-1;"><label class="lbl">Nombre *</label><input class="inp" id="cb-nombre" value="' + v('nombre') + '" placeholder="Ej: Banco Familiar, Ita\u00fa, Mercado Pago"></div>'
     + '<div><label class="lbl">Tipo</label><select class="inp" id="cb-tipo">'
-      + [['banco','Banco'],['efectivo','Efectivo'],['digital','Billetera digital'],['tarjeta','Tarjeta'],['otro','Otro']]
+      + [['banco','Banco'],['efectivo','Efectivo'],['digital','Billetera digital'],['tarjeta','Tarjeta / deuda (pendiente de pago)'],['otro','Otro']]
         .map(([k,t])=>'<option value="' + k + '"' + sel('tipo',k) + '>' + t + '</option>').join('') + '</select></div>'
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cb-moneda">'
       + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + sel('moneda',x) + '>' + x + '</option>').join('') + '</select></div>'
