@@ -3676,14 +3676,14 @@ function applyAuth(){
   document.getElementById('login-error').style.display='none';
   const av = document.getElementById('ah-avatar'); if(av) av.textContent = currentUser.initials;
   const nm = document.getElementById('ah-nombre'); if(nm) nm.textContent = currentUser.name;
-  const rl = document.getElementById('ah-rol'); if(rl) rl.textContent = currentUser.role==='admin'?'Administrador':(currentUser.role==='ventas'?'Ventas':'Operador');
+  const rl = document.getElementById('ah-rol'); if(rl) rl.textContent = currentUser.role==='admin'?'Administrador':(currentUser.role==='finanzas'?'Finanzas · acceso completo':(currentUser.role==='ventas'?'Ventas':'Operador'));
   // Tres roles con alcances distintos. El corte real esta en la base (RLS);
   // esto solo evita mostrar menus que igual no traerian datos.
   const rol = currentUser.role;
   document.body.classList.remove('role-operador','role-finanzas','role-admin','role-ventas');
   document.body.classList.add('role-' + rol);
 
-  if(rol !== 'admin'){
+  if(rol !== 'admin' && rol !== 'finanzas'){ // Beatriz (finanzas) tiene acceso completo igual que Lucas (19/11)
     document.querySelectorAll('[data-page="config"],[data-page="mapasistema"],[data-page="conexiones"]').forEach(el=>el.style.display='none');
   }
   if(rol === 'operador'){
@@ -3711,8 +3711,8 @@ function applyAuth(){
     if(fila) fila.style.gridTemplateColumns = 'repeat(3,1fr)';
   }
   if(rol === 'finanzas'){
-    // Beatriz controla, no modifica: los botones de alta y edicion se ocultan
-    document.body.classList.add('solo-lectura');
+    // Beatriz: acceso completo igual que Lucas (pedido por Lucas 19/11) — ya no es solo lectura
+    document.body.classList.remove('solo-lectura');
   }
 }
 
@@ -9616,7 +9616,7 @@ function fillModal(o){
   // Historial: visible solo para admin
   const histSec = document.getElementById('hist-section');
   if(histSec){
-    histSec.style.display = (currentUser && currentUser.role === 'admin') ? 'flex' : 'none';
+    histSec.style.display = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'finanzas')) ? 'flex' : 'none';
     const hl = document.getElementById('hist-list');
     if(hl){ hl.style.display='none'; hl.innerHTML=''; }
     const hb = document.getElementById('hist-toggle-btn');
@@ -9723,7 +9723,7 @@ document.addEventListener('input', e=>{
 });
 // ══════ v42: PESTAÑAS DEL MODAL ══════
 let mTabActual = 'resumen';
-function esAdmin(){ return !!(currentUser && currentUser.role === 'admin'); }
+function esAdmin(){ return !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'finanzas')); }
 function setMTab(t){
   mTabActual = t;
   document.querySelectorAll('#mtabs .mtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.t === t));
@@ -10839,7 +10839,7 @@ document.addEventListener('click', e=>{
 
 // ── PAGE NAV ──
 function showPage(id, el){
-  if((id==='mapasistema'||id==='conexiones'||id==='config') && currentUser && currentUser.role!=='admin'){ showToast('Esa secci\u00f3n es solo del administrador','error'); return; }
+  if((id==='mapasistema'||id==='conexiones'||id==='config') && currentUser && currentUser.role!=='admin' && currentUser.role!=='finanzas'){ showToast('Esa secci\u00f3n es solo del administrador','error'); return; }
   if(id==='catalogo') setTimeout(()=>{ try{ cargarCatalogo(); }catch(e){} }, 50);
   if(id==='mapa') setTimeout(()=>{ try{ pintarMapa(); }catch(e){} }, 60);
   if(id==='proveedores') setTimeout(()=>{ try{ cargarProveedores(); }catch(e){} }, 50);
@@ -10876,7 +10876,7 @@ const JV_SUB = {ebay:'Compras y vendedores de EE. UU.', alibaba:'Proveedores y k
 const JV_COL = {rojo:'var(--red)', amarillo:'var(--amber)', verde:'var(--green)'};
 const JV_NIV = {auto:'Automático', sugerido:'Sugerido', manual:'Solo vos'};
 
-function jvEsAdmin(){ return currentUser && currentUser.role === 'admin'; }
+function jvEsAdmin(){ return currentUser && (currentUser.role === 'admin' || currentUser.role === 'finanzas'); }
 function jvHace(f){
   if(!f) return '';
   const m = Math.round((Date.now() - new Date(f).getTime())/60000);
