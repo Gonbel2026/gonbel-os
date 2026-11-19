@@ -18437,6 +18437,8 @@ async function loadFinData(){
 // Monto del mes visible (Lucas 18/11): comisiones se calculan del sistema (5% de lo vendido ese mes),
 // pagos en reales se convierten con la cotización del día, el resto usa el monto cargado.
 function gfMontoGs(c){
+  // Monto corregido a mano para ESTE mes (variables: luz, comisiones…) — Lucas 19/11
+  try { const mm = c.monto_mes || {}; const v = mm[gfMesStr(gfMes)]; if(v != null && v !== '') return parseFloat(v)||0; } catch(e){}
   if(c.calc && String(c.calc).startsWith('comision:')){
     const v = String(c.calc).slice(9), mes = gfMesStr(gfMes);
     const pct = (typeof COMISION_PCT!=='undefined' && COMISION_PCT[v]) || 0.05;
@@ -18689,6 +18691,21 @@ function gfOpenDetalle(id){
   document.getElementById('gf-det-restante').textContent = 'Gs '+fmtNum(s.restante);
 
   // Info de cuotas si es préstamo
+  // Editar el monto (Lucas 19/11): variables → solo este mes; fijos → el monto de todos los meses
+  try {
+    let mb = document.getElementById('gf-det-monto-box');
+    const cb2 = document.getElementById('gf-det-cuotas');
+    if(!mb && cb2){ mb = document.createElement('div'); mb.id = 'gf-det-monto-box'; cb2.parentNode.insertBefore(mb, cb2); }
+    if(mb){
+      const esVar = !!(c.variable || c.calc);
+      const mesTxt = MESES_ES[gfMes.getMonth()] + ' ' + gfMes.getFullYear();
+      mb.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:12px 14px;margin-top:4px;">'
+        + '<div style="flex:1;min-width:160px;"><div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:5px;">✏️ ' + (esVar ? 'Monto de ' + mesTxt + ' (variable)' : 'Monto mensual') + '</div>'
+        + '<input id="gf-det-monto-in" type="text" inputmode="numeric" oninput="fmtMoneyInput(this)" value="' + fmtNum(Math.round(s.total)) + '" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:10px;color:var(--t1);font-size:14px;padding:9px 12px;outline:none;font-family:\'Inter\',sans-serif;"></div>'
+        + '<button class="btn btn-primary" onclick="gfGuardarMonto()">Guardar monto</button>'
+        + '</div>';
+    }
+  } catch(e){ console.error(e); }
   const cuotasBox = document.getElementById('gf-det-cuotas');
   if(c.recurrente && c.cuotas_total){
     const pagadas = c.cuotas_pagadas||0;
@@ -18828,6 +18845,23 @@ async function gfUpdateVence(){
     showToast('📅 Fecha actualizada','success');
     renderGonbelFin();
   } catch(e){ showToast('Error al actualizar fecha','error'); }
+}
+
+async function gfGuardarMonto(){
+  const c = gfCuentaActual; if(!c) return;
+  const val = numVal('gf-det-monto-in') || 0;
+  if(val < 0){ showToast('Monto inválido','error'); return; }
+  try {
+    if(c.variable || c.calc){
+      const mm = Object.assign({}, c.monto_mes || {}); mm[gfMesStr(gfMes)] = val;
+      const patch = {monto_mes: mm}; if(!c.calc) patch.monto = val; // la referencia de los próximos meses pasa a ser este valor
+      await sbFetch('/rest/v1/fin_cuentas?id=eq.' + c.id, 'PATCH', patch); Object.assign(c, patch);
+    } else {
+      await sbFetch('/rest/v1/fin_cuentas?id=eq.' + c.id, 'PATCH', {monto: val}); c.monto = val;
+    }
+    showToast('✓ Monto actualizado','success');
+    await renderGonbelFin(); gfOpenDetalle(c.id);
+  } catch(e){ showToast('No se pudo guardar el monto','error'); }
 }
 
 async function gfMarkPaid(){
