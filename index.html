@@ -12545,15 +12545,56 @@ function gsPintar(){
     kp.innerHTML = k('Pagos fijos del mes', totFijo, 'var(--t1)') + k('Fijos ya pagados', pagadoFijo, 'var(--green)') + k('Fijos por pagar', Math.max(0, totFijo-pagadoFijo), 'var(--red)') + k('Gastos variables', totVar, 'var(--amber)') + k('Total gastos del mes', totFijo + totVar, 'var(--purple)');
   }
   if(lista){
-    lista.innerHTML = gastos.length ? gastos.map(m=>{
-      const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id), b = (CJ_BILL||[]).find(x=>x.id===m.billetera_id);
-      const gs = Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion));
-      return '<div onclick="cjEditarMov('+m.id+')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:11px;cursor:pointer;">'
-        + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+avEsc(m.concepto || (cat?cat.nombre:'Gasto'))+'</div>'
-        + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">'+new Date(m.fecha+'T12:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'short'})+(cat?' · '+avEsc(cat.nombre):'')+(b?' · '+avEsc(b.nombre):'')+'</div></div>'
-        + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;">Gs '+fmtNum(Math.round(gs))+'</div></div>';
+    // Agrupado por concepto (Lucas 19/11): "Ranulfo flete" junta todos sus pagos del mes en una sola fila acumulada
+    const grupos = {};
+    gastos.forEach(m=>{
+      const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id);
+      const nombre = (m.concepto || (cat?cat.nombre:'Gasto')).trim();
+      const k = gsClave(nombre);
+      if(!grupos[k]) grupos[k] = {k, nombre, cat, movs:[], tot:0};
+      grupos[k].movs.push(m); grupos[k].tot += gsMontoGs(m);
+    });
+    const arr = Object.values(grupos).sort((a,b)=>b.tot-a.tot);
+    const fd = f => new Date(f+'T12:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'short'});
+    lista.innerHTML = arr.length ? arr.map(g=>{
+      g.movs.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+      const abierto = GS_ABIERTO.has(g.k), ult = g.movs[0];
+      const kEsc = encodeURIComponent(g.k);
+      return '<div style="background:rgba(255,255,255,.03);border:1px solid '+(abierto?'var(--brda)':'var(--brd)')+';border-radius:11px;">'
+        + '<div onclick="gsToggle(\''+kEsc+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;">'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+(abierto?'▾ ':'▸ ')+avEsc(g.nombre)+(g.movs.length>1?' <span style="font-size:10.5px;color:var(--cyan);font-weight:700;">· '+g.movs.length+' pagos</span>':'')+'</div>'
+          + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">Último: '+fd(ult.fecha)+(g.cat?' · '+avEsc(g.cat.nombre):'')+'</div></div>'
+          + '<div style="display:flex;align-items:center;gap:8px;"><div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;">Gs '+fmtNum(Math.round(g.tot))+'</div>'
+          + '<button type="button" class="btn btn-ghost" title="Agregar otro pago a '+avEsc(g.nombre)+'" style="padding:3px 9px;font-size:13px;font-weight:800;" onclick="event.stopPropagation();gsAgregarA(\''+kEsc+'\')">+</button></div>'
+        + '</div>'
+        + (abierto ? '<div style="border-top:1px solid var(--brd);padding:6px 12px 10px;">'
+          + g.movs.map(m=>{ const b=(CJ_BILL||[]).find(x=>x.id===m.billetera_id);
+              return '<div onclick="cjEditarMov('+m.id+')" style="display:flex;justify-content:space-between;gap:10px;padding:6px 4px;font-size:12px;cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.05);">'
+                + '<span style="color:var(--t2);">'+fd(m.fecha)+(b?' <span style="color:var(--t3);">· '+avEsc(b.nombre)+'</span>':'')+(m.notas?' <span style="color:var(--t3);">· '+avEsc(m.notas)+'</span>':'')+'</span>'
+                + '<b style="font-family:\'Space Grotesk\',sans-serif;">Gs '+fmtNum(Math.round(gsMontoGs(m)))+'</b></div>'; }).join('')
+          + '<button type="button" class="btn btn-ghost" style="margin-top:8px;font-size:11.5px;padding:5px 12px;" onclick="gsAgregarA(\''+kEsc+'\')">+ Agregar pago a '+avEsc(g.nombre)+'</button>'
+          + '</div>' : '')
+        + '</div>';
     }).join('') : '<div style="text-align:center;color:var(--t3);font-size:12px;padding:18px;">Sin gastos registrados este mes</div>';
   }
+}
+const GS_ABIERTO = new Set();
+function gsClave(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function gsMontoGs(m){ return Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)); }
+function gsToggle(kEsc){ const k = decodeURIComponent(kEsc); GS_ABIERTO.has(k) ? GS_ABIERTO.delete(k) : GS_ABIERTO.add(k); gsPintar(); }
+// Abre "Registrar gasto" con el mismo concepto, categoría y billetera del último pago de ese grupo
+function gsAgregarA(kEsc){
+  const k = decodeURIComponent(kEsc);
+  const prev = (CJ_MOV||[]).filter(m=>m.tipo==='salida' && gsClave(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre)===k).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+  cjEditarMov(null, 'salida');
+  if(!prev) return;
+  setTimeout(()=>{
+    const set = (id,v)=>{ const el=document.getElementById(id); if(el && v!=null && v!=='') el.value = v; };
+    set('cm-concepto', prev.concepto); set('cm-cat', prev.categoria_id); set('cm-bill', prev.billetera_id); set('cm-moneda', prev.moneda);
+    set('cm-tercero', prev.proveedor);
+    const mo = document.getElementById('cm-monto'); if(mo) mo.focus();
+  }, 60);
+  GS_ABIERTO.add(k);
 }
 
 // Orden de las cuentas (pedido por Lucas 18/11): arrastrar una tarjeta sobre otra, o con las flechas ◀ ▶
