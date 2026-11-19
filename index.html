@@ -2582,7 +2582,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
             <h3 style="font-size:13px;font-weight:700;">🧾 Gastos de la empresa</h3>
             <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gsNuevoGasto()">+ Registrar gasto</button>
           </div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Cinta, cajas, embalaje, combustible, delivery, etc. Se descuenta de la billetera que elijas en Caja.</div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Toda salida de Caja de la empresa aparece acá (mercadería, fletes, CDE Box, cinta, cajas, combustible…). Lo cargado como "Retiro personal" no.</div>
           <div id="gs-lista" style="display:flex;flex-direction:column;gap:7px;"></div>
         </div>
       </div>
@@ -12569,7 +12569,7 @@ function cjBillMesHTML(b){
 
 // ══════ GASTOS (pestaña nueva, Lucas 18/11) ══════
 // Pagos fijos (fin_cuentas tipo pagar) + gastos variables de la empresa (salidas de Caja que no son mercadería ni retiro personal).
-const GS_EXCLUIR = /mercader|retiro personal|flete internacional|impuestos y aduana/i;
+const GS_EXCLUIR = /retiro personal/i; // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
 function gsEsGasto(m){
   if(m.tipo !== 'salida') return false;
   const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id);
