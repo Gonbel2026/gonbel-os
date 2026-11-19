@@ -19415,10 +19415,15 @@ function calcFletePeso(){
 var _opBilleteras = [];
 async function opCargar(orderId){
   if(!orderId) return;
-  if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?order=orden.asc&limit=40')||[];}catch(e){} }
+  if(!_opBilleteras.length){ try{_opBilleteras=await opBillCargar();}catch(e){} }
   try { var r=await sbFetch('/rest/v1/order_pagos?order_id=eq.'+orderId+'&order=fecha.asc&limit=50'); _opRows=r||[]; opRender(r||[]); } catch(e){}
 }
 var _opRows = [];
+// Lista de bancos para registrar pagos: Joaquín y Alexis no pueden leer fin_billeteras (saldos), así que se usa una función que solo da nombre e id (Lucas 19/11)
+async function opBillCargar(){
+  try { const r = await sbFetch('/rest/v1/rpc/billeteras_para_pago','POST',{}); if(r && r.length) return r; } catch(e){}
+  try { return (await sbFetch('/rest/v1/fin_billeteras?activa=is.true&order=orden.asc&limit=40')||[]).filter(function(b){return b.tipo!=='tarjeta';}); } catch(e){ return []; }
+}
 function opRender(rows){
   var lista=document.getElementById('op-lista'); if(!lista) return;
   var badge=document.getElementById('op-total-badge');
@@ -19481,7 +19486,7 @@ async function opNuevo(montoSugerido, conceptoSugerido, onDone){
     if(!ok || !currentOrder || !currentOrder.id){ showToast('Guardá el pedido (con vendedor) antes de registrar el pago','error'); return; }
     opRender([]);
   }
-  if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?activa=is.true&order=orden.asc&limit=20')||[];}catch(e){} }
+  if(!_opBilleteras.length){ try{_opBilleteras=await opBillCargar();}catch(e){} }
   var opts=_opBilleteras.map(function(b){return '<option value="'+b.id+'">'+b.nombre+'</option>';}).join('');
   var montoIni = (typeof montoSugerido==='number' && montoSugerido>0) ? Math.round(montoSugerido).toLocaleString('es-PY') : '';
   invModal('Registrar pago','<div style="display:grid;gap:12px;">'
@@ -19524,7 +19529,7 @@ async function opNuevo(montoSugerido, conceptoSugerido, onDone){
 // El trigger de order_pagos mantiene Caja al día (si cambia el banco, el movimiento se mueve solo).
 async function opEditar(pagoId){
   var r = (_opRows||[]).find(function(x){return x.id===pagoId;}); if(!r) return;
-  if(!_opBilleteras.length){ try{_opBilleteras=await sbFetch('/rest/v1/fin_billeteras?order=orden.asc&limit=40')||[];}catch(e){} }
+  if(!_opBilleteras.length){ try{_opBilleteras=await opBillCargar();}catch(e){} }
   var opts=_opBilleteras.filter(function(b){return b.activa!==false || b.id==r.billetera_id;}).map(function(b){return '<option value="'+b.id+'"'+(b.id==r.billetera_id?' selected':'')+'>'+b.nombre+'</option>';}).join('');
   var met=['Transferencia','Efectivo','Otro'].map(function(m){return '<option'+(m===r.metodo?' selected':'')+'>'+m+'</option>';}).join('');
   invModal('Pago Gs '+parseFloat(r.monto).toLocaleString('es-PY'),'<div style="display:grid;gap:12px;">'
