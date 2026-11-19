@@ -19488,7 +19488,7 @@ async function opNuevo(montoSugerido, conceptoSugerido, onDone){
     +'<div class="field"><label class="lbl">Monto (Gs) *</label><input class="inp" id="op-monto" type="text" inputmode="numeric" placeholder="0" value="'+montoIni+'" oninput="fmtMoneyInput(this)"></div>'
     +'<div class="field"><label class="lbl">Fecha *</label><input class="inp" id="op-fecha" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
     +'<div class="field"><label class="lbl">Método</label><select class="inp" id="op-metodo" onchange="opMetodoCambio()"><option>Transferencia</option><option>Efectivo</option><option>Otro</option></select></div>'
-    +'<div class="field"><label class="lbl">Billetera</label><select class="inp" id="op-bill"><option value="">-- Sin especificar --</option>'+opts+'</select></div>'
+    +'<div class="field"><label class="lbl">¿En qué banco / billetera entró? *</label><select class="inp" id="op-bill"><option value="">-- Elegí --</option>'+opts+'</select></div>'
     +'<div class="field"><label class="lbl">Concepto</label><input class="inp" id="op-concepto" placeholder="Ej: sena, anticipo, pago final" value="'+(conceptoSugerido||'')+'"></div>'
     +'<div class="field"><label class="lbl" id="op-comp-lbl">Foto de la transferencia *</label><input class="inp" id="op-comp" type="file" accept="image/*" onchange="opPrevComprobante(this)"><div id="op-comp-prev" style="margin-top:8px;"></div></div>'
     +'</div>', async function(){
@@ -19498,6 +19498,7 @@ async function opNuevo(montoSugerido, conceptoSugerido, onDone){
     if(!monto||monto<=0){showToast('Ingresa el monto','error');return false;}
     if(!fecha){showToast('Ingresa la fecha','error');return false;}
     if(!fComp && metodo!=='Efectivo'){showToast('Subí la foto de la transferencia','error');return false;}
+    if(!(document.getElementById('op-bill')||{}).value){showToast('Elegí el banco o billetera donde entró la plata (si no, no aparece en Caja)','error');return false;}
     var bG=document.getElementById('inv-guardar'); if(bG){ if(bG.disabled) return false; bG.disabled=true; bG.textContent='Subiendo…'; }
     var reactivar=function(){ if(bG){ bG.disabled=false; bG.textContent='💾 Guardar'; } };
     try {
