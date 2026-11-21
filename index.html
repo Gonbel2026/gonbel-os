@@ -3412,6 +3412,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
             <div><label style="font-size:11px;color:var(--t3);">Costo courier (Gs)</label><input id="f-flete-gs" type="number" min="0" placeholder="0" class="inp" style="margin-top:4px;"></div>
             <div><label style="font-size:11px;color:var(--t3);">Detalle</label><input id="f-flete-nota" type="text" placeholder="Ej: DHL 2.3 kg" class="inp" style="margin-top:4px;"></div>
+            <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--t3);">¿De qué cuenta salió el pago del courier? *</label><select id="f-flete-bill" class="inp" style="margin-top:4px;"><option value="">— Elegir cuenta —</option></select></div>
           </div>
         </div>
           <input type="checkbox" id="f-pagado-completo" onchange="pagadoCompletoToggle()" style="width:20px;height:20px;accent-color:#22d97a;cursor:pointer;">
@@ -9272,20 +9273,59 @@ function dragEnd(e){ e.currentTarget.classList.remove('dragging'); }
 function dragOver(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
 function dragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
 // --- FLETE OBLIGATORIO ---
+// Piezas de afuera (eBay, AliExpress, Alibaba, EE.UU., China, Europa…) obligan a cargar el courier (Lucas 21/11)
+function flNecesita(o){
+  if(!o) return false;
+  let items = []; try { items = typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items) : (o.piezas_items||[]); } catch(e){}
+  return (items||[]).some(it => {
+    const t = [it.pr, it.proveedorManual, it.nc].filter(Boolean).join(' ');
+    return /ebay|aliexpress|alibaba|amazon|rockauto|fcp|miami|usa|ee\.?\s?uu|china|europa|alemania/i.test(t) || /\b\d{2}-\d{5}-\d{5}\b/.test(t) || ['usd','eur'].includes(String(it.mon||'').toLowerCase());
+  });
+}
+// Cuentas para el pago del courier (sin tarjetas de crédito)
+let FL_BILL = [];
+async function flBillLlenar(selId, val){
+  const sel = document.getElementById(selId); if(!sel) return;
+  if(!FL_BILL.length){ try { FL_BILL = (await opBillCargar()||[]).filter(b => b.tipo !== 'tarjeta'); } catch(e){} }
+  sel.innerHTML = '<option value="">\u2014 Elegir cuenta \u2014</option>' + FL_BILL.map(b => '<option value="'+b.id+'"'+(String(b.id)===String(val||'')?' selected':'')+'>'+avEsc(b.nombre)+'</option>').join('');
+}
+// En el guardado: courier cargado sin cuenta → no se guarda el monto; y no se pasa a Listo/Entregado sin courier si hace falta
+function flFleteRevisar(data, prev, items){
+  if(!prev) return;
+  const g = parseFloat(data.flete_courier_gs)||0;
+  if(g > 0 && !data.flete_courier_billetera_id && String(g) !== String(parseFloat(prev.flete_courier_gs)||0)){
+    data.flete_courier_gs = prev.flete_courier_gs || null;
+    showToast('Eleg\u00ed de qu\u00e9 cuenta sali\u00f3 el courier — el costo no se guard\u00f3 todav\u00eda','error');
+    try { const s2 = document.getElementById('f-flete-bill'); if(s2){ s2.style.borderColor = 'var(--red)'; s2.focus(); } } catch(e){}
+  }
+  if(['listo-envio','entregado'].includes(data.estado) && data.estado !== prev.estado){
+    const o2 = Object.assign({}, prev, {piezas_items: JSON.stringify(items||[])});
+    const ok = (parseFloat(data.flete_courier_gs)||0) > 0;
+    if(flNecesita(o2) && !ok){
+      data.estado = prev.estado;
+      try { document.getElementById('modal-estado').value = prev.estado; } catch(e){}
+      try { invModal('Falta el courier','<div class="pg-err" style="padding:14px;font-size:13px;line-height:1.5;">Este pedido tiene piezas de afuera (eBay / AliExpress / Alibaba / EE.UU.). Antes de pasarlo a <b>Listo para env\u00edo</b> o <b>Entregado</b> carg\u00e1 el <b>costo del courier</b> y <b>de qu\u00e9 cuenta sali\u00f3</b>.</div>', null); } catch(e){}
+    }
+  }
+}
 function fleteObligatorioModal(orderId, estadoDestino){
   const o = orders.find(x=>x.id==orderId); if(!o) return;
   const html = '<div style="display:grid;gap:13px;">'
     + '<div class="pg-hint">Este pedido requiere registrar el costo de courier antes de marcarlo como <b>Listo para Env\u00edo</b>.</div>'
     + '<div class="field"><label class="lbl">Costo courier (Gs) *</label><input class="inp" id="fl-gs" type="number" min="0" placeholder="0" value="' + (o.flete_courier_gs||'') + '"></div>'
     + '<div class="field"><label class="lbl">Detalle (opcional)</label><input class="inp" id="fl-nota" placeholder="Ej: DHL 2.3 kg" value="' + (o.flete_courier_nota||'') + '"></div>'
+    + '<div class="field"><label class="lbl">\u00bfDe qu\u00e9 cuenta sali\u00f3? *</label><select class="inp" id="fl-bill"><option value="">\u2014 Elegir cuenta \u2014</option></select></div>'
     + '</div>';
+  setTimeout(()=>flBillLlenar('fl-bill', o.flete_courier_billetera_id), 30);
   invModal('Costo de courier', html, async () => {
     const gs = parseFloat(document.getElementById('fl-gs').value)||0;
     if(!gs){ showToast('Ingres\u00e1 el costo de courier','error'); return false; }
+    const bill = parseInt(document.getElementById('fl-bill').value)||null;
+    if(!bill){ showToast('Eleg\u00ed de qu\u00e9 cuenta sali\u00f3 el pago del courier','error'); return false; }
     const nota = document.getElementById('fl-nota').value;
     try {
-      await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {flete_courier_gs:gs, flete_courier_nota:nota||null, estado:estadoDestino});
-      o.flete_courier_gs=gs; o.flete_courier_nota=nota; o.estado=estadoDestino;
+      await sbFetch('/rest/v1/orders?id=eq.'+orderId, 'PATCH', {flete_courier_gs:gs, flete_courier_nota:nota||null, flete_courier_billetera_id:bill, estado:estadoDestino});
+      o.flete_courier_gs=gs; o.flete_courier_nota=nota; o.flete_courier_billetera_id=bill; o.estado=estadoDestino;
       logHistory(orderId,'Flete courier Gs '+gs.toLocaleString('es-PY')+(nota?' - '+nota:'')+' -> Listo para Envio');
       loadAll(); showToast('Flete guardado y pedido movido','success'); return true;
     } catch(e){ showToast('Error al guardar','error'); return false; }
@@ -9442,8 +9482,8 @@ async function drop(e, colId){
     }
   }
 
-  // PUNTO 1: Flete obligatorio al pasar a listo-envio
-  if(colId === 'listo-envio' && order.flete_requerido){
+  // PUNTO 1: Flete obligatorio al pasar a listo-envio / entregado (y siempre si hay piezas de afuera: eBay, AliExpress, Alibaba…) — Lucas 21/11
+  if((colId === 'listo-envio' && order.flete_requerido) || ((colId === 'listo-envio' || colId === 'entregado') && flNecesita(order))){
     const flete = parseFloat(order.flete_courier_gs) || 0;
     if(!flete){
       order.estado = estadoAnterior;
@@ -9556,6 +9596,7 @@ function fillModal(o){
   const _fr=document.getElementById('f-flete-req'); if(_fr) _fr.checked=!!o.flete_requerido;
   const _fg=document.getElementById('f-flete-gs'); if(_fg) _fg.value=o.flete_courier_gs||'';
   const _fn=document.getElementById('f-flete-nota'); if(_fn) _fn.value=o.flete_courier_nota||'';
+  flBillLlenar('f-flete-bill', o.flete_courier_billetera_id);
   document.getElementById('f-pagado-completo').checked = !!o.pagado_completo;
   document.getElementById('f-fecha-cobro').value = o.fecha_cobro || '';
   document.getElementById('f-tracking').value = o.tracking || '';
@@ -9918,6 +9959,7 @@ async function autoSaveOrder(){
     flete_requerido: (document.getElementById('f-flete-req')||{}).checked||false,
     flete_courier_gs: numVal('f-flete-gs')||null,
     flete_courier_nota: (document.getElementById('f-flete-nota')||{}).value||null,
+    flete_courier_billetera_id: parseInt((document.getElementById('f-flete-bill')||{}).value)||null,
     valor_pagado: numVal('f-pagado'),
     piezas_items: piezasItems.length ? JSON.stringify(piezasItems) : null,
     pagado_completo: document.getElementById('f-pagado-completo').checked,
@@ -9930,6 +9972,7 @@ async function autoSaveOrder(){
     fecha_eta: document.getElementById('f-fecha-eta').value||null,
   };
 
+  flFleteRevisar(data, currentOrder, piezasItems);
   if(gateCompraDatos(data.estado, currentOrder.estado, piezasItems)){
     data.estado = currentOrder.estado;
     try { document.getElementById('modal-estado').value = currentOrder.estado; } catch(e){}
@@ -10006,6 +10049,7 @@ async function saveOrder(opts){
     fecha_pedido: document.getElementById('f-fecha-pedido').value||null,
     fecha_eta: document.getElementById('f-fecha-eta').value||null,
   };
+  if(!isNewOrder && currentOrder){ const _e0 = data.estado; flFleteRevisar(Object.assign(data, {flete_courier_gs: currentOrder.flete_courier_gs, flete_courier_billetera_id: currentOrder.flete_courier_billetera_id}), currentOrder, piezasItems); delete data.flete_courier_gs; delete data.flete_courier_billetera_id; if(data.estado !== _e0) return; }
   { const _msgG = gateCompraDatos(estado, isNewOrder ? 'entrante' : (currentOrder && currentOrder.estado), piezasItems);
     if(_msgG){ showToast('Falta cargar dónde se compró y cuánto costó cada pieza','error'); try { invModal('Faltan datos de la compra','<div class="pg-err" style="padding:14px;font-size:13px;line-height:1.5;">'+_msgG+'</div>',null); } catch(e){} return; } }
   try {
