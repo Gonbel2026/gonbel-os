@@ -12512,8 +12512,8 @@ function cjPintarBilleteras(){
     const ico = b.tipo === 'efectivo' ? '\uD83D\uDCB5' : (b.tipo === 'digital' ? '\uD83D\uDCF1' : (b.tipo === 'tarjeta' ? '\uD83D\uDCB3' : '\uD83C\uDFE6'));
     return '<div class="cj-bill" draggable="true" data-bid="' + b.id + '" ondragstart="cjBillDragStart(event,' + b.id + ')" ondragover="cjBillDragOver(event)" ondragleave="this.classList.remove(\'cj-drop\')" ondrop="cjBillDrop(event,' + b.id + ')" ondragend="cjBillDragEnd()" style="cursor:grab;" title="Arrastrá para cambiar el orden">'
       + '<div class="cj-bill-n"><span style="color:var(--t3);margin-right:4px;">\u2807</span>' + ico + ' ' + b.nombre + '</div>'
-      + '<div class="cj-bill-s" style="color:' + (s < 0 ? 'var(--red)' : 'var(--t1)') + '">' + cjMonto(s, b.moneda) + '</div>'
-      + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\u2248 Gs ' + fmtNum(cjEnGs(s, b.moneda)) + '</div>' : '')
+      + (parseFloat(b.linea_credito) > 0 ? cjTcHTML(b, s) : ('<div class="cj-bill-s" style="color:' + (s < 0 ? 'var(--red)' : 'var(--t1)') + '">' + cjMonto(s, b.moneda) + '</div>'
+      + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:2px;">\u2248 Gs ' + fmtNum(cjEnGs(s, b.moneda)) + '</div>' : '')))
       + (b.identificador ? '<div style="font-size:10.5px;color:var(--t3);margin-top:4px;">Alias: ' + b.identificador + '</div>' : '')
       + (b.numero_cuenta ? '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">Cta. N\u00ba ' + b.numero_cuenta + '</div>' : '')
       + cjBillMesHTML(b)
@@ -12547,6 +12547,19 @@ function cjPintarBilleteras(){
         + '<div class="cj-bill-s" style="color:var(--red)">Gs ' + fmtNum(totDeuda) + '</div>'
         + subMon(deudas)
       + '</div>' : '');
+}
+
+// Tarjetas de crédito con línea (pedido por Lucas 21/11): Línea disponible %, barra, Deuda total y Línea de crédito
+function cjTcHTML(b, s){
+  const lin = parseFloat(b.linea_credito) || 0, deuda = Math.max(0, -s), disp = lin - deuda;
+  const pct = lin ? Math.round(disp / lin * 100) : 0, uso = lin ? Math.min(100, deuda / lin * 100) : 0;
+  const col = pct < 0 ? 'var(--red)' : (pct < 15 ? 'var(--amber)' : '#c6e000');
+  return '<div style="font-size:12px;color:var(--t2);margin-top:4px;">L\u00ednea disponible <b style="color:' + col + ';">' + pct + '%</b></div>'
+    + '<div class="cj-bill-s" style="color:' + (disp < 0 ? 'var(--red)' : 'var(--t1)') + '">' + cjMonto(disp, b.moneda) + '</div>'
+    + '<div style="height:7px;border-radius:6px;background:rgba(255,255,255,.08);margin:7px 0 6px;overflow:hidden;"><div style="height:100%;width:' + uso.toFixed(1) + '%;background:#c6e000;border-radius:6px;"></div></div>'
+    + '<div style="display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--t3);"><span>Deuda total</span><span>L\u00ednea de cr\u00e9dito</span></div>'
+    + '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;"><span>' + cjMonto(deuda, b.moneda) + '</span><span>' + cjMonto(lin, b.moneda) + '</span></div>'
+    + (b.moneda !== 'PYG' ? '<div style="font-size:11px;color:var(--t3);margin-top:3px;">Deuda \u2248 Gs ' + fmtNum(cjEnGs(deuda, b.moneda)) + '</div>' : '');
 }
 
 // Movido en el mes por cuenta (pedido por Lucas 18/11): entradas + salidas + transferencias, en Gs.
@@ -13069,6 +13082,7 @@ function cjEditarBilletera(id){
     + '<div><label class="lbl">Alias</label><input class="inp" id="cb-ident" value="' + v('identificador') + '" placeholder="Ej: 6616665 (C.I.) o alias"></div>'
     + '<div><label class="lbl">N\u00famero de cuenta</label><input class="inp" id="cb-ncta" value="' + v('numero_cuenta') + '" placeholder="Ej: 1234567890"></div>'
     + '<div><label class="lbl">L\u00edmite mensual (Gs, opcional)</label><input class="inp" type="number" id="cb-lim" value="' + v('limite_mensual') + '" placeholder="Ej: 50000000"></div>'
+    + '<div><label class="lbl">L\u00ednea de cr\u00e9dito (solo tarjetas)</label><input class="inp" type="number" step="0.01" id="cb-linea" value="' + v('linea_credito') + '" placeholder="Ej: 55000000"></div>'
     + '<div><label class="lbl">Saldo inicial</label><input class="inp" type="number" step="0.01" id="cb-saldo" value="' + v('saldo_inicial','0') + '"></div>'
     + '<div><label class="lbl">Desde qu\u00e9 fecha</label><input class="inp" type="date" id="cb-fecha" value="' + (b && b.fecha_inicial ? b.fecha_inicial : new Date().toISOString().slice(0,10)) + '"></div>'
     + '</div>'
@@ -13085,6 +13099,7 @@ function cjEditarBilletera(id){
       identificador: g('ident').value.trim() || null,
       numero_cuenta: g('ncta').value.trim() || null,
       limite_mensual: parseFloat(g('lim').value) || null,
+      linea_credito: parseFloat(g('linea').value) || null,
       saldo_inicial: parseFloat(g('saldo').value) || 0,
       fecha_inicial: g('fecha').value || null
     };
