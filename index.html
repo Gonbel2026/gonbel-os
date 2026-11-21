@@ -8944,7 +8944,7 @@ function avisosDe(o){
     if((['comprado','listo-envio'].includes(o.estado) || (o.estado === 'aprobado' && it.c === true)) && avReciente(it.fcompra, fPed)){
       const sinPr = !(String(it.pr||it.proveedorManual||it.nc||'').trim());
       const sinCo = !(parseFloat(it.cb)>0 || parseFloat(it.cbrl)>0 || parseFloat(it.cr)>0);
-      if(sinPr || sinCo) av.push({nivel:'amarillo', ic:'🧾', tipo:'datos', titulo:'Falta cargar ' + [sinPr?'dónde se compró':'', sinCo?'cuánto costó':''].filter(Boolean).join(' y ') + ': ' + (it.d||'pieza'),
+      if((sinPr || sinCo) && !it.ok_datos && !(it.c !== true && it.c !== 'true' && /devuelto al cliente/i.test(String(it.est||'')))) av.push({nivel:'amarillo', ic:'🧾', tipo:'datos', idx, titulo:'Falta cargar ' + [sinPr?'dónde se compró':'', sinCo?'cuánto costó':''].filter(Boolean).join(' y ') + ': ' + (it.d||'pieza'),
         detalle:'Abrí el pedido y completalo en la pieza (si salió del stock, poné "Stock")'});
     }
   });
@@ -8975,8 +8975,9 @@ function avChipCard(o){
   const tit = av.map(a=>a.titulo).join('\n').replace(/"/g,'&quot;');
   return `<span class="card-aviso ${rojo?'rojo':'amarillo'}" title="${tit}">⚠️ ${av.length===1 ? (({devolucion:'Devolución',cancelada:'Cancelada',reembolso:'Reembolso',reclamo:'Reclamo',vencido:'Plazo vencido',datos:'Faltan datos',sena:'Sin seña',margen:'Margen bajo'})[av[0].tipo]||'Demora') : av.length + ' avisos'}</span>`;
 }
-function avItemHTML(a, conAccion){
+function avItemHTML(a, conAccion, o){
   let accion = '';
+  if(conAccion && o && a.tipo==='datos' && a.idx != null) accion = `<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="event.stopPropagation();mdAvisoOk('${o.id}',${a.idx},'datos')">✓ Listo</button>`;
   if(conAccion && a.tipo==='ml') accion = `<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="event.stopPropagation();avResolverML(${a.id})">✓ Ya lo resolví</button>`;
   if(conAccion && a.tipo==='reembolso') accion = `<button type="button" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="event.stopPropagation();avReembolsoEntro(${a.id})">💰 Ya entró</button>`;
   return `<div class="av-item ${a.nivel}"><div class="av-ic">${a.ic}</div><div style="flex:1;min-width:0;"><div class="av-tt">${avEsc(a.titulo)}</div>${a.detalle?`<div class="av-dt">${avEsc(a.detalle)}</div>`:''}</div>${accion}</div>`;
@@ -8986,7 +8987,7 @@ function avPintarModal(o){
   const av = avisosDe(o);
   if(!av.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
   box.style.display = '';
-  box.innerHTML = `<div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:800;color:${av.some(a=>a.nivel==='rojo')?'var(--red)':'var(--amber)'};margin:2px 0 8px;">⚠️ Avisos de este pedido</div>` + av.map(a=>avItemHTML(a, true)).join('');
+  box.innerHTML = `<div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:800;color:${av.some(a=>a.nivel==='rojo')?'var(--red)':'var(--amber)'};margin:2px 0 8px;">⚠️ Avisos de este pedido</div>` + av.map(a=>avItemHTML(a, true, o)).join('');
 }
 function avSetFiltro(v){ AV_FILTRO = (AV_FILTRO === v) ? '' : v; try { localStorage.setItem('gonbel_av_filtro', AV_FILTRO); } catch(e){} avPintarPanel(); }
 function avPintarPanel(){
@@ -9010,7 +9011,7 @@ function avPintarPanel(){
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
         <b style="font-size:13.5px;">${avEsc(f.o.numero_pedido||f.o.numero||'')} · ${avEsc(f.o.cliente_nombre||'')}</b>
         <span style="font-size:11.5px;color:var(--t3);">${avEsc(veh)}${f.o.vendedor?' · 👤 '+avEsc(f.o.vendedor):''}</span>
-      </div>${f.av.map(a=>avItemHTML(a, true)).join('')}</div>`;
+      </div>${f.av.map(a=>avItemHTML(a, true, f.o)).join('')}</div>`;
   }).join('') : '<div style="font-size:12.5px;color:var(--t3);padding:8px 2px;">Sin avisos' + (AV_FILTRO?' para este filtro':'') + ' ✅</div>');
 }
 async function avResolverML(id){
@@ -15285,12 +15286,29 @@ function mdAccionesAviso(o, a){
     b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdDevResuelta(${id})">✓ Resuelta</button>`);
   }
   if((a.tipo==='envio' || a.tipo==='vencido') && a.idx != null) b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdAvisoOk(${id},${a.idx},'${a.tipo}')" title="Ya lo revisé / ya se resolvió">✓ Listo</button>`);
+  if(a.tipo==='datos' && a.idx != null) b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdAvisoOk(${id},${a.idx},'datos')" title="Ya lo completé / no hace falta">✓ Listo</button>`);
   if(a.tipo==='ml') b.push(`<button type="button" class="ok" onclick="event.stopPropagation();avResolverML(${a.id})">✓ Listo</button>`);
   if(a.tipo==='reembolso') b.push(`<button type="button" class="ok" onclick="event.stopPropagation();avReembolsoEntro(${a.id})">💰 Ya entró</button>`);
   b.push(`<button type="button" class="ir" onclick="event.stopPropagation();goKanban();setTimeout(()=>openOrder('${o.id}'),120)">Ir al pedido →</button>`);
   return `<div class="md-av-acc">${b.join('')}</div>`;
 }
+// Las tareas automáticas "Cargar proveedor y costo…" se cierran solas cuando el pedido ya no tiene datos por completar (Lucas 20/11)
+const TK_CERRANDO = new Set();
+function tkAutoCerrar(){
+  try {
+    (tareas||[]).filter(t => !t.hecha && t.order_id && /^cargar proveedor y costo/i.test(String(t.texto||'')) && !TK_CERRANDO.has(t.id)).forEach(t => {
+      const o = (orders||[]).find(x => String(x.id) === String(t.order_id));
+      if(!o) return;
+      if(avisosDe(o).some(a => a.tipo === 'datos')) return;
+      TK_CERRANDO.add(t.id);
+      sbFetch('/rest/v1/tareas?id=eq.' + t.id, 'PATCH', {hecha:true, hecha_en:new Date().toISOString()})
+        .then(()=>{ tareas = (tareas||[]).filter(x => x.id !== t.id); try { renderTareas(); } catch(e){} })
+        .catch(()=>{ TK_CERRANDO.delete(t.id); });
+    });
+  } catch(e){}
+}
 function miDiaPintar(){
+  tkAutoCerrar();
   const box = document.getElementById('mi-dia'); if(!box) return;
   const admin = (typeof esAdmin === 'function') && esAdmin();
   const P = miDiaPersona();
