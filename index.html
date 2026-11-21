@@ -19723,13 +19723,25 @@ function alertaSinCosto(){
 // BLOQUE B: Caja avanzada
 
 // PUNTO 4/7: Extracto completo de una billetera con filtro
+// Extracto en la moneda de la cuenta (Lucas 21/11): cuentas en R$ o US$ muestran grande en su moneda y chiquito en Gs
+function cjExtMon(m, b){
+  const gs = m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion);
+  if(!b || b.moneda === 'PYG') return {v: gs, gs: gs};
+  if(m.moneda === b.moneda) return {v: Math.abs(parseFloat(m.monto)||0), gs: gs};
+  const tasa = cjEnGs(1, b.moneda) || 1;
+  return {v: gs / tasa, gs: gs};
+}
+function cjExtFmt(v, gs, b, grande){
+  if(!b || b.moneda === 'PYG') return 'Gs ' + fmtNum(Math.round(gs));
+  return cjMonto(v, b.moneda) + ' <span style="font-size:' + (grande?'11px':'10.5px') + ';font-weight:500;color:var(--t3);white-space:nowrap;">\u2248 Gs ' + fmtNum(Math.round(gs)) + '</span>';
+}
 function cjExtracto(billeteraId){
   const b=CJ_BILL.find(x=>x.id===billeteraId); if(!b) return;
   let movs=CJ_MOV.filter(m=>m.billetera_id===billeteraId||m.billetera_destino_id===billeteraId);
-  let entTotal=0,salTotal=0;
+  let entTotal=0,salTotal=0,entV=0,salV=0;
   movs.forEach(function(m){
-    const gs=m.monto_gs?parseFloat(m.monto_gs):cjEnGs(m.monto,m.moneda,m.cotizacion);
-    if(m.tipo==='entrada') entTotal+=gs; else if(m.tipo==='salida') salTotal+=gs;
+    const x=cjExtMon(m,b), gs=x.gs;
+    if(m.tipo==='entrada'){ entTotal+=gs; entV+=x.v; } else if(m.tipo==='salida'){ salTotal+=gs; salV+=x.v; }
   });
   const cats=[...new Set(movs.map(function(m){return m.categoria_id;}).filter(Boolean))];
   const catOpts='<option value="">Todas las categorias</option>'+cats.map(function(id){
@@ -19744,9 +19756,9 @@ function cjExtracto(billeteraId){
     +'<input class="inp" id="extm-buscar" placeholder="Buscar..." style="flex:1;min-width:140px;" oninput="cjExtractoFiltrar('+billeteraId+')">'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:13px;">'
-    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">ENTRADAS</div><div style="font-size:16px;font-weight:800;color:var(--green);">Gs '+fmtNum(entTotal)+'</div></div>'
-    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">SALIDAS</div><div style="font-size:16px;font-weight:800;color:var(--red);">Gs '+fmtNum(salTotal)+'</div></div>'
-    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">BALANCE</div><div style="font-size:16px;font-weight:800;color:'+(entTotal-salTotal>=0?'var(--cyan)':'var(--red)')+';">Gs '+fmtNum(entTotal-salTotal)+'</div></div>'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">ENTRADAS</div><div style="font-size:16px;font-weight:800;color:var(--green);">'+cjExtFmt(entV,entTotal,b,true)+'</div></div>'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">SALIDAS</div><div style="font-size:16px;font-weight:800;color:var(--red);">'+cjExtFmt(salV,salTotal,b,true)+'</div></div>'
+    +'<div class="card" style="padding:10px;"><div style="font-size:10px;color:var(--t3);">BALANCE</div><div style="font-size:16px;font-weight:800;color:'+(entTotal-salTotal>=0?'var(--cyan)':'var(--red)')+';">'+cjExtFmt(entV-salV,entTotal-salTotal,b,true)+'</div></div>'
     +'</div><div id="extm-lista"></div>';
   invModal('Extracto: '+b.nombre, html, null);
   setTimeout(function(){cjExtractoFiltrar(billeteraId);},100);
@@ -19780,12 +19792,12 @@ function cjExtractoFiltrar(billeteraId){
     const esTr=m.tipo==='transferencia',esEnt=m.tipo==='entrada';
     const col=esTr?'var(--cyan)':(esEnt?'var(--green)':'var(--red)');
     const sig=esTr?'\u21C4':(esEnt?'+':'\u2212');
-    const gs=m.monto_gs?parseFloat(m.monto_gs):cjEnGs(m.monto,m.moneda,m.cotizacion);
+    const _bx=CJ_BILL.find(function(x){return x.id===billeteraId;}), _xm=cjExtMon(m,_bx), gs=_xm.gs;
     return '<div class="cj-mov">'
       +'<div class="cj-mov-i" style="background:rgba(255,255,255,.07);color:'+col+'">'+sig+'</div>'
       +'<div class="cj-mov-c"><div class="cj-mov-t">'+(m.concepto||(cat?cat.nombre:'Sin concepto'))+'</div>'
       +'<div class="cj-mov-s">'+new Date(m.fecha+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'})+(cat?' - '+cat.nombre:'')+'</div></div>'
-      +'<div class="cj-mov-m" style="color:'+col+'">'+sig+' Gs '+fmtNum(gs)+'</div></div>';
+      +'<div class="cj-mov-m" style="color:'+col+';text-align:right;">'+(_bx&&_bx.moneda!=='PYG'?sig+' '+cjMonto(_xm.v,_bx.moneda)+'<div style="font-size:10.5px;font-weight:500;color:var(--t3);">\u2248 Gs '+fmtNum(Math.round(gs))+'</div>':sig+' Gs '+fmtNum(gs))+'</div></div>';
   }).join('');
 }
 
