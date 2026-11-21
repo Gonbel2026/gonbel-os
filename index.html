@@ -12587,6 +12587,9 @@ function cjBillMesHTML(b){
 const GS_EXCLUIR = /retiro personal/i; // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
 function gsEsGasto(m){
   if(m.tipo !== 'salida') return false;
+  // Lo que se carga en las tarjetas / pendientes de pago (Continental TC, Mercado Pago, Nubank TC) no es gasto de la empresa (Lucas 21/11)
+  const bill = (CJ_BILL||[]).find(x=>x.id===m.billetera_id);
+  if(bill && bill.tipo === 'tarjeta') return false;
   const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id);
   return !(cat && GS_EXCLUIR.test(cat.nombre));
 }
