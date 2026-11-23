@@ -12567,6 +12567,13 @@ async function cjBdDescartar(id){
   } catch(e){ showToast('No se pudo descartar','error'); }
 }
 
+// Transferencia: lo que entra a la cuenta destino, en SU moneda (Lucas 23/11: BASA Gs -> Nubank TC R$)
+function cjTrDest(m, b){
+  if(m.monto_destino != null && m.monto_destino !== '') return parseFloat(m.monto_destino) || 0;
+  if(!b || b.moneda === m.moneda) return parseFloat(m.monto) || 0;
+  const gs = m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion);
+  return gs / (cjEnGs(1, b.moneda) || 1);
+}
 // El saldo sale del inicial mas todo lo que entro menos lo que salio
 function cjSaldo(billeteraId){
   const b = CJ_BILL.find(x=>x.id === billeteraId);
@@ -12576,7 +12583,7 @@ function cjSaldo(billeteraId){
     const monto = parseFloat(m.monto)||0;
     if(m.tipo === 'transferencia'){
       if(m.billetera_id === billeteraId) s -= monto;
-      if(m.billetera_destino_id === billeteraId) s += monto;
+      if(m.billetera_destino_id === billeteraId) s += cjTrDest(m, b);
     } else if(m.billetera_id === billeteraId){
       s += (m.tipo === 'entrada' ? monto : -monto);
     }
@@ -13057,25 +13064,46 @@ document.addEventListener('click', e=>{
   if(!e.target.closest('#cm-tercero-wrap')){ document.getElementById('cm-tercero-dd')?.classList.remove('on'); }
 });
 
+// Muestra/oculta categoría y "monto que entra" según destino y moneda
+function cjTrUI(){
+  const g = k => document.getElementById('cm-'+k);
+  const tc = g('paga-tc'), destSel = tc && tc.value ? tc : g('dest');
+  if(g('cat-wrap')) g('cat-wrap').style.display = (tc && tc.value) ? 'none' : '';
+  const w = g('mdest-wrap'); if(!w) return;
+  const dest = destSel && destSel.value ? CJ_BILL.find(b=>b.id===parseInt(destSel.value,10)) : null;
+  const mon = g('moneda') ? g('moneda').value : 'PYG';
+  const ver = !!(dest && dest.moneda !== mon);
+  w.style.display = ver ? '' : 'none';
+  if(ver && g('mdest-lbl')) g('mdest-lbl').textContent = 'Monto que entra a ' + dest.nombre + ' (' + dest.moneda + ')';
+}
+
 function cjEditarMov(id, tipoNuevo){
   const m = id ? CJ_MOV.find(x=>x.id===id) : null;
-  const tipo = m ? m.tipo : (tipoNuevo || 'salida');
-  const esTr = tipo === 'transferencia';
+  let tipo = m ? m.tipo : (tipoNuevo || 'salida');
+  // Salida "Pago de tarjeta" (Lucas 23/11): se guarda como transferencia a la tarjeta, no es gasto
+  const tarjetas = CJ_BILL.filter(b=>b.activa!==false && b.tipo==='tarjeta');
+  const esTrOrig = tipo === 'transferencia';
+  const destTarjeta = esTrOrig && m && tarjetas.some(t=>t.id===m.billetera_destino_id);
+  const esSalidaUI = tipo === 'salida' || (destTarjeta && !tipoNuevo && m && m.origen === 'pago_tarjeta');
+  const esTr = tipo === 'transferencia' && !esSalidaUI;
   const v = (k,d) => (m && m[k] != null) ? String(m[k]).replace(/"/g,'&quot;') : (d||'');
   const cats = CJ_CAT.filter(c=>c.tipo === (tipo === 'entrada' ? 'entrada' : 'salida'));
 
   const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">'
     + '<div><label class="lbl">Fecha</label><input class="inp" type="date" id="cm-fecha" value="' + (m ? m.fecha : new Date().toISOString().slice(0,10)) + '"></div>'
+    + (esSalidaUI && tarjetas.length ? '<div style="grid-column:1/-1;"><label class="lbl">Tipo de salida</label><select class="inp" id="cm-paga-tc" onchange="cjTrUI()"><option value="">Gasto / pago normal</option>'
+        + tarjetas.map(t=>'<option value="' + t.id + '"' + (m && m.tipo==='transferencia' && m.billetera_destino_id===t.id ? ' selected' : '') + '>\uD83D\uDCB3 Pago de tarjeta \u2192 ' + t.nombre + ' (' + t.moneda + ')</option>').join('') + '</select></div>' : '')
     + '<div><label class="lbl">' + (esTr ? 'Sale de' : 'Billetera') + '</label><select class="inp" id="cm-bill">'
       + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="' + b.id + '"' + (m && m.billetera_id===b.id?' selected':'') + '>' + b.nombre + ' (' + b.moneda + ')</option>').join('') + '</select></div>'
     + (esTr
-        ? '<div><label class="lbl">Entra a</label><select class="inp" id="cm-dest">'
+        ? '<div><label class="lbl">Entra a</label><select class="inp" id="cm-dest" onchange="cjTrUI()">'
           + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="' + b.id + '"' + (m && m.billetera_destino_id===b.id?' selected':'') + '>' + b.nombre + ' (' + b.moneda + ')</option>').join('') + '</select></div>'
-        : '<div><label class="lbl">Categor\u00eda</label><select class="inp" id="cm-cat">'
+        : '<div id="cm-cat-wrap"><label class="lbl">Categor\u00eda</label><select class="inp" id="cm-cat">'
           + cats.map(c=>'<option value="' + c.id + '"' + (m && m.categoria_id===c.id?' selected':'') + '>' + c.nombre + '</option>').join('') + '</select></div>')
     + '<div><label class="lbl">Monto</label><input class="inp" type="number" step="0.01" id="cm-monto" value="' + v('monto') + '"></div>'
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cm-moneda">'
       + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + ((m?m.moneda:'PYG')===x?' selected':'') + '>' + x + '</option>').join('') + '</select></div>'
+    + '<div id="cm-mdest-wrap" style="grid-column:1/-1;display:none;"><label class="lbl" id="cm-mdest-lbl">Monto que entra</label><input class="inp" type="number" step="0.01" id="cm-mdest" value="' + v('monto_destino') + '" placeholder="Si lo dej\u00e1s vac\u00edo, se calcula con la cotizaci\u00f3n"></div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="cm-concepto" value="' + v('concepto') + '" placeholder="Ej: pago de mercader\u00eda del #P053"></div>'
     + '<div style="position:relative;" id="cm-pedido-wrap"><label class="lbl">Pedido (opcional)</label>'
       + '<input class="inp" id="cm-pedido" autocomplete="off" value="' + v('pedido_numero') + '" placeholder="#P053" oninput="cjBuscarPedidoMov(this.value,true)" onfocus="cjBuscarPedidoMov(this.value,false)">'
@@ -13090,7 +13118,8 @@ function cjEditarMov(id, tipoNuevo){
     + '</div>';
 
   const titulos = {entrada:'\u2193 Entrada de dinero', salida:'\u2191 Salida de dinero', transferencia:'\u21C4 Transferencia entre billeteras'};
-  invModal(id ? 'Editar movimiento' : titulos[tipo], html + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="cjBorrarMov(' + m.id + ')">\uD83D\uDDD1\uFE0F Borrar este movimiento</button></div>' : ''), async ()=>{
+  setTimeout(()=>{ try { const mo=document.getElementById('cm-moneda'); if(mo) mo.addEventListener('change', cjTrUI); cjTrUI(); } catch(e){} }, 30);
+  invModal(id ? 'Editar movimiento' : titulos[esSalidaUI ? 'salida' : tipo], html + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="cjBorrarMov(' + m.id + ')">\uD83D\uDDD1\uFE0F Borrar este movimiento</button></div>' : ''), async ()=>{
     const g = k => document.getElementById('cm-'+k);
     const monto = parseFloat(g('monto').value);
     if(!monto || monto <= 0){ showToast('Falta el monto','error'); return false; }
@@ -13100,12 +13129,19 @@ function cjEditarMov(id, tipoNuevo){
     const pedidoOid = pedidoOidEl && pedidoOidEl.value ? parseInt(pedidoOidEl.value,10) : null;
     const terceroCidEl = document.getElementById('cm-tercero-cid');
     const terceroCid = terceroCidEl && terceroCidEl.value ? parseInt(terceroCidEl.value,10) : null;
+    const pagaTc = g('paga-tc') ? (parseInt(g('paga-tc').value,10) || null) : null;
+    const tipoG = pagaTc ? 'transferencia' : (esSalidaUI ? 'salida' : tipo);
+    const destId = pagaTc || (esTr ? (parseInt(g('dest').value,10) || null) : null);
+    if(tipoG === 'transferencia' && destId && destId === (parseInt(g('bill').value,10)||null)){ showToast('La cuenta de origen y destino es la misma','error'); return false; }
+    const mdRaw = g('mdest') && g('mdest').closest('#cm-mdest-wrap').style.display !== 'none' ? parseFloat(g('mdest').value) : NaN;
     const datos = {
       fecha: g('fecha').value,
-      tipo,
+      tipo: tipoG,
+      origen: pagaTc ? 'pago_tarjeta' : (m ? (m.origen === 'pago_tarjeta' ? null : m.origen) : null),
       billetera_id: parseInt(g('bill').value,10) || null,
-      billetera_destino_id: esTr ? (parseInt(g('dest').value,10) || null) : null,
-      categoria_id: esTr ? null : (parseInt(g('cat').value,10) || null),
+      billetera_destino_id: tipoG === 'transferencia' ? destId : null,
+      monto_destino: tipoG === 'transferencia' && mdRaw > 0 ? mdRaw : null,
+      categoria_id: tipoG === 'transferencia' ? null : (parseInt(g('cat').value,10) || null),
       monto,
       moneda,
       cotizacion: moneda === 'PYG' ? null : cot,
@@ -19768,9 +19804,16 @@ function alertaSinCosto(){
 function cjExtMon(m, b){
   const gs = m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion);
   if(!b || b.moneda === 'PYG') return {v: gs, gs: gs};
+  if(m.tipo === 'transferencia' && m.billetera_destino_id === b.id) return {v: cjTrDest(m, b), gs: gs};
   if(m.moneda === b.moneda) return {v: Math.abs(parseFloat(m.monto)||0), gs: gs};
   const tasa = cjEnGs(1, b.moneda) || 1;
   return {v: gs / tasa, gs: gs};
+}
+// Borrar desde el extracto (Lucas 23/11: "no tengo cómo borrar")
+async function cjExtBorrar(id, billeteraId){
+  if(!confirm('¿Borrar este movimiento? No se puede deshacer.')) return;
+  try { await sbFetch('/rest/v1/fin_movimientos?id=eq.' + id, 'DELETE'); await cjCargar(); cjExtractoFiltrar(billeteraId); showToast('Movimiento borrado','success'); }
+  catch(e){ showToast('No se pudo borrar','error'); }
 }
 function cjExtFmt(v, gs, b, grande){
   if(!b || b.moneda === 'PYG') return 'Gs ' + fmtNum(Math.round(gs));
@@ -19838,7 +19881,8 @@ function cjExtractoFiltrar(billeteraId){
       +'<div class="cj-mov-i" style="background:rgba(255,255,255,.07);color:'+col+'">'+sig+'</div>'
       +'<div class="cj-mov-c"><div class="cj-mov-t">'+(m.concepto||(cat?cat.nombre:'Sin concepto'))+'</div>'
       +'<div class="cj-mov-s">'+new Date(m.fecha+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'})+(cat?' - '+cat.nombre:'')+'</div></div>'
-      +'<div class="cj-mov-m" style="color:'+col+';text-align:right;">'+(_bx&&_bx.moneda!=='PYG'?sig+' '+cjMonto(_xm.v,_bx.moneda)+'<div style="font-size:10.5px;font-weight:500;color:var(--t3);">\u2248 Gs '+fmtNum(Math.round(gs))+'</div>':sig+' Gs '+fmtNum(gs))+'</div></div>';
+      +'<div class="cj-mov-m" style="color:'+col+';text-align:right;">'+(_bx&&_bx.moneda!=='PYG'?sig+' '+cjMonto(_xm.v,_bx.moneda)+'<div style="font-size:10.5px;font-weight:500;color:var(--t3);">\u2248 Gs '+fmtNum(Math.round(gs))+'</div>':sig+' Gs '+fmtNum(gs))+'</div>'
+      +'<div style="display:flex;gap:5px;margin-left:6px;"><button class="inv-b" title="Editar" onclick="invCerrarModal();cjEditarMov('+m.id+')">\u270E</button><button class="inv-b" title="Borrar" style="color:var(--red)" onclick="cjExtBorrar('+m.id+','+billeteraId+')">\u2715</button></div></div>';
   }).join('');
 }
 
