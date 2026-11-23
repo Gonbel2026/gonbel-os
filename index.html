@@ -19772,12 +19772,6 @@ function cjExtMon(m, b){
   const tasa = cjEnGs(1, b.moneda) || 1;
   return {v: gs / tasa, gs: gs};
 }
-// Borrar desde el extracto (Lucas 23/11: "no tengo cómo borrar")
-async function cjExtBorrar(id, billeteraId){
-  if(!confirm('¿Borrar este movimiento? No se puede deshacer.')) return;
-  try { await sbFetch('/rest/v1/fin_movimientos?id=eq.' + id, 'DELETE'); await cjCargar(); cjExtractoFiltrar(billeteraId); showToast('Movimiento borrado','success'); }
-  catch(e){ showToast('No se pudo borrar','error'); }
-}
 function cjExtFmt(v, gs, b, grande){
   if(!b || b.moneda === 'PYG') return 'Gs ' + fmtNum(Math.round(gs));
   return cjMonto(v, b.moneda) + ' <span style="font-size:' + (grande?'11px':'10.5px') + ';font-weight:500;color:var(--t3);white-space:nowrap;">\u2248 Gs ' + fmtNum(Math.round(gs)) + '</span>';
@@ -19844,8 +19838,7 @@ function cjExtractoFiltrar(billeteraId){
       +'<div class="cj-mov-i" style="background:rgba(255,255,255,.07);color:'+col+'">'+sig+'</div>'
       +'<div class="cj-mov-c"><div class="cj-mov-t">'+(m.concepto||(cat?cat.nombre:'Sin concepto'))+'</div>'
       +'<div class="cj-mov-s">'+new Date(m.fecha+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'2-digit'})+(cat?' - '+cat.nombre:'')+'</div></div>'
-      +'<div class="cj-mov-m" style="color:'+col+';text-align:right;">'+(_bx&&_bx.moneda!=='PYG'?sig+' '+cjMonto(_xm.v,_bx.moneda)+'<div style="font-size:10.5px;font-weight:500;color:var(--t3);">\u2248 Gs '+fmtNum(Math.round(gs))+'</div>':sig+' Gs '+fmtNum(gs))+'</div>'
-      +'<div style="display:flex;gap:5px;margin-left:6px;"><button class="inv-b" title="Editar" onclick="invCerrarModal();cjEditarMov('+m.id+')">\u270E</button><button class="inv-b" title="Borrar" style="color:var(--red)" onclick="cjExtBorrar('+m.id+','+billeteraId+')">\u2715</button></div></div>';
+      +'<div class="cj-mov-m" style="color:'+col+';text-align:right;">'+(_bx&&_bx.moneda!=='PYG'?sig+' '+cjMonto(_xm.v,_bx.moneda)+'<div style="font-size:10.5px;font-weight:500;color:var(--t3);">\u2248 Gs '+fmtNum(Math.round(gs))+'</div>':sig+' Gs '+fmtNum(gs))+'</div></div>';
   }).join('');
 }
 
