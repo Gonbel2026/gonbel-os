@@ -12721,14 +12721,15 @@ function cjBillMes(id){
 function cjMill(v){ return v >= 1e6 ? (Math.round(v/1e5)/10).toLocaleString('es-PY') + ' M' : fmtNum(Math.round(v)); }
 function cjBillMesHTML(b){
   const r = cjBillMes(b.id), lim = parseFloat(b.limite_mensual) || 0;
+  const usado = lim ? r.ent : r.tot; // Lucas 23/11: el límite mensual cuenta SOLO lo que entra
   const mesN = new Date().toLocaleDateString('es-PY',{month:'long'});
   let h = '<div style="margin-top:8px;padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.04);">'
-    + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);"><span>Movido en ' + mesN + '</span><b style="color:var(--t1);font-size:12px;">Gs ' + cjMill(r.tot) + (lim ? ' <span style="color:var(--t3);font-weight:600;">/ ' + cjMill(lim) + '</span>' : '') + '</b></div>';
+    + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);"><span>' + (lim ? 'Entr\u00f3 en ' : 'Movido en ') + mesN + '</span><b style="color:var(--t1);font-size:12px;">Gs ' + cjMill(usado) + (lim ? ' <span style="color:var(--t3);font-weight:600;">/ ' + cjMill(lim) + '</span>' : '') + '</b></div>';
   if(lim){
-    const pct = Math.min(100, Math.round(r.tot / lim * 100));
+    const pct = Math.min(100, Math.round(usado / lim * 100));
     const col = pct >= 90 ? 'var(--red)' : (pct >= 70 ? 'var(--amber)' : 'var(--green)');
     h += '<div style="height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';"></div></div>'
-      + '<div style="font-size:10px;color:' + col + ';margin-top:3px;">' + pct + '% del l\u00edmite \u00b7 quedan Gs ' + cjMill(Math.max(0, lim - r.tot)) + '</div>';
+      + '<div style="font-size:10px;color:' + col + ';margin-top:3px;">' + pct + '% del l\u00edmite \u00b7 quedan Gs ' + cjMill(Math.max(0, lim - usado)) + '</div>';
   }
   if(r.tot) h += '<div style="font-size:10px;color:var(--t3);margin-top:2px;">\u2193 entr\u00f3 ' + cjMill(r.ent) + ' \u00b7 \u2191 sali\u00f3 ' + cjMill(r.sal) + '</div>';
   return h + '</div>';
