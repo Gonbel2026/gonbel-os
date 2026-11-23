@@ -11695,8 +11695,8 @@ function dvToggle(i){
   const b = document.getElementById('dv-box-'+i); if(b) b.style.display = on ? 'grid' : 'none';
 }
 function dvVolviAComprar(orderId){
-  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o) return;
-  let items = []; try { items = JSON.parse(o.piezas_items||'[]'); } catch(e){}
+  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o){ showToast('No encontré el pedido — recargá la página','error'); return; }
+  let items = []; try { items = typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items||'[]') : (o.piezas_items||[]); } catch(e){}
   if(!items.length){ showToast('Este pedido no tiene piezas cargadas','error'); return; }
   const sel = (id, opts, v) => '<select class="inp" id="'+id+'">' + opts.map(x=>'<option value="'+x[0]+'"'+(x[0]===v?' selected':'')+'>'+x[1]+'</option>').join('') + '</select>';
   const html = '<div style="font-size:13px;color:var(--t2);margin-bottom:13px;line-height:1.5;">Marcá las piezas que volviste a comprar y cargá de dónde y cuánto costó. Pegá el link o el número de compra: Mercado Livre, eBay, AliExpress y Alibaba se reconocen solos. La compra anterior queda guardada en el registro de la pieza.</div>'
@@ -11756,6 +11756,46 @@ function dvVolviAComprar(orderId){
       try { logHistory(o.id, '🔁 Devolución resuelta: se volvió a comprar ' + cambios + ' pieza(s)'); } catch(e){}
       renderDevoluciones(); try { renderKanban(); } catch(e){} try { avPintarPanel(); } catch(e){}
       showToast('✓ Recompra registrada — el pedido volvió a Comprado','success');
+      return true;
+    } catch(e){ showToast('No se pudo guardar','error'); return false; }
+  });
+}
+
+// ══════ 💰 REEMBOLSO de una devolución (Lucas 23/11: el botón no hacía nada porque faltaba esta función) ══════
+// Se marcan las piezas que se reembolsaron (no se vuelven a comprar): su costo sale del pedido y queda guardado.
+function devRegistrarReembolso(orderId){
+  const o = (orders||[]).find(x=>String(x.id)===String(orderId)); if(!o){ showToast('No encontré el pedido','error'); return; }
+  let items = []; try { items = typeof o.piezas_items === 'string' ? JSON.parse(o.piezas_items||'[]') : (o.piezas_items||[]); } catch(e){}
+  if(!items.length){ showToast('Este pedido no tiene piezas cargadas','error'); return; }
+  const html = '<div style="font-size:13px;color:var(--t2);margin-bottom:13px;line-height:1.5;">Marcá las piezas cuya plata ya te devolvieron (no se vuelven a comprar). Su costo sale del pedido y queda anotado en el registro de la pieza.</div>'
+    + items.map((it,i)=>'<label style="display:flex;gap:9px;align-items:center;cursor:pointer;border:1px solid var(--brd);border-radius:11px;padding:10px 12px;margin-bottom:8px;font-size:13.5px;color:var(--t1);font-weight:700;">'
+        + '<input type="checkbox" id="rb-chk-'+i+'" '+(it.dev?'checked':'')+' style="width:17px;height:17px;"> '+avEsc(it.d||'Pieza')
+        + '<span style="font-weight:500;font-size:11.5px;color:var(--t3);">'+(it.cb?' · costo Gs '+fmtNum(it.cb):'')+(it.dev_motivo?' · '+avEsc(it.dev_motivo):'')+'</span></label>').join('')
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">'
+      + '<div><label class="lbl">Después del reembolso, el pedido pasa a</label><select class="inp" id="rb-estado"><option value="comprado">\uD83D\uDED2 Comprado (siguen otras piezas)</option><option value="entregado">\uD83D\uDCE6 Entregado</option><option value="devolucion">Quedarse en Devoluciones</option></select></div>'
+      + '<div><label class="lbl">Nota (opcional)</label><input class="inp" id="rb-nota" placeholder="Ej: ML devolvió R$ 345 a Mercado Pago"></div>'
+    + '</div>';
+  invModal('\uD83D\uDCB0 Reembolso · ' + (o.numero_pedido || ('#'+o.id)), html, async ()=>{
+    const ahora = new Date().toISOString(); let n = 0, quitado = 0;
+    const nota = (document.getElementById('rb-nota').value||'').trim();
+    items.forEach((it,i)=>{
+      if(!(document.getElementById('rb-chk-'+i)||{}).checked) return;
+      const cb = parseFloat(it.cb)||0; quitado += cb;
+      Object.assign(it, {costo_quitado_gs: cb || it.costo_quitado_gs || null, cb_antes: cb || it.cb_antes || null, cb: 0, reemb: true, reembEstado: 'pagado', freemb: ahora,
+        est: 'Reembolsado — no se vuelve a comprar', reemb_nota: nota || it.reemb_nota || null});
+      n++;
+    });
+    if(!n){ showToast('Marcá al menos una pieza','error'); return false; }
+    const est = document.getElementById('rb-estado').value;
+    const patch = { piezas_items: JSON.stringify(items), devolucion_resultado: 'reembolsado', devolucion_resuelta_en: ahora,
+      precio_costo: Math.max(0, Math.round((parseFloat(o.precio_costo)||0) - quitado)) };
+    if(est !== 'devolucion'){ patch.estado = est; patch.devolucion_descartada = true; }
+    try {
+      await sbFetch('/rest/v1/orders?id=eq.' + o.id, 'PATCH', patch);
+      Object.assign(o, patch);
+      try { logHistory(o.id, '\uD83D\uDCB0 Reembolso registrado: ' + n + ' pieza(s), costo quitado Gs ' + fmtNum(Math.round(quitado)) + (nota ? ' · ' + nota : '')); } catch(e){}
+      try { renderDevoluciones(); } catch(e){} try { renderKanban(); } catch(e){} try { avRefrescar(); } catch(e){} try { miDiaPintar(); } catch(e){}
+      showToast('\u2713 Reembolso registrado','success');
       return true;
     } catch(e){ showToast('No se pudo guardar','error'); return false; }
   });
@@ -15345,6 +15385,7 @@ function mdAccionesAviso(o, a){
   if(a.tipo==='devolucion'){
     b.push(`<button type="button" onclick="event.stopPropagation();devFecha(${id})" title="Fecha límite para devolver">📅 ${o.devolucion_limite ? new Date(o.devolucion_limite+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit'}) : 'Fecha'}</button>`);
     b.push(`<button type="button" onclick="event.stopPropagation();dvVolviAComprar(${id})">🔁 Volví a comprar</button>`);
+    b.push(`<button type="button" onclick="event.stopPropagation();devRegistrarReembolso(${id})">💰 Reembolso</button>`);
     b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdDevResuelta(${id})">✓ Resuelta</button>`);
   }
   if((a.tipo==='envio' || a.tipo==='vencido') && a.idx != null) b.push(`<button type="button" class="ok" onclick="event.stopPropagation();mdAvisoOk(${id},${a.idx},'${a.tipo}')" title="Ya lo revisé / ya se resolvió">✓ Listo</button>`);
