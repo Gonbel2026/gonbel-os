@@ -12736,7 +12736,7 @@ function cjBillMesHTML(b){
 
 // ══════ GASTOS (pestaña nueva, Lucas 18/11) ══════
 // Pagos fijos (fin_cuentas tipo pagar) + gastos variables de la empresa (salidas de Caja que no son mercadería ni retiro personal).
-const GS_EXCLUIR = /retiro personal|devoluci(?:ó|o|\\u00f3)n a cliente/i; // Lucas 23/11: devolver plata a un cliente no es gasto // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
+const GS_EXCLUIR = /retiro personal/i; // Lucas 23/11: la devolución a cliente SÍ es gasto (pérdida), agrupada como DEVOLUCIÓN // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
 function gsEsGasto(m){
   if(m.tipo !== 'salida') return false;
   // Lo que se carga en las tarjetas / pendientes de pago (Continental TC, Mercado Pago, Nubank TC) no es gasto de la empresa (Lucas 21/11)
@@ -12763,7 +12763,7 @@ function gsGrupoDe(nombre){
   const f = (GS_FIJOS||[]).find(x=>{ const fk = gsClave(x); return k === fk || k.startsWith(fk + ' '); });
   return f || String(nombre||'').trim();
 }
-function gsNombreMov(m){ return gsGrupoDe(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre || 'Gasto'); }
+function gsNombreMov(m){ if(typeof cjEsCatDev === 'function' && cjEsCatDev(m.categoria_id)) return 'DEVOLUCIÓN'; return gsGrupoDe(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre || 'Gasto'); }
 async function gsFijarToggle(kEsc){
   const k = decodeURIComponent(kEsc);
   if(GS_FIJOS === null) await gsFijosCargar();
@@ -12821,7 +12821,7 @@ function gsPintar(){
         + (abierto ? '<div style="border-top:1px solid var(--brd);padding:6px 12px 10px;">'
           + g.movs.map(m=>{ const b=(CJ_BILL||[]).find(x=>x.id===m.billetera_id);
               return '<div onclick="cjEditarMov('+m.id+')" style="display:flex;justify-content:space-between;gap:10px;padding:6px 4px;font-size:12px;cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.05);">'
-                + '<span style="color:var(--t2);">'+fd(m.fecha)+(b?' <span style="color:var(--t3);">· '+avEsc(b.nombre)+'</span>':'')+(m.notas?' <span style="color:var(--t3);">· '+avEsc(m.notas)+'</span>':'')+'</span>'
+                + '<span style="color:var(--t2);">'+fd(m.fecha)+(m.pedido_numero?' <b style="color:var(--t1);">'+avEsc(m.pedido_numero)+'</b>':'')+(g.k==='devolucion'&&m.concepto?' <span style="color:var(--t3);">· '+avEsc(m.concepto)+'</span>':'')+(b?' <span style="color:var(--t3);">· '+avEsc(b.nombre)+'</span>':'')+(m.notas?' <span style="color:var(--t3);">· '+avEsc(m.notas)+'</span>':'')+'</span>'
                 + '<span style="white-space:nowrap;"><b style="font-family:\'Space Grotesk\',sans-serif;">Gs '+fmtNum(Math.round(gsMontoGs(m)))+'</b>'+'<button type="button" title="Borrar" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 2px;margin-left:6px;" onclick="event.stopPropagation();cjBorrarMov('+m.id+')">🗑️</button></span></div>'; }).join('')
           + '<button type="button" class="btn btn-ghost" style="margin-top:8px;font-size:11.5px;padding:5px 12px;" onclick="gsAgregarA(\''+kEsc+'\')">+ Agregar pago a '+avEsc(g.nombre)+'</button>'
           + '</div>' : '')
