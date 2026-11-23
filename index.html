@@ -2580,7 +2580,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
         <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:20px;padding:22px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <h3 style="font-size:13px;font-weight:700;">🧾 Gastos de la empresa</h3>
-            <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gsNuevoGasto()">+ Registrar gasto</button>
+            <div style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:6px 12px;font-size:11px;" title="Crear un gasto que queda siempre a la vista" onclick="gsNuevoFijo()">📌 Nuevo fijo</button><button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="gsNuevoGasto()">+ Registrar gasto</button></div>
           </div>
           <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Toda salida de Caja de la empresa aparece acá (mercadería, fletes, CDE Box, cinta, cajas, combustible…). Lo cargado como "Retiro personal" no.</div>
           <div id="gs-lista" style="display:flex;flex-direction:column;gap:7px;"></div>
@@ -12749,9 +12749,40 @@ function gsNuevoGasto(){
   if(!(CJ_CAT||[]).length || !(CJ_BILL||[]).length){ cjCargar().then(()=>cjEditarMov(null,'salida')); return; }
   cjEditarMov(null, 'salida');
 }
+// Gastos fijos (Lucas 23/11): grupos que quedan siempre a la vista (Combustible, Ranulfo flete, Cambio PIX...)
+// Todo concepto que empieza con el nombre del grupo cae adentro ("COMBUSTIBLE LUNES" -> Combustible).
+let GS_FIJOS = null;
+async function gsFijosCargar(){
+  try { const r = await sbFetch('/rest/v1/tienda_config?clave=eq.gastos_fijos&select=valor'); GS_FIJOS = (r && r[0] && JSON.parse(r[0].valor||'[]')) || []; } catch(e){ GS_FIJOS = []; }
+}
+async function gsFijosGuardar(){
+  try { await sbFetch('/rest/v1/tienda_config', 'POST', {clave:'gastos_fijos', valor:JSON.stringify(GS_FIJOS||[]), updated_at:new Date().toISOString()}, {'Prefer':'resolution=merge-duplicates'}); } catch(e){ showToast('No se pudo guardar','error'); }
+}
+function gsGrupoDe(nombre){
+  const k = gsClave(nombre);
+  const f = (GS_FIJOS||[]).find(x=>{ const fk = gsClave(x); return k === fk || k.startsWith(fk + ' '); });
+  return f || String(nombre||'').trim();
+}
+function gsNombreMov(m){ return gsGrupoDe(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre || 'Gasto'); }
+async function gsFijarToggle(kEsc){
+  const k = decodeURIComponent(kEsc);
+  if(GS_FIJOS === null) await gsFijosCargar();
+  const i = GS_FIJOS.findIndex(x=>gsClave(x)===k);
+  if(i >= 0){ if(!confirm('\u00bfSacar "' + GS_FIJOS[i] + '" de los gastos fijos? Los pagos no se borran.')) return; GS_FIJOS.splice(i,1); }
+  else { const mov = (CJ_MOV||[]).find(m=>gsClave(gsNombreMov(m))===k); GS_FIJOS.push(mov ? gsNombreMov(mov) : k.toUpperCase()); }
+  await gsFijosGuardar(); gsPintar();
+}
+async function gsNuevoFijo(){
+  const n = (prompt('Nombre del gasto fijo (ej: RANULFO FLETE)') || '').trim();
+  if(!n) return;
+  if(GS_FIJOS === null) await gsFijosCargar();
+  if(!GS_FIJOS.some(x=>gsClave(x)===gsClave(n))){ GS_FIJOS.push(n.toUpperCase()); await gsFijosGuardar(); }
+  gsPintar();
+}
 function gsPintar(){
   const lista = document.getElementById('gs-lista'), kp = document.getElementById('gs-kpis');
   if(!lista && !kp) return;
+  if(GS_FIJOS === null){ gsFijosCargar().then(gsPintar); return; }
   const mes = gfMesStr(gfMes);
   const gastos = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m));
   const totVar = gastos.reduce((s,m)=>s+Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)),0);
@@ -12767,12 +12798,13 @@ function gsPintar(){
     const grupos = {};
     gastos.forEach(m=>{
       const cat = (CJ_CAT||[]).find(c=>c.id===m.categoria_id);
-      const nombre = (m.concepto || (cat?cat.nombre:'Gasto')).trim();
+      const nombre = gsNombreMov(m);
       const k = gsClave(nombre);
       if(!grupos[k]) grupos[k] = {k, nombre, cat, movs:[], tot:0};
       grupos[k].movs.push(m); grupos[k].tot += gsMontoGs(m);
     });
-    const arr = Object.values(grupos).sort((a,b)=>b.tot-a.tot);
+    (GS_FIJOS||[]).forEach(f=>{ const k = gsClave(f); if(!grupos[k]) grupos[k] = {k, nombre:f, cat:null, movs:[], tot:0}; grupos[k].fijo = true; });
+    const arr = Object.values(grupos).sort((a,b)=>(b.fijo?1:0)-(a.fijo?1:0) || b.tot-a.tot);
     const fd = f => new Date(f+'T12:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'short'});
     lista.innerHTML = arr.length ? arr.map(g=>{
       g.movs.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
@@ -12780,10 +12812,11 @@ function gsPintar(){
       const kEsc = encodeURIComponent(g.k);
       return '<div style="background:rgba(255,255,255,.03);border:1px solid '+(abierto?'var(--brda)':'var(--brd)')+';border-radius:11px;">'
         + '<div onclick="gsToggle(\''+kEsc+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;">'
-          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+(abierto?'▾ ':'▸ ')+avEsc(g.nombre)+(g.movs.length>1?' <span style="font-size:10.5px;color:var(--cyan);font-weight:700;">· '+g.movs.length+' pagos</span>':'')+'</div>'
-          + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">Último: '+fd(ult.fecha)+(g.cat?' · '+avEsc(g.cat.nombre):'')+'</div></div>'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;">'+(abierto?'▾ ':'▸ ')+(g.fijo?'📌 ':'')+avEsc(g.nombre)+(g.movs.length>1?' <span style="font-size:10.5px;color:var(--cyan);font-weight:700;">· '+g.movs.length+' pagos</span>':'')+'</div>'
+          + '<div style="font-size:10.5px;color:var(--t3);margin-top:2px;">'+(ult?'Último: '+fd(ult.fecha):'Sin pagos este mes')+(g.cat?' · '+avEsc(g.cat.nombre):'')+'</div></div>'
           + '<div style="display:flex;align-items:center;gap:8px;"><div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;">Gs '+fmtNum(Math.round(g.tot))+'</div>'
-          + '<button type="button" class="btn btn-ghost" title="Agregar otro pago a '+avEsc(g.nombre)+'" style="padding:3px 9px;font-size:13px;font-weight:800;" onclick="event.stopPropagation();gsAgregarA(\''+kEsc+'\')">+</button>'+'<button type="button" title="Borrar todo" style="padding:3px 8px;font-size:13px;background:none;border:1px solid var(--brd);border-radius:8px;color:var(--red);cursor:pointer;" onclick="event.stopPropagation();gsBorrarGrupo(\''+kEsc+'\')">🗑️</button></div>'
+          + '<button type="button" class="btn btn-ghost" title="Agregar otro pago a '+avEsc(g.nombre)+'" style="padding:3px 9px;font-size:13px;font-weight:800;" onclick="event.stopPropagation();gsAgregarA(\''+kEsc+'\')">+</button>'
+          + '<button type="button" title="'+(g.fijo?'Sacar de gastos fijos':'Dejar fijo (siempre a la vista)')+'" style="padding:3px 6px;font-size:12px;background:none;border:none;cursor:pointer;opacity:'+(g.fijo?'1':'.45')+';" onclick="event.stopPropagation();gsFijarToggle(\''+kEsc+'\')">📌</button>'+'<button type="button" title="Borrar todo" style="padding:3px 8px;font-size:13px;background:none;border:1px solid var(--brd);border-radius:8px;color:var(--red);cursor:pointer;" onclick="event.stopPropagation();gsBorrarGrupo(\''+kEsc+'\')">🗑️</button></div>'
         + '</div>'
         + (abierto ? '<div style="border-top:1px solid var(--brd);padding:6px 12px 10px;">'
           + g.movs.map(m=>{ const b=(CJ_BILL||[]).find(x=>x.id===m.billetera_id);
@@ -12801,7 +12834,7 @@ function gsClave(t){ return String(t||'').toLowerCase().normalize('NFD').replace
 function gsMontoGs(m){ return Math.abs(m.monto_gs ? parseFloat(m.monto_gs) : cjEnGs(m.monto, m.moneda, m.cotizacion)); }
 async function gsBorrarGrupo(kEsc){
   const k = decodeURIComponent(kEsc), mes = gfMesStr(gfMes);
-  const movs = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m) && gsClave(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre || 'Gasto')===k);
+  const movs = (CJ_MOV||[]).filter(m=>String(m.fecha||'').slice(0,7)===mes && gsEsGasto(m) && gsClave(gsNombreMov(m))===k);
   if(!movs.length) return;
   const tot = movs.reduce((s,m)=>s+gsMontoGs(m),0);
   if(!confirm('¿Borrar "' + (movs[0].concepto||k) + '" completo?\n' + movs.length + ' pago(s) · Gs ' + fmtNum(Math.round(tot)) + '\nTambién sale de Caja.')) return;
@@ -12811,12 +12844,14 @@ function gsToggle(kEsc){ const k = decodeURIComponent(kEsc); GS_ABIERTO.has(k) ?
 // Abre "Registrar gasto" con el mismo concepto, categoría y billetera del último pago de ese grupo
 function gsAgregarA(kEsc){
   const k = decodeURIComponent(kEsc);
-  const prev = (CJ_MOV||[]).filter(m=>m.tipo==='salida' && gsClave(m.concepto || ((CJ_CAT||[]).find(c=>c.id===m.categoria_id)||{}).nombre)===k).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+  const prev = (CJ_MOV||[]).filter(m=>m.tipo==='salida' && gsClave(gsNombreMov(m))===k).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+  const fijo = (GS_FIJOS||[]).find(x=>gsClave(x)===k);
   cjEditarMov(null, 'salida');
-  if(!prev) return;
+  GS_ABIERTO.add(k);
+  if(!prev){ setTimeout(()=>{ const c=document.getElementById('cm-concepto'); if(c && fijo) c.value = fijo; const mo=document.getElementById('cm-monto'); if(mo) mo.focus(); }, 60); return; }
   setTimeout(()=>{
     const set = (id,v)=>{ const el=document.getElementById(id); if(el && v!=null && v!=='') el.value = v; };
-    set('cm-concepto', prev.concepto); set('cm-cat', prev.categoria_id); set('cm-bill', prev.billetera_id); set('cm-moneda', prev.moneda);
+    set('cm-concepto', fijo || gsNombreMov(prev)); set('cm-cat', prev.categoria_id); set('cm-bill', prev.billetera_id); set('cm-moneda', prev.moneda);
     set('cm-tercero', prev.proveedor);
     const mo = document.getElementById('cm-monto'); if(mo) mo.focus();
   }, 60);
@@ -13153,7 +13188,7 @@ function cjEditarMov(id, tipoNuevo){
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cm-moneda">'
       + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + ((m?m.moneda:'PYG')===x?' selected':'') + '>' + x + '</option>').join('') + '</select></div>'
     + '<div id="cm-mdest-wrap" style="grid-column:1/-1;display:none;"><label class="lbl" id="cm-mdest-lbl">Monto que entra</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cm-mdest" value="' + monFmt(m && m.monto_destino) + '" placeholder="Si lo dej\u00e1s vac\u00edo, se calcula con la cotizaci\u00f3n"></div>'
-    + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="cm-concepto" value="' + v('concepto') + '" placeholder="Ej: pago de mercader\u00eda del #P053"></div>'
+    + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="cm-concepto" list="cm-concepto-dl" value="' + v('concepto') + '" placeholder="Ej: pago de mercader\u00eda del #P053"><datalist id="cm-concepto-dl">' + (GS_FIJOS||[]).map(f=>'<option value="' + String(f).replace(/"/g,'&quot;') + '">').join('') + '</datalist></div>'
     + '<div style="position:relative;" id="cm-pedido-wrap"><label class="lbl">Pedido (opcional)</label>'
       + '<input class="inp" id="cm-pedido" autocomplete="off" value="' + v('pedido_numero') + '" placeholder="#P053" oninput="cjBuscarPedidoMov(this.value,true)" onfocus="cjBuscarPedidoMov(this.value,false)">'
       + '<input type="hidden" id="cm-pedido-oid" value="' + (m && m.order_id ? m.order_id : '') + '">'
