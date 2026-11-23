@@ -3410,7 +3410,7 @@ body.role-operador .stat-notif, body.role-ventas .stat-notif{display:block;}
             <input type="checkbox" id="f-flete-req" style="width:17px;height:17px;accent-color:var(--blue);"><span style="font-size:12.5px;font-weight:700;color:var(--blue);">Requiere costo courier al pasar a Listo para Envio</span>
           </label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-            <div><label style="font-size:11px;color:var(--t3);">Costo courier (Gs)</label><input id="f-flete-gs" type="number" min="0" placeholder="0" class="inp" style="margin-top:4px;"></div>
+            <div><label style="font-size:11px;color:var(--t3);">Costo courier (Gs)</label><input id="f-flete-gs" type="text" inputmode="numeric" placeholder="0" class="inp inp-mon" style="margin-top:4px;"></div>
             <div><label style="font-size:11px;color:var(--t3);">Detalle</label><input id="f-flete-nota" type="text" placeholder="Ej: DHL 2.3 kg" class="inp" style="margin-top:4px;"></div>
             <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--t3);">¿De qué cuenta salió el pago del courier? *</label><select id="f-flete-bill" class="inp" style="margin-top:4px;"><option value="">— Elegir cuenta —</option></select></div>
           </div>
@@ -4031,6 +4031,30 @@ function numVal(id){
   const r = (el.value||'').replace(/[^\d]/g,'');
   return r ? parseFloat(r) : null;
 }
+// Lucas 23/11: montos con puntos de miles al escribir (y coma para decimales en R$/USD)
+function monFmt(v){
+  if(v===null || v===undefined || v==='') return '';
+  const n = typeof v === 'number' ? v : parseFloat(String(v)); // valores de la base (punto = decimal)
+  if(isNaN(n)) return '';
+  return n.toLocaleString('de-DE', {maximumFractionDigits: 2});
+}
+function monNum(v){
+  if(typeof v === 'number') return v;
+  const t = String(v||'').trim(); if(!t) return NaN;
+  return parseFloat(t.replace(/\./g,'').replace(',', '.'));
+}
+function fmtMonDec(el){
+  const val = el.value || '', pos = el.selectionStart || val.length;
+  const digAntes = val.slice(0,pos).replace(/[^\d,]/g,'').length;
+  const i = val.indexOf(',');
+  const ent = (i < 0 ? val : val.slice(0,i)).replace(/[^\d]/g,'').replace(/^0+(?=\d)/,'');
+  const dec = i < 0 ? null : val.slice(i+1).replace(/[^\d]/g,'').slice(0,2);
+  const neg = /^\s*-/.test(val) ? '-' : '';
+  el.value = neg + (ent ? Number(ent).toLocaleString('de-DE') : (dec !== null ? '0' : '')) + (dec !== null ? ',' + dec : '');
+  let c = 0, k = neg.length; while(k < el.value.length && c < digAntes){ if(/[\d,]/.test(el.value[k])) c++; k++; }
+  try{ el.setSelectionRange(k,k); }catch(e){}
+}
+document.addEventListener('input', e => { if(e.target && e.target.classList && e.target.classList.contains('inp-mon')) fmtMonDec(e.target); });
 function setMoney(id,v){
   const el = document.getElementById(id); if(!el) return;
   el.value = (v!==null && v!==undefined && v!=='') ? Number(v).toLocaleString('de-DE') : '';
@@ -9312,13 +9336,13 @@ function fleteObligatorioModal(orderId, estadoDestino){
   const o = orders.find(x=>x.id==orderId); if(!o) return;
   const html = '<div style="display:grid;gap:13px;">'
     + '<div class="pg-hint">Este pedido requiere registrar el costo de courier antes de marcarlo como <b>Listo para Env\u00edo</b>.</div>'
-    + '<div class="field"><label class="lbl">Costo courier (Gs) *</label><input class="inp" id="fl-gs" type="number" min="0" placeholder="0" value="' + (o.flete_courier_gs||'') + '"></div>'
+    + '<div class="field"><label class="lbl">Costo courier (Gs) *</label><input class="inp inp-mon" id="fl-gs" type="text" inputmode="numeric" placeholder="0" value="' + monFmt(o.flete_courier_gs||'') + '"></div>'
     + '<div class="field"><label class="lbl">Detalle (opcional)</label><input class="inp" id="fl-nota" placeholder="Ej: DHL 2.3 kg" value="' + (o.flete_courier_nota||'') + '"></div>'
     + '<div class="field"><label class="lbl">\u00bfDe qu\u00e9 cuenta sali\u00f3? *</label><select class="inp" id="fl-bill"><option value="">\u2014 Elegir cuenta \u2014</option></select></div>'
     + '</div>';
   setTimeout(()=>flBillLlenar('fl-bill', o.flete_courier_billetera_id), 30);
   invModal('Costo de courier', html, async () => {
-    const gs = parseFloat(document.getElementById('fl-gs').value)||0;
+    const gs = monNum(document.getElementById('fl-gs').value)||0;
     if(!gs){ showToast('Ingres\u00e1 el costo de courier','error'); return false; }
     const bill = parseInt(document.getElementById('fl-bill').value)||null;
     if(!bill){ showToast('Eleg\u00ed de qu\u00e9 cuenta sali\u00f3 el pago del courier','error'); return false; }
@@ -9594,7 +9618,7 @@ function fillModal(o){
   document.getElementById('f-notas').value = o.notas || '';
   setMoney('f-costo-envio', o.costo_envio);
   const _fr=document.getElementById('f-flete-req'); if(_fr) _fr.checked=!!o.flete_requerido;
-  const _fg=document.getElementById('f-flete-gs'); if(_fg) _fg.value=o.flete_courier_gs||'';
+  const _fg=document.getElementById('f-flete-gs'); if(_fg) _fg.value=monFmt(o.flete_courier_gs||'');
   const _fn=document.getElementById('f-flete-nota'); if(_fn) _fn.value=o.flete_courier_nota||'';
   flBillLlenar('f-flete-bill', o.flete_courier_billetera_id);
   document.getElementById('f-pagado-completo').checked = !!o.pagado_completo;
@@ -11707,7 +11731,7 @@ function dvVolviAComprar(orderId){
         + '<div id="dv-box-'+i+'" style="display:none;grid-template-columns:2fr 1.2fr 1fr .8fr;gap:8px;margin-top:9px;">'
           + '<div><label class="lbl">Link o n° de compra</label><input class="inp" id="dv-ref-'+i+'" placeholder="https://… o 2000…" oninput="dvAutodetectar('+i+')"></div>'
           + '<div><label class="lbl">Dónde se compró</label>' + sel('dv-prov-'+i, DV_PROVS.map(x=>[x,x]), '') + '</div>'
-          + '<div><label class="lbl">Costo</label><input class="inp" id="dv-costo-'+i+'" type="number" step="0.01" min="0" placeholder="0"></div>'
+          + '<div><label class="lbl">Costo</label><input class="inp inp-mon" id="dv-costo-'+i+'" type="text" inputmode="decimal" placeholder="0"></div>'
           + '<div><label class="lbl">Moneda</label>' + sel('dv-mon-'+i, [['brl','R$'],['usd','US$'],['gs','Gs']], 'brl') + '</div>'
         + '</div></div>';
     }).join('');
@@ -11718,7 +11742,7 @@ function dvVolviAComprar(orderId){
       if(!(document.getElementById('dv-chk-'+i)||{}).checked) continue;
       const ref = (document.getElementById('dv-ref-'+i).value||'').trim();
       const prov = document.getElementById('dv-prov-'+i).value;
-      const costo = parseFloat(document.getElementById('dv-costo-'+i).value) || 0;
+      const costo = monNum(document.getElementById('dv-costo-'+i).value) || 0;
       const mon = document.getElementById('dv-mon-'+i).value;
       if(!prov || !(costo > 0)){ showToast('Falta dónde se compró o el costo de: ' + (items[i].d||'pieza'),'error'); return false; }
       const it = items[i];
@@ -11956,8 +11980,8 @@ function invEditar(id){
       + '<option value="reacondicionado"' + sel('condicion','reacondicionado') + '>Reacondicionado</option>'
       + '<option value="danado"' + sel('condicion','danado') + '>Da\u00f1ado</option></select></div>'
     + '<div><label class="lbl">Cantidad</label><input class="inp" id="iv-cant" type="number" min="1" value="' + (v('cantidad') || '1') + '"></div>'
-    + '<div><label class="lbl">Costo (Gs)</label><input class="inp" id="iv-costo" type="number" value="' + v('costo_gs') + '"></div>'
-    + '<div><label class="lbl">Precio de venta (Gs)</label><input class="inp" id="iv-precio" type="number" value="' + v('precio_gs') + '"></div>'
+    + '<div><label class="lbl">Costo (Gs)</label><input class="inp inp-mon" id="iv-costo" type="text" inputmode="numeric" value="' + monFmt(v('costo_gs')) + '"></div>'
+    + '<div><label class="lbl">Precio de venta (Gs)</label><input class="inp inp-mon" id="iv-precio" type="text" inputmode="numeric" value="' + monFmt(v('precio_gs')) + '"></div>'
     + '<div><label class="lbl">Ubicaci\u00f3n f\u00edsica</label><input class="inp" id="iv-ubic" value="' + v('ubicacion') + '" placeholder="Ej: Estante A, caja 3"></div>'
     + '<div><label class="lbl">De d\u00f3nde salio</label><select class="inp" id="iv-origen">'
       + '<option value="compra"' + sel('origen','compra') + '>Comprada para stock</option>'
@@ -11981,7 +12005,7 @@ function invEditar(id){
       anio_desde: num('iv-desde'), anio_hasta: num('iv-hasta'),
       condicion: document.getElementById('iv-cond').value,
       cantidad: num('iv-cant') || 1,
-      costo_gs: num('iv-costo'), precio_gs: num('iv-precio'),
+      costo_gs: (n=>isNaN(n)?null:n)(monNum(document.getElementById('iv-costo').value)), precio_gs: (n=>isNaN(n)?null:n)(monNum(document.getElementById('iv-precio').value)),
       ubicacion: txt('iv-ubic'), origen: document.getElementById('iv-origen').value,
       pedido_numero: txt('iv-pedido'), notas: txt('iv-notas'),
       actualizado_en: new Date().toISOString()
@@ -12351,7 +12375,7 @@ function crPantalla(){
   invModal('\uD83C\uDFA4 Carga r\u00e1pida', html, async ()=>{
     if(!CR_LEIDO || !CR_LEIDO.monto){ showToast('No entend\u00ed el monto \u2014 revis\u00e1 la frase','error'); return false; }
     const g = k => document.getElementById('cr-'+k);
-    const monto = parseFloat(g('m-monto').value);
+    const monto = monNum(g('m-monto').value);
     if(!monto || monto <= 0){ showToast('Falta el monto','error'); return false; }
     const moneda = g('m-moneda').value;
     const cot = cjTasa(moneda);
@@ -12400,7 +12424,7 @@ function crLeer(){
       + '<option value="salida"' + (r.tipo==='salida'?' selected':'') + '>\u2191 Salida</option>'
       + '<option value="entrada"' + (r.tipo==='entrada'?' selected':'') + '>\u2193 Entrada</option></select></div>'
     + '<div class="cr-campo"><label>Monto</label>'
-      + '<input class="inp" type="number" step="0.01" id="cr-m-monto" value="' + r.monto + '" style="flex:1;font-size:17px;font-weight:700;color:' + col + ';">'
+      + '<input class="inp inp-mon" type="text" inputmode="decimal" id="cr-m-monto" value="' + monFmt(r.monto) + '" style="flex:1;font-size:17px;font-weight:700;color:' + col + ';">'
       + '<select class="inp" id="cr-m-moneda" style="width:88px;">'
         + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + (r.moneda===x?' selected':'') + '>' + x + '</option>').join('')
       + '</select></div>'
@@ -12832,13 +12856,13 @@ function gpEditar(id, kEsc){
   const nombres = [...new Set(GP_GASTOS.map(x=>x.concepto))].slice(0,80);
   const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">'
     + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="gp-concepto" list="gp-dl" value="' + esc(m ? m.concepto : (base ? base.concepto : '')) + '" placeholder="Ej: Supermercado, Colegio, Nafta auto"><datalist id="gp-dl">' + nombres.map(n=>'<option value="'+esc(n)+'">').join('') + '</datalist></div>'
-    + '<div><label class="lbl">Monto (Gs)</label><input class="inp" type="number" id="gp-monto" value="' + esc(m ? m.monto : '') + '"></div>'
+    + '<div><label class="lbl">Monto (Gs)</label><input class="inp inp-mon" type="text" inputmode="decimal" id="gp-monto" value="' + monFmt(m ? m.monto : '') + '"></div>'
     + '<div><label class="lbl">Fecha</label><input class="inp" type="date" id="gp-fecha" value="' + (m ? m.fecha : new Date().toISOString().slice(0,10)) + '"></div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Notas (opcional)</label><input class="inp" id="gp-notas" value="' + esc(m ? m.notas : '') + '"></div>'
     + '</div>'
     + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="gpBorrar(' + m.id + ')">🗑️ Borrar este pago</button></div>' : '');
   invModal(m ? 'Editar gasto particular' : 'Registrar gasto particular', html, async ()=>{
-    const data = {concepto: document.getElementById('gp-concepto').value.trim(), monto: parseFloat(document.getElementById('gp-monto').value)||0, fecha: document.getElementById('gp-fecha').value || new Date().toISOString().slice(0,10), notas: document.getElementById('gp-notas').value.trim() || null};
+    const data = {concepto: document.getElementById('gp-concepto').value.trim(), monto: monNum(document.getElementById('gp-monto').value)||0, fecha: document.getElementById('gp-fecha').value || new Date().toISOString().slice(0,10), notas: document.getElementById('gp-notas').value.trim() || null};
     if(!data.concepto || data.monto <= 0){ showToast('Completá concepto y monto','error'); return false; }
     try {
       if(m) await sbFetch('/rest/v1/fin_gastos_particulares?id=eq.' + m.id, 'PATCH', data);
@@ -13100,10 +13124,10 @@ function cjEditarMov(id, tipoNuevo){
           + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="' + b.id + '"' + (m && m.billetera_destino_id===b.id?' selected':'') + '>' + b.nombre + ' (' + b.moneda + ')</option>').join('') + '</select></div>'
         : '<div id="cm-cat-wrap"><label class="lbl">Categor\u00eda</label><select class="inp" id="cm-cat">'
           + cats.map(c=>'<option value="' + c.id + '"' + (m && m.categoria_id===c.id?' selected':'') + '>' + c.nombre + '</option>').join('') + '</select></div>')
-    + '<div><label class="lbl">Monto</label><input class="inp" type="number" step="0.01" id="cm-monto" value="' + v('monto') + '"></div>'
+    + '<div><label class="lbl">Monto</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cm-monto" value="' + monFmt(m && m.monto) + '"></div>'
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cm-moneda">'
       + ['PYG','USD','BRL'].map(x=>'<option value="' + x + '"' + ((m?m.moneda:'PYG')===x?' selected':'') + '>' + x + '</option>').join('') + '</select></div>'
-    + '<div id="cm-mdest-wrap" style="grid-column:1/-1;display:none;"><label class="lbl" id="cm-mdest-lbl">Monto que entra</label><input class="inp" type="number" step="0.01" id="cm-mdest" value="' + v('monto_destino') + '" placeholder="Si lo dej\u00e1s vac\u00edo, se calcula con la cotizaci\u00f3n"></div>'
+    + '<div id="cm-mdest-wrap" style="grid-column:1/-1;display:none;"><label class="lbl" id="cm-mdest-lbl">Monto que entra</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cm-mdest" value="' + monFmt(m && m.monto_destino) + '" placeholder="Si lo dej\u00e1s vac\u00edo, se calcula con la cotizaci\u00f3n"></div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Concepto</label><input class="inp" id="cm-concepto" value="' + v('concepto') + '" placeholder="Ej: pago de mercader\u00eda del #P053"></div>'
     + '<div style="position:relative;" id="cm-pedido-wrap"><label class="lbl">Pedido (opcional)</label>'
       + '<input class="inp" id="cm-pedido" autocomplete="off" value="' + v('pedido_numero') + '" placeholder="#P053" oninput="cjBuscarPedidoMov(this.value,true)" onfocus="cjBuscarPedidoMov(this.value,false)">'
@@ -13121,7 +13145,7 @@ function cjEditarMov(id, tipoNuevo){
   setTimeout(()=>{ try { const mo=document.getElementById('cm-moneda'); if(mo) mo.addEventListener('change', cjTrUI); cjTrUI(); } catch(e){} }, 30);
   invModal(id ? 'Editar movimiento' : titulos[esSalidaUI ? 'salida' : tipo], html + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="cjBorrarMov(' + m.id + ')">\uD83D\uDDD1\uFE0F Borrar este movimiento</button></div>' : ''), async ()=>{
     const g = k => document.getElementById('cm-'+k);
-    const monto = parseFloat(g('monto').value);
+    const monto = monNum(g('monto').value);
     if(!monto || monto <= 0){ showToast('Falta el monto','error'); return false; }
     const moneda = g('moneda').value;
     const cot = cjTasa(moneda);
@@ -13133,7 +13157,7 @@ function cjEditarMov(id, tipoNuevo){
     const tipoG = pagaTc ? 'transferencia' : (esSalidaUI ? 'salida' : tipo);
     const destId = pagaTc || (esTr ? (parseInt(g('dest').value,10) || null) : null);
     if(tipoG === 'transferencia' && destId && destId === (parseInt(g('bill').value,10)||null)){ showToast('La cuenta de origen y destino es la misma','error'); return false; }
-    const mdRaw = g('mdest') && g('mdest').closest('#cm-mdest-wrap').style.display !== 'none' ? parseFloat(g('mdest').value) : NaN;
+    const mdRaw = g('mdest') && g('mdest').closest('#cm-mdest-wrap').style.display !== 'none' ? monNum(g('mdest').value) : NaN;
     const datos = {
       fecha: g('fecha').value,
       tipo: tipoG,
@@ -13201,9 +13225,9 @@ function cjEditarBilletera(id){
     + '<div><label class="lbl">Titular</label><input class="inp" id="cb-titular" value="' + v('titular') + '"></div>'
     + '<div><label class="lbl">Alias</label><input class="inp" id="cb-ident" value="' + v('identificador') + '" placeholder="Ej: 6616665 (C.I.) o alias"></div>'
     + '<div><label class="lbl">N\u00famero de cuenta</label><input class="inp" id="cb-ncta" value="' + v('numero_cuenta') + '" placeholder="Ej: 1234567890"></div>'
-    + '<div><label class="lbl">L\u00edmite mensual (Gs, opcional)</label><input class="inp" type="number" id="cb-lim" value="' + v('limite_mensual') + '" placeholder="Ej: 50000000"></div>'
-    + '<div><label class="lbl">L\u00ednea de cr\u00e9dito (solo tarjetas)</label><input class="inp" type="number" step="0.01" id="cb-linea" value="' + v('linea_credito') + '" placeholder="Ej: 55000000"></div>'
-    + '<div><label class="lbl">Saldo inicial</label><input class="inp" type="number" step="0.01" id="cb-saldo" value="' + v('saldo_inicial','0') + '"></div>'
+    + '<div><label class="lbl">L\u00edmite mensual (Gs, opcional)</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cb-lim" value="' + monFmt(b && b.limite_mensual) + '" placeholder="Ej: 50000000"></div>'
+    + '<div><label class="lbl">L\u00ednea de cr\u00e9dito (solo tarjetas)</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cb-linea" value="' + monFmt(b && b.linea_credito) + '" placeholder="Ej: 55000000"></div>'
+    + '<div><label class="lbl">Saldo inicial</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cb-saldo" value="' + (b ? monFmt(b.saldo_inicial) : '0') + '"></div>'
     + '<div><label class="lbl">Desde qu\u00e9 fecha</label><input class="inp" type="date" id="cb-fecha" value="' + (b && b.fecha_inicial ? b.fecha_inicial : new Date().toISOString().slice(0,10)) + '"></div>'
     + '</div>'
     + '<div style="font-size:11.5px;color:var(--t3);margin-top:11px;">El saldo inicial es lo que hab\u00eda el d\u00eda que empez\u00e1s a registrar. De ah\u00ed en adelante el sistema suma y resta solo.</div>'
@@ -13218,9 +13242,9 @@ function cjEditarBilletera(id){
       titular: g('titular').value.trim() || null,
       identificador: g('ident').value.trim() || null,
       numero_cuenta: g('ncta').value.trim() || null,
-      limite_mensual: parseFloat(g('lim').value) || null,
-      linea_credito: parseFloat(g('linea').value) || null,
-      saldo_inicial: parseFloat(g('saldo').value) || 0,
+      limite_mensual: monNum(g('lim').value) || null,
+      linea_credito: monNum(g('linea').value) || null,
+      saldo_inicial: monNum(g('saldo').value) || 0,
       fecha_inicial: g('fecha').value || null
     };
     try {
@@ -13254,7 +13278,7 @@ function cjNuevoPendiente(){
     + '<div style="grid-column:1/-1;"><label class="lbl">Qu\u00e9 falta *</label><input class="inp" id="cp-titulo" placeholder="Ej: cargar el costo del #P050"></div>'
     + '<div style="grid-column:1/-1;"><label class="lbl">Detalle</label><input class="inp" id="cp-detalle"></div>'
     + '<div><label class="lbl">Pedido</label><input class="inp" id="cp-pedido" placeholder="#P050"></div>'
-    + '<div><label class="lbl">Monto estimado (Gs)</label><input class="inp" type="number" id="cp-monto"></div>'
+    + '<div><label class="lbl">Monto estimado (Gs)</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cp-monto"></div>'
     + '<div><label class="lbl">Prioridad</label><select class="inp" id="cp-prio"><option value="normal">Normal</option><option value="alta">Urgente</option><option value="baja">Baja</option></select></div>'
     + '<div><label class="lbl">Para qui\u00e9n</label><select class="inp" id="cp-quien"><option value="Lucas">Lucas</option><option value="Joaqu\u00edn">Joaqu\u00edn</option><option value="">Cualquiera</option></select></div>'
     + '</div>';
@@ -13266,7 +13290,7 @@ function cjNuevoPendiente(){
         titulo,
         detalle: document.getElementById('cp-detalle').value.trim() || null,
         pedido_numero: document.getElementById('cp-pedido').value.trim() || null,
-        monto_estimado: parseFloat(document.getElementById('cp-monto').value) || null,
+        monto_estimado: monNum(document.getElementById('cp-monto').value) || null,
         prioridad: document.getElementById('cp-prio').value,
         asignado_a: document.getElementById('cp-quien').value || null,
         creado_por: (currentUser && currentUser.name) || null
@@ -19894,7 +19918,7 @@ async function cjNuevaBilletera(){
     +'<div class="field"><label class="lbl">N\u00famero de cuenta</label><input class="inp" id="nb-ncta" placeholder="Ej: 1234567890"></div>'
     +'<div class="field"><label class="lbl">Tipo</label><select class="inp" id="nb-tipo"><option value="banco">Banco</option><option value="digital">Digital (Nubank, Atlas)</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option></select></div>'
     +'<div class="field"><label class="lbl">Moneda</label><select class="inp" id="nb-mon"><option value="PYG">Guaranies</option><option value="BRL">Reales</option><option value="USD">Dolares</option></select></div>'
-    +'<div class="field"><label class="lbl">Saldo inicial</label><input class="inp" id="nb-si" type="number" placeholder="0"></div>'
+    +'<div class="field"><label class="lbl">Saldo inicial</label><input class="inp inp-mon" id="nb-si" type="text" inputmode="decimal" placeholder="0"></div>'
     +'<div class="field"><label class="lbl">Titular (opcional)</label><input class="inp" id="nb-tit" placeholder="Ej: Lucas Gonzalez"></div>'
     +'</div>';
   invModal('Nueva cuenta / tarjeta', html, async function(){
@@ -19907,7 +19931,7 @@ async function cjNuevaBilletera(){
         numero_cuenta:(document.getElementById('nb-ncta')||{}).value.trim()||null,
         tipo:(document.getElementById('nb-tipo')||{}).value||'banco',
         moneda:(document.getElementById('nb-mon')||{}).value||'PYG',
-        saldo_inicial:parseFloat((document.getElementById('nb-si')||{}).value)||0,
+        saldo_inicial:monNum((document.getElementById('nb-si')||{}).value)||0,
         titular:(document.getElementById('nb-tit')||{}).value.trim()||null,
         activa:true,orden:CJ_BILL.length+1,creado_en:new Date().toISOString()
       });
