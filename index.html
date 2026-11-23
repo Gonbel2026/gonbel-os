@@ -12736,7 +12736,7 @@ function cjBillMesHTML(b){
 
 // ══════ GASTOS (pestaña nueva, Lucas 18/11) ══════
 // Pagos fijos (fin_cuentas tipo pagar) + gastos variables de la empresa (salidas de Caja que no son mercadería ni retiro personal).
-const GS_EXCLUIR = /retiro personal/i; // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
+const GS_EXCLUIR = /retiro personal|devoluci(?:ó|o|\\u00f3)n a cliente/i; // Lucas 23/11: devolver plata a un cliente no es gasto // Lucas 19/11: TODA salida de la empresa es gasto (mercadería, fletes, aduana incluidos); solo el retiro personal queda afuera
 function gsEsGasto(m){
   if(m.tipo !== 'salida') return false;
   // Lo que se carga en las tarjetas / pendientes de pago (Continental TC, Mercado Pago, Nubank TC) no es gasto de la empresa (Lucas 21/11)
@@ -13160,6 +13160,16 @@ function cjTrUI(){
   if(ver && g('mdest-lbl')) g('mdest-lbl').textContent = 'Monto que entra a ' + dest.nombre + ' (' + dest.moneda + ')';
 }
 
+// Devolución a cliente (Lucas 23/11): pide el pedido y ofrece marcarlo como cancelado
+function cjEsCatDev(catId){ const c = (CJ_CAT||[]).find(x=>x.id===catId); return !!(c && /devoluci(?:ó|o|\\u00f3)n a cliente/i.test(c.nombre)); }
+function cjDevUI(){
+  const sel = document.getElementById('cm-cat'); const w = document.getElementById('cm-dev-wrap');
+  const lbl = document.querySelector('#cm-pedido-wrap .lbl');
+  const dev = !!(sel && cjEsCatDev(parseInt(sel.value,10)));
+  if(w) w.style.display = dev ? 'flex' : 'none';
+  if(lbl) lbl.textContent = dev ? 'Pedido devuelto' : 'Pedido (opcional)';
+}
+
 function cjEditarMov(id, tipoNuevo){
   const m = id ? CJ_MOV.find(x=>x.id===id) : null;
   let tipo = m ? m.tipo : (tipoNuevo || 'salida');
@@ -13182,7 +13192,7 @@ function cjEditarMov(id, tipoNuevo){
     + (esTr
         ? '<div><label class="lbl">Entra a</label><select class="inp" id="cm-dest" onchange="cjTrUI()">'
           + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="' + b.id + '"' + (m && m.billetera_destino_id===b.id?' selected':'') + '>' + b.nombre + ' (' + b.moneda + ')</option>').join('') + '</select></div>'
-        : '<div id="cm-cat-wrap"><label class="lbl">Categor\u00eda</label><select class="inp" id="cm-cat">'
+        : '<div id="cm-cat-wrap"><label class="lbl">Categor\u00eda</label><select class="inp" id="cm-cat" onchange="cjDevUI()">'
           + cats.map(c=>'<option value="' + c.id + '"' + (m && m.categoria_id===c.id?' selected':'') + '>' + c.nombre + '</option>').join('') + '</select></div>')
     + '<div><label class="lbl">Monto</label><input class="inp inp-mon" type="text" inputmode="decimal" id="cm-monto" value="' + monFmt(m && m.monto) + '"></div>'
     + '<div><label class="lbl">Moneda</label><select class="inp" id="cm-moneda">'
@@ -13192,7 +13202,8 @@ function cjEditarMov(id, tipoNuevo){
     + '<div style="position:relative;" id="cm-pedido-wrap"><label class="lbl">Pedido (opcional)</label>'
       + '<input class="inp" id="cm-pedido" autocomplete="off" value="' + v('pedido_numero') + '" placeholder="#P053" oninput="cjBuscarPedidoMov(this.value,true)" onfocus="cjBuscarPedidoMov(this.value,false)">'
       + '<input type="hidden" id="cm-pedido-oid" value="' + (m && m.order_id ? m.order_id : '') + '">'
-      + '<div class="cr-dd" id="cm-pedido-dd"></div></div>'
+      + '<div class="cr-dd" id="cm-pedido-dd"></div>'
+      + '<label id="cm-dev-wrap" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--amber);cursor:pointer;"><input type="checkbox" id="cm-dev-marcar" checked> Marcar el pedido como cancelado (plata devuelta al cliente)</label></div>'
     + '<div style="position:relative;" id="cm-tercero-wrap"><label class="lbl">' + (tipo === 'entrada' ? 'Cliente' : 'Proveedor') + ' (opcional)</label>'
       + '<input class="inp" id="cm-tercero" autocomplete="off" value="' + (tipo==='entrada'?v('cliente'):v('proveedor')) + '"'
         + (tipo==='entrada' ? ' oninput="cjBuscarClienteMov(this.value,true)" onfocus="cjBuscarClienteMov(this.value,false)"' : '') + '>'
@@ -13202,7 +13213,7 @@ function cjEditarMov(id, tipoNuevo){
     + '</div>';
 
   const titulos = {entrada:'\u2193 Entrada de dinero', salida:'\u2191 Salida de dinero', transferencia:'\u21C4 Transferencia entre billeteras'};
-  setTimeout(()=>{ try { const mo=document.getElementById('cm-moneda'); if(mo) mo.addEventListener('change', cjTrUI); cjTrUI(); } catch(e){} }, 30);
+  setTimeout(()=>{ try { const mo=document.getElementById('cm-moneda'); if(mo) mo.addEventListener('change', cjTrUI); cjTrUI(); cjDevUI(); if(m && cjEsCatDev(m.categoria_id)){ const ck=document.getElementById('cm-dev-marcar'); if(ck) ck.checked=false; } } catch(e){} }, 30);
   invModal(id ? 'Editar movimiento' : titulos[esSalidaUI ? 'salida' : tipo], html + (m ? '<div style="margin-top:14px;text-align:right;"><button type="button" class="btn btn-ghost" style="color:var(--red);" onclick="cjBorrarMov(' + m.id + ')">\uD83D\uDDD1\uFE0F Borrar este movimiento</button></div>' : ''), async ()=>{
     const g = k => document.getElementById('cm-'+k);
     const monto = monNum(g('monto').value);
@@ -13243,6 +13254,16 @@ function cjEditarMov(id, tipoNuevo){
     try {
       if(id) await sbFetch('/rest/v1/fin_movimientos?id=eq.' + id, 'PATCH', datos);
       else await sbFetch('/rest/v1/fin_movimientos', 'POST', datos);
+      const ckDev = document.getElementById('cm-dev-marcar');
+      if(tipoG === 'salida' && cjEsCatDev(datos.categoria_id) && datos.order_id && ckDev && ckDev.checked){
+        try {
+          await sbFetch('/rest/v1/orders?id=eq.' + datos.order_id, 'PATCH', {estado:'cancelado', devolucion_resultado:'dinero_devuelto_cliente'});
+          const o = (typeof orders !== 'undefined' ? orders : []).find(x=>x.id===datos.order_id);
+          if(o){ o.estado = 'cancelado'; o.devolucion_resultado = 'dinero_devuelto_cliente'; }
+          try { renderKanban(); } catch(e){}
+          showToast('Pedido ' + (datos.pedido_numero||'') + ' marcado como cancelado (devuelto)','success');
+        } catch(e){ showToast('Se guard\u00f3 la salida, pero no se pudo marcar el pedido','error'); }
+      }
       await cjCargar();
       showToast('\u2713 Movimiento guardado','success');
       return true;
