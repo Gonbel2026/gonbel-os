@@ -13129,10 +13129,11 @@ function cjEditarMov(id, tipoNuevo){
   const m = id ? CJ_MOV.find(x=>x.id===id) : null;
   let tipo = m ? m.tipo : (tipoNuevo || 'salida');
   // Salida "Pago de tarjeta" (Lucas 23/11): se guarda como transferencia a la tarjeta, no es gasto
-  const tarjetas = CJ_BILL.filter(b=>b.activa!==false && b.tipo==='tarjeta');
+  // Lucas 23/11: también depósito de efectivo al banco (o pasar a cualquier cuenta propia)
+  const tarjetas = CJ_BILL.filter(b=>b.activa!==false).sort((a,b)=>(a.tipo==='tarjeta'?0:1)-(b.tipo==='tarjeta'?0:1));
   const esTrOrig = tipo === 'transferencia';
   const destTarjeta = esTrOrig && m && tarjetas.some(t=>t.id===m.billetera_destino_id);
-  const esSalidaUI = tipo === 'salida' || (destTarjeta && !tipoNuevo && m && m.origen === 'pago_tarjeta');
+  const esSalidaUI = tipo === 'salida' || (destTarjeta && !tipoNuevo && m && (m.origen === 'pago_tarjeta' || m.origen === 'deposito_cuenta'));
   const esTr = tipo === 'transferencia' && !esSalidaUI;
   const v = (k,d) => (m && m[k] != null) ? String(m[k]).replace(/"/g,'&quot;') : (d||'');
   const cats = CJ_CAT.filter(c=>c.tipo === (tipo === 'entrada' ? 'entrada' : 'salida'));
@@ -13140,7 +13141,7 @@ function cjEditarMov(id, tipoNuevo){
   const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">'
     + '<div><label class="lbl">Fecha</label><input class="inp" type="date" id="cm-fecha" value="' + (m ? m.fecha : new Date().toISOString().slice(0,10)) + '"></div>'
     + (esSalidaUI && tarjetas.length ? '<div style="grid-column:1/-1;"><label class="lbl">Tipo de salida</label><select class="inp" id="cm-paga-tc" onchange="cjTrUI()"><option value="">Gasto / pago normal</option>'
-        + tarjetas.map(t=>'<option value="' + t.id + '"' + (m && m.tipo==='transferencia' && m.billetera_destino_id===t.id ? ' selected' : '') + '>\uD83D\uDCB3 Pago de tarjeta \u2192 ' + t.nombre + ' (' + t.moneda + ')</option>').join('') + '</select></div>' : '')
+        + tarjetas.map(t=>'<option value="' + t.id + '"' + (m && m.tipo==='transferencia' && m.billetera_destino_id===t.id ? ' selected' : '') + '>' + (t.tipo==='tarjeta' ? '\uD83D\uDCB3 Pago de tarjeta \u2192 ' : '\uD83C\uDFE6 Dep\u00f3sito / pasar a \u2192 ') + t.nombre + ' (' + t.moneda + ')</option>').join('') + '</select></div>' : '')
     + '<div><label class="lbl">' + (esTr ? 'Sale de' : 'Billetera') + '</label><select class="inp" id="cm-bill">'
       + CJ_BILL.filter(b=>b.activa!==false).map(b=>'<option value="' + b.id + '"' + (m && m.billetera_id===b.id?' selected':'') + '>' + b.nombre + ' (' + b.moneda + ')</option>').join('') + '</select></div>'
     + (esTr
@@ -13185,7 +13186,7 @@ function cjEditarMov(id, tipoNuevo){
     const datos = {
       fecha: g('fecha').value,
       tipo: tipoG,
-      origen: pagaTc ? 'pago_tarjeta' : (m ? (m.origen === 'pago_tarjeta' ? null : m.origen) : null),
+      origen: pagaTc ? ((CJ_BILL.find(b=>b.id===pagaTc)||{}).tipo==='tarjeta' ? 'pago_tarjeta' : 'deposito_cuenta') : (m ? ((m.origen === 'pago_tarjeta' || m.origen === 'deposito_cuenta') ? null : m.origen) : null),
       billetera_id: parseInt(g('bill').value,10) || null,
       billetera_destino_id: tipoG === 'transferencia' ? destId : null,
       monto_destino: tipoG === 'transferencia' && mdRaw > 0 ? mdRaw : null,
