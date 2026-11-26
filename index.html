@@ -7262,7 +7262,7 @@ function bpMostrarPresupuesto(){
     : 'Cargá el Valor de al menos una pieza para armar el presupuesto.';
   if(filas.length) txt += `\n\nTOTAL: ${bpFmtMoneda(total, mon)}`;
   // Lucas 26/11: aviso fijo de devoluciones al pie de todo presupuesto
-  if(filas.length) txt += `\n\n⚠️ DEVOLUCIONES: SOLO SE ACEPTAN HASTA 3 DÍAS DESPUÉS DE ENTREGADA LA PIEZA. PASADO ESE PLAZO NO HAY CAMBIO NI DEVOLUCIÓN.`;
+  if(filas.length) txt += `\n\n⚠️ IMPORTANTE: LAS DEVOLUCIONES SE ACEPTAN SOLO DENTRO DE LOS 3 DÍAS POSTERIORES A LA ENTREGA. LE PEDIMOS REVISAR LA PIEZA APENAS LA RECIBA.`;
   document.getElementById('bp-presu-txt').textContent = txt;
   document.getElementById('bp-presu').classList.add('on');
 }
